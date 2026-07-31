@@ -36,13 +36,18 @@ export function Hero() {
             {site.initiativeBy} · {site.season}
           </motion.p>
 
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <motion.img
+          <motion.h1
             variants={item}
-            src="/brand/logo.png"
-            alt="Tier-2 Rising Startup Summit"
-            className="w-full max-w-sm sm:max-w-md md:max-w-lg"
-          />
+            className="font-sans text-6xl font-bold uppercase leading-[0.92] tracking-[-0.02em] text-surface sm:text-8xl"
+          >
+            Tier-2 <span className="text-accent">Rising</span>
+          </motion.h1>
+          <motion.p
+            variants={item}
+            className="mt-1 font-sans text-2xl font-semibold uppercase tracking-[0.04em] text-surface sm:text-4xl"
+          >
+            {site.subhead}
+          </motion.p>
 
           <motion.div variants={item} className="mt-6 font-sans uppercase text-surface">
             <p className="text-xl font-bold sm:text-2xl">{site.dates}</p>
@@ -55,16 +60,19 @@ export function Hero() {
             {site.theme}.
           </motion.p>
 
-          <motion.div variants={item} className="mt-8 flex max-w-md flex-col gap-3">
-            <Button href={site.register} variant="solid" full className="justify-center py-4 text-lg">
+          <motion.div variants={item} className="mt-8 flex flex-wrap gap-3">
+            <Button href={site.register} variant="solid" className="py-4">
               Register for Updates
-            </Button>
-            <Button onClick={open} variant="solid" full className="justify-center py-4 text-lg">
-              Nominate a Startup
             </Button>
             <button
               onClick={open}
-              className="w-full border border-surface/40 bg-night/40 px-7 py-4 text-lg font-bold uppercase text-surface backdrop-blur-sm transition-colors hover:bg-accent hover:text-accent-ink hover:border-accent"
+              className="border border-surface/50 px-7 py-4 text-btn font-bold uppercase text-surface transition-colors hover:bg-surface hover:text-ink"
+            >
+              Nominate a Startup
+            </button>
+            <button
+              onClick={open}
+              className="border border-surface/50 px-7 py-4 text-btn font-bold uppercase text-surface transition-colors hover:bg-surface hover:text-ink"
             >
               Partner &amp; Sponsor
             </button>
