@@ -18,7 +18,8 @@ export function SiteFooter() {
               Tier-2 <span className="text-accent">Rising</span>
             </span>
             <p className="max-w-xs text-sm text-surface/70">
-              {site.fullName} — {site.initiativeBy}. {site.dates}, {site.venue}, {site.city}.
+              A flagship event under the Tier-2 Rising campaign by NammaOffice — building a funding-ready startup
+              ecosystem beyond the metros. {site.dates} · {site.venue}, {site.city}.
             </p>
             <a href={`mailto:${site.contactEmail}`} className="text-sm text-accent hover:underline">
               {site.contactEmail}

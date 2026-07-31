@@ -62,7 +62,7 @@ export function Hero() {
 
           <motion.div variants={item} className="mt-8 flex max-w-md flex-col gap-3">
             <Button href={site.register} variant="solid" full className="justify-center py-4 text-lg">
-              Register Free
+              Register for Updates
             </Button>
             <Button onClick={open} variant="solid" full className="justify-center py-4 text-lg">
               Nominate a Startup

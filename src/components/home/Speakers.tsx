@@ -42,7 +42,7 @@ export function Speakers() {
             Speakers
           </h2>
           <p className="mt-2 text-sm font-medium uppercase tracking-wide text-accent-ink/70">
-            A practitioner-heavy line-up — announced soon
+            A practitioner-heavy stage — no filler keynotes. Names rolling out.
           </p>
         </Container>
       </div>

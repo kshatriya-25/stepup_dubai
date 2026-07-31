@@ -9,7 +9,7 @@ export function WhatGoesOn() {
     <section id="whatgoeson" className="bg-surface">
       <Container className="py-16 md:py-24">
         <Reveal>
-          <Eyebrow className="text-accent">Two Days, One Weekend</Eyebrow>
+          <Eyebrow className="text-accent">Two Days · Every Door Open</Eyebrow>
           <SectionHeading className="mt-4 text-ink">What Happens</SectionHeading>
         </Reveal>
 
@@ -39,7 +39,7 @@ export function WhatGoesOn() {
               href="#register"
               className="bg-accent px-8 py-4 font-sans text-btn font-bold uppercase text-accent-ink transition-colors hover:bg-base hover:text-surface"
             >
-              Register Free
+              Register for Updates
             </a>
           </div>
         </Reveal>

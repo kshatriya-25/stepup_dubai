@@ -10,22 +10,22 @@ export function Partners() {
       {partners.map((p, i) => (
         <div key={p.name}>
           <div className="bg-accent">
-            <Container className="py-7 text-center md:py-9">
+            <Container className="py-3 text-center md:py-4">
               <Reveal>
-                <h2 className="font-sans text-3xl font-bold uppercase tracking-[-0.01em] text-accent-ink md:text-5xl">
+                <h2 className="font-sans text-base font-bold uppercase tracking-[0.02em] text-accent-ink md:text-2xl">
                   {p.label}
                 </h2>
               </Reveal>
             </Container>
           </div>
           <div className={i % 2 === 0 ? 'bg-surface' : 'bg-foam'}>
-            <Container className="flex justify-center py-12 md:py-16">
+            <Container className="flex justify-center py-6 md:py-8">
               <Reveal>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={p.logo}
                   alt={p.name}
-                  className="h-11 w-auto max-w-[200px] object-contain transition-transform duration-500 hover:scale-105 md:h-14"
+                  className="h-9 w-auto max-w-[170px] object-contain transition-transform duration-500 hover:scale-105 md:h-11"
                 />
               </Reveal>
             </Container>

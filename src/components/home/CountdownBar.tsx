@@ -43,7 +43,7 @@ export function CountdownBar() {
           href={site.register}
           className="bg-accent px-8 py-4 font-sans text-base font-bold uppercase text-accent-ink transition-colors hover:bg-base hover:text-surface"
         >
-          Register Free
+          Register
         </a>
       </div>
     </div>

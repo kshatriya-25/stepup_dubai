@@ -38,8 +38,10 @@ export function SiteNav() {
               <br />
               by
             </span>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logos/nammaoffice.png" alt="Namma Office" className="h-5 w-auto object-contain brightness-0 invert" />
+            <span className="flex items-center rounded-sm bg-white px-2 py-1">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logos/nammaoffice.png" alt="Namma Office" className="h-4 w-auto object-contain" />
+            </span>
           </span>
         </div>
 
