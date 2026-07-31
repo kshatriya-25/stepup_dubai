@@ -13,13 +13,13 @@ export const scores = [
   { n: '2', label: 'Days · Erode' },
 ]
 
-export type Zone = { title: string; sub: string; accent: 'accent' | 'magenta' | 'cyan' | 'gold' | 'purple' | 'mint' }
+export type Zone = { title: string; sub: string; accent: 'accent' | 'purple' | 'cyan' | 'gold' | 'green' }
 export const zones: Zone[] = [
   { title: 'Government Grants', sub: 'StartupTN · TANSEED · TIIC · DIC', accent: 'accent' },
   { title: 'New-Age Investors', sub: 'Angels · Micro-VCs · Family Offices', accent: 'gold' },
   { title: 'Banking & Credit', sub: 'SIDBI · MUDRA · CGTMSE', accent: 'cyan' },
-  { title: 'Startup Exhibit', sub: 'The 10 startups, live demos', accent: 'magenta' },
-  { title: "Deal & Investors' Corner", sub: 'Term-sheet exploration', accent: 'mint' },
+  { title: 'Startup Exhibit', sub: 'The 10 startups, live demos', accent: 'purple' },
+  { title: "Deal & Investors' Corner", sub: 'Term-sheet exploration', accent: 'green' },
 ]
 
 // Programme cards — free-license imagery + short copy from the source deck.

@@ -9,8 +9,8 @@ export function WhatGoesOn() {
     <section id="whatgoeson" className="bg-surface">
       <Container className="py-16 md:py-24">
         <Reveal>
-          <Eyebrow className="text-magenta">Two Days, One Weekend</Eyebrow>
-          <SectionHeading className="mt-4 text-black">What Happens</SectionHeading>
+          <Eyebrow className="text-accent">Two Days, One Weekend</Eyebrow>
+          <SectionHeading className="mt-4 text-ink">What Happens</SectionHeading>
         </Reveal>
 
         <div className="mt-12 grid gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
@@ -26,7 +26,7 @@ export function WhatGoesOn() {
                   />
                   <span className="absolute bottom-0 left-0 h-1 w-0 bg-accent transition-all duration-300 group-hover:w-full" />
                 </div>
-                <h3 className="mt-5 font-sans text-xl font-bold uppercase tracking-tight text-black">{c.label}</h3>
+                <h3 className="mt-5 font-sans text-xl font-bold uppercase tracking-tight text-ink">{c.label}</h3>
                 <p className="mt-2 text-base leading-relaxed text-muted">{c.desc}</p>
               </div>
             </Reveal>
@@ -37,7 +37,7 @@ export function WhatGoesOn() {
           <div className="mt-14 flex justify-center">
             <a
               href="#register"
-              className="bg-accent px-8 py-4 font-sans text-btn font-bold uppercase text-accent-ink transition-colors hover:bg-black hover:text-surface"
+              className="bg-accent px-8 py-4 font-sans text-btn font-bold uppercase text-accent-ink transition-colors hover:bg-base hover:text-surface"
             >
               Register Free
             </a>

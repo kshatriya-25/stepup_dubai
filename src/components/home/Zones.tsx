@@ -7,21 +7,20 @@ import { cn } from '@/lib/cn'
 
 const tone: Record<Zone['accent'], { bar: string; text: string }> = {
   accent: { bar: 'bg-accent', text: 'text-accent' },
-  magenta: { bar: 'bg-magenta', text: 'text-magenta' },
+  purple: { bar: 'bg-purple', text: 'text-purple' },
   cyan: { bar: 'bg-cyan', text: 'text-cyan' },
   gold: { bar: 'bg-gold', text: 'text-gold' },
-  purple: { bar: 'bg-purple', text: 'text-purple' },
-  mint: { bar: 'bg-mint', text: 'text-mint' },
+  green: { bar: 'bg-green', text: 'text-green' },
 }
 
-/** Growth Zones — indexed tiles with scroll-reveal + hover motion. */
+/** Growth Zones — indexed navy tiles with scroll-reveal + hover motion. */
 export function Zones() {
   return (
     <section id="zones" className="bg-surface">
       <Container className="py-16 md:py-24">
         <Reveal>
-          <Eyebrow className="text-magenta">Open All Day</Eyebrow>
-          <SectionHeading className="mt-4 text-black">Startup Growth Zones</SectionHeading>
+          <Eyebrow className="text-accent">Open All Day</Eyebrow>
+          <SectionHeading className="mt-4 text-ink">Startup Growth Zones</SectionHeading>
           <p className="mt-5 max-w-2xl text-lg text-muted">
             Walk in anytime — schemes sanctioned, connects made and deals explored on the spot.
           </p>
@@ -30,7 +29,7 @@ export function Zones() {
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {zones.map((z, i) => (
             <Reveal key={z.title} delay={i * 0.08}>
-              <div className="group relative flex h-full min-h-[240px] flex-col overflow-hidden border border-black/10 bg-black p-6 text-surface transition-all duration-300 hover:-translate-y-1.5 hover:border-accent hover:shadow-2xl">
+              <div className="group relative flex h-full min-h-[240px] flex-col overflow-hidden border border-ink/10 bg-base p-6 text-surface transition-all duration-300 hover:-translate-y-1.5 hover:bg-base-2 hover:border-accent hover:shadow-2xl">
                 <div className="flex items-start justify-between">
                   <span className={cn('font-sans text-3xl font-bold leading-none', tone[z.accent].text)}>
                     {String(i + 1).padStart(2, '0')}

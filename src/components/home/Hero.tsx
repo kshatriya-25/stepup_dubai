@@ -27,8 +27,8 @@ export function Hero() {
         preload="metadata"
       />
       {/* legibility washes — text sits directly on the video like the original */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-black/40" />
-      <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/20 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-night/90 via-night/30 to-night/50" />
+      <div className="absolute inset-0 bg-gradient-to-r from-night/80 via-night/25 to-transparent" />
 
       <div className="relative mx-auto w-full max-w-container-wide px-4 pt-24 sm:px-6">
         <motion.div variants={container} initial="hidden" animate="show" className="max-w-2xl">
@@ -69,7 +69,7 @@ export function Hero() {
             </Button>
             <button
               onClick={open}
-              className="w-full border border-surface/40 bg-black/30 px-7 py-4 text-lg font-bold uppercase text-surface backdrop-blur-sm transition-colors hover:bg-accent hover:text-accent-ink hover:border-accent"
+              className="w-full border border-surface/40 bg-night/40 px-7 py-4 text-lg font-bold uppercase text-surface backdrop-blur-sm transition-colors hover:bg-accent hover:text-accent-ink hover:border-accent"
             >
               Partner &amp; Sponsor
             </button>

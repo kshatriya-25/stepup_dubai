@@ -6,7 +6,7 @@ import { scores } from '@/content/home'
 /** Stats strip — black band, numbers count up on scroll. */
 export function Scores() {
   return (
-    <section className="bg-black text-surface">
+    <section className="bg-base text-surface">
       <Container>
         <div className="grid divide-y divide-surface/15 sm:grid-cols-2 sm:divide-x lg:grid-cols-4 lg:divide-y-0">
           {scores.map((s, i) => (

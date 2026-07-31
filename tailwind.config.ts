@@ -18,22 +18,20 @@ const config: Config = {
     },
     extend: {
       colors: {
-        // === PASS 1 — faithful STEP Dubai palette ===
-        // (Pass 2 = swap this block for Tier-2: base #072B5F, accent #F47B20, etc.)
-        base: '#000000',        // black — nav, hero card, scores strip
-        'base-2': '#171333',    // indigo — countdown numbers, secondary dark
-        accent: '#00FF00',      // electric green — primary accent (flat blocks, buttons)
-        'accent-ink': '#000000',// black text/icons that sit on the green
+        // === PASS 2 — official Tier-2 Rising palette (Design Brief) ===
+        base: '#072B5F',        // Deep Navy — nav, dark sections (bg-base/border-base only)
+        'base-2': '#0A3A72',    // lifted navy — hover / secondary dark
+        night: '#04162E',       // near-black navy — hero/video overlays
+        accent: '#F47B20',      // Rising Orange — primary accent (blocks, buttons)
+        'accent-ink': '#072B5F',// navy text/icons on orange (legible; white fails contrast)
         surface: '#FFFFFF',
-        foam: '#F9F7F1',        // warm off-white footer
-        magenta: '#E93CF7',     // "Our Story" heading pop
-        mint: '#73ECCF',        // secondary accent (testimonial text)
-        teal: '#1DE6C7',
-        gold: '#F2B705',
-        cyan: '#00AEEF',
-        purple: '#6B3FA0',
-        ink: '#000000',         // body text on light
-        muted: '#4A4A4A',       // secondary text
+        foam: '#F4F6FA',        // cool off-white
+        green: '#16A05D',       // Growth Green — funding / ecosystem
+        gold: '#F2B705',        // Investor Gold — investment / recognition
+        cyan: '#00AEEF',        // Tech Cyan — AI / innovation
+        purple: '#6B3FA0',      // Startup Purple — pitch arena / VC
+        ink: '#0B2447',         // navy-ink — body text + headings on light (use text-ink, NOT text-base)
+        muted: '#5A6B82',       // slate — secondary text
       },
       fontFamily: {
         sans: ['var(--font-alexandria)', 'system-ui', 'sans-serif'],

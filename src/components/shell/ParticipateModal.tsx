@@ -36,8 +36,8 @@ export function ParticipateProvider({ children }: { children: ReactNode }) {
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             >
               <div className="flex items-start justify-between">
-                <h2 className="font-sans text-4xl font-bold uppercase text-base">Participate</h2>
-                <button aria-label="Close" onClick={() => setOpen(false)} className="text-base">
+                <h2 className="font-sans text-4xl font-bold uppercase text-accent-ink">Participate</h2>
+                <button aria-label="Close" onClick={() => setOpen(false)} className="text-accent-ink">
                   <X size={28} />
                 </button>
               </div>

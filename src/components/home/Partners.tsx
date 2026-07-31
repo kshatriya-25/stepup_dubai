@@ -25,7 +25,7 @@ export function Partners() {
                 <img
                   src={p.logo}
                   alt={p.name}
-                  className="h-16 w-auto object-contain transition-transform duration-500 hover:scale-105 md:h-24"
+                  className="h-11 w-auto max-w-[200px] object-contain transition-transform duration-500 hover:scale-105 md:h-14"
                 />
               </Reveal>
             </Container>
@@ -51,7 +51,7 @@ export function Partners() {
           {[...govItems, ...govItems].map((it, i) => (
             <div
               key={i}
-              className="flex h-20 min-w-[200px] items-center justify-center gap-2.5 border border-black/10 bg-surface px-8 shadow-sm"
+              className="flex h-20 min-w-[200px] items-center justify-center gap-2.5 border border-ink/10 bg-surface px-8 shadow-sm"
             >
               {it.logo ? (
                 // eslint-disable-next-line @next/next/no-img-element
