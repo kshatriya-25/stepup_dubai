@@ -3,20 +3,23 @@
 import { useEffect, useRef, useState } from 'react'
 import { useInView } from 'framer-motion'
 
-/** Counts a numeric value up when scrolled into view. Preserves prefix/suffix (e.g. "$9 Billion", "8000+"). */
+/** Counts a numeric value up when scrolled into view. Preserves prefix/suffix ("$9 Billion", "8000+"). */
 export function CountUp({ value, className, duration = 1400 }: { value: string; className?: string; duration?: number }) {
   const ref = useRef<HTMLSpanElement>(null)
   const inView = useInView(ref, { once: true, margin: '-60px' })
-  const [display, setDisplay] = useState('0')
-
-  const m = value.match(/^(\D*)([\d,]+)(.*)$/)
-  const prefix = m ? m[1] : ''
-  const target = m ? parseInt(m[2].replace(/,/g, ''), 10) : 0
-  const suffix = m ? m[3] : value
+  const [display, setDisplay] = useState(() => value.replace(/[\d,]+/, '0'))
 
   useEffect(() => {
-    if (!inView || !m) {
-      if (!m) setDisplay(value)
+    const match = value.match(/^(\D*)([\d,]+)(.*)$/)
+    if (!match) {
+      setDisplay(value)
+      return
+    }
+    const prefix = match[1]
+    const target = parseInt(match[2].replace(/,/g, ''), 10)
+    const suffix = match[3]
+    if (!inView) {
+      setDisplay(`${prefix}0${suffix}`)
       return
     }
     let raf = 0
@@ -24,16 +27,16 @@ export function CountUp({ value, className, duration = 1400 }: { value: string; 
     const tick = (now: number) => {
       const p = Math.min(1, (now - start) / duration)
       const eased = 1 - Math.pow(1 - p, 3)
-      setDisplay(Math.round(eased * target).toLocaleString())
+      setDisplay(`${prefix}${Math.round(eased * target).toLocaleString()}${suffix}`)
       if (p < 1) raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [inView, target, duration, m, value])
+  }, [inView, value, duration])
 
   return (
     <span ref={ref} className={className}>
-      {m ? `${prefix}${display}${suffix}` : value}
+      {display}
     </span>
   )
 }

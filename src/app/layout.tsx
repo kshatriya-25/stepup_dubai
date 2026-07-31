@@ -5,7 +5,6 @@ import { site } from '@/content/site'
 import { ParticipateProvider } from '@/components/shell/ParticipateModal'
 import { SiteNav } from '@/components/shell/SiteNav'
 import { SiteFooter } from '@/components/shell/SiteFooter'
-import { CookieBanner } from '@/components/shell/CookieBanner'
 
 const alexandria = Alexandria({
   subsets: ['latin'],
@@ -32,7 +31,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SiteNav />
           <main id="top">{children}</main>
           <SiteFooter />
-          <CookieBanner />
         </ParticipateProvider>
       </body>
     </html>

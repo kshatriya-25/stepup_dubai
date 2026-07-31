@@ -22,15 +22,39 @@ export const zones: Zone[] = [
   { title: "Deal & Investors' Corner", sub: 'Term-sheet exploration', accent: 'mint' },
 ]
 
-// Programme cards use the provided poster images.
-export type WhatCard = { label: string; img: string }
+// Programme cards — free-license imagery + short copy from the source deck.
+export type WhatCard = { label: string; img: string; desc: string }
 export const whatGoesOn: WhatCard[] = [
-  { label: 'Founder Bootcamp', img: '/posters/bootcamp.jpg' },
-  { label: 'Due-Diligence Desks', img: '/posters/diligence.jpg' },
-  { label: 'The Pitch Finale', img: '/posters/finale.jpg' },
-  { label: 'Startup Exhibit', img: '/posters/exhibit.jpg' },
-  { label: 'Growth Zones', img: '/posters/zones.jpg' },
-  { label: 'Open, Free Entry', img: '/posters/entry.jpg' },
+  {
+    label: 'Founder Bootcamp',
+    img: '/happens/bootcamp.jpg',
+    desc: 'Pitch craft, cap table, data room and metrics — the 10 startups coached by mentors and Startup Singam.',
+  },
+  {
+    label: 'Due-Diligence Desks',
+    img: '/happens/diligence.jpg',
+    desc: 'One desk per founder — documents reviewed and scrutinised ahead of the closed investor pitch.',
+  },
+  {
+    label: 'The Pitch Finale',
+    img: '/happens/finale.jpg',
+    desc: 'The Top 3 finalists pitch live before the full house — judges, live investor pledges and awards.',
+  },
+  {
+    label: 'Startup Exhibit',
+    img: '/happens/exhibit.jpg',
+    desc: 'The shortlisted startups showcase their stalls and run live product demos through the day.',
+  },
+  {
+    label: 'Growth Zones',
+    img: '/happens/zones.jpg',
+    desc: 'Government grants, new-age investors, banking, credit and the deal corner — open all day.',
+  },
+  {
+    label: 'Open, Free Entry',
+    img: '/happens/entry.jpg',
+    desc: 'Free entry for all — startups, investors and the public. Register to attend.',
+  },
 ]
 
 // Placeholder roster — real speakers announced later.
@@ -56,11 +80,21 @@ export type GovGroup = { group: string; items: GovPartner[] }
 export const govPartners: GovGroup[] = [
   {
     group: 'Government Enablement',
-    items: [{ name: 'StartupTN' }, { name: 'TANSEED' }, { name: 'TIIC' }, { name: 'DIC' }, { name: 'MSME-DI' }],
+    items: [
+      { name: 'StartupTN' },
+      { name: 'TANSEED' },
+      { name: 'TIIC', logo: '/logos/tiic.png' },
+      { name: 'DIC' },
+      { name: 'MSME', logo: '/logos/msme.png' },
+    ],
   },
   {
     group: 'Banking & Credit',
-    items: [{ name: 'SIDBI' }, { name: 'MUDRA' }, { name: 'CGTMSE' }],
+    items: [
+      { name: 'SIDBI', logo: '/logos/sidbi.png' },
+      { name: 'MUDRA', logo: '/logos/mudra.png' },
+      { name: 'CGTMSE' },
+    ],
   },
   {
     group: 'Ecosystem & Community',

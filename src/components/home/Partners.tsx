@@ -51,15 +51,18 @@ export function Partners() {
           {[...govItems, ...govItems].map((it, i) => (
             <div
               key={i}
-              className="flex h-20 min-w-[180px] items-center justify-center border border-black/10 bg-surface px-8"
+              className="flex h-20 min-w-[200px] items-center justify-center gap-2.5 border border-black/10 bg-surface px-8 shadow-sm"
             >
               {it.logo ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={it.logo} alt={it.name} className="max-h-12 w-auto object-contain" />
               ) : (
-                <span className="whitespace-nowrap font-sans text-lg font-bold uppercase tracking-wide text-ink/80">
-                  {it.name}
-                </span>
+                <>
+                  <span className="h-2 w-2 shrink-0 rounded-full bg-accent" />
+                  <span className="whitespace-nowrap font-sans text-lg font-bold uppercase tracking-[0.02em] text-ink/85">
+                    {it.name}
+                  </span>
+                </>
               )}
             </div>
           ))}

@@ -22,15 +22,26 @@ export function SiteNav() {
     >
       {/* Bar */}
       <div className="mx-auto flex h-[72px] max-w-container-wide items-center justify-between px-4 sm:px-6 md:h-[85px]">
-        {/* Left: wordmark + venue chip */}
-        <a href="#top" className="flex items-center gap-3">
-          <span className="font-sans text-lg font-black uppercase leading-none tracking-tight">
-            Tier-2 <span className="text-accent">Rising</span>
+        {/* Left: wordmark + venue chip + presented-by */}
+        <div className="flex items-center gap-3">
+          <a href="#top" className="flex items-center gap-3">
+            <span className="font-sans text-lg font-black uppercase leading-none tracking-tight">
+              Tier-2 <span className="text-accent">Rising</span>
+            </span>
+            <span className="hidden items-center gap-1 border-l border-surface/25 pl-3 text-[11px] uppercase text-surface/70 lg:flex">
+              <MapPin size={12} className="text-accent" /> {site.venue}
+            </span>
+          </a>
+          <span className="hidden items-center gap-2 border-l border-surface/25 pl-3 xl:flex">
+            <span className="text-[10px] font-semibold uppercase leading-tight tracking-[0.12em] text-surface/60">
+              Presented
+              <br />
+              by
+            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logos/nammaoffice.png" alt="Namma Office" className="h-5 w-auto object-contain brightness-0 invert" />
           </span>
-          <span className="hidden items-center gap-1 border-l border-surface/25 pl-3 text-[11px] uppercase text-surface/70 lg:flex">
-            <MapPin size={12} className="text-accent" /> {site.venue}
-          </span>
-        </a>
+        </div>
 
         {/* Desktop menu */}
         <nav className="hidden items-center gap-8 md:flex">
