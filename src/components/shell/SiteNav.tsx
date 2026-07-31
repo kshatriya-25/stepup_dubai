@@ -25,9 +25,8 @@ export function SiteNav() {
         {/* Left: wordmark + venue chip + presented-by */}
         <div className="flex items-center gap-3">
           <a href="#top" className="flex items-center gap-3">
-            <span className="font-sans text-lg font-black uppercase leading-none tracking-tight">
-              Tier-2 <span className="text-accent">Rising</span>
-            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/logo.png" alt="Tier-2 Rising Startup Summit" className="h-9 w-auto md:h-12" />
             <span className="hidden items-center gap-1 border-l border-surface/25 pl-3 text-[11px] uppercase text-surface/70 lg:flex">
               <MapPin size={12} className="text-accent" /> {site.venue}
             </span>
@@ -49,7 +48,10 @@ export function SiteNav() {
         <nav className="hidden items-center gap-8 md:flex">
           {nav.map((item) => (
             <div key={item.label} className="group relative">
-              <a href={item.href} className="flex items-center gap-1 text-base font-medium hover:text-accent">
+              <a
+                href={item.href}
+                className="flex items-center gap-1 text-base font-medium text-surface transition-colors hover:text-accent"
+              >
                 {item.label}
                 {item.children && <ChevronDown size={14} className="mt-0.5 opacity-70" />}
               </a>
@@ -111,7 +113,7 @@ export function SiteNav() {
                   <a
                     href={item.href}
                     onClick={() => setOpen(false)}
-                    className="block py-3 text-xl font-semibold uppercase"
+                    className="block py-3 text-xl font-semibold uppercase text-surface"
                   >
                     {item.label}
                   </a>

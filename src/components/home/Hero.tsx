@@ -36,18 +36,13 @@ export function Hero() {
             {site.initiativeBy} · {site.season}
           </motion.p>
 
-          <motion.h1
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <motion.img
             variants={item}
-            className="font-sans text-6xl font-bold uppercase leading-[0.92] tracking-[-0.02em] text-surface sm:text-8xl"
-          >
-            Tier-2 <span className="text-accent">Rising</span>
-          </motion.h1>
-          <motion.p
-            variants={item}
-            className="mt-1 font-sans text-2xl font-semibold uppercase tracking-[0.04em] text-surface sm:text-4xl"
-          >
-            {site.subhead}
-          </motion.p>
+            src="/brand/logo.png"
+            alt="Tier-2 Rising Startup Summit"
+            className="w-full max-w-sm sm:max-w-md md:max-w-lg"
+          />
 
           <motion.div variants={item} className="mt-6 font-sans uppercase text-surface">
             <p className="text-xl font-bold sm:text-2xl">{site.dates}</p>

@@ -14,9 +14,8 @@ export function SiteFooter() {
         <Container wide className="grid gap-10 py-14 md:grid-cols-3 md:py-16">
           {/* Brand + contact */}
           <div className="flex flex-col gap-4">
-            <span className="font-sans text-3xl font-black uppercase leading-none tracking-tight">
-              Tier-2 <span className="text-accent">Rising</span>
-            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/logo.png" alt="Tier-2 Rising Startup Summit" className="h-20 w-auto" />
             <p className="max-w-xs text-sm text-surface/70">
               A flagship event under the Tier-2 Rising campaign by NammaOffice — building a funding-ready startup
               ecosystem beyond the metros. {site.dates} · {site.venue}, {site.city}.
