@@ -35,7 +35,6 @@ export const participateRoutes = [
   { label: 'Attend', desc: 'Register for ticket updates', href: '#register' },
   { label: 'Nominate a Startup', desc: 'For the Top 10 shortlist', href: '#register' },
   { label: 'Partner with us', desc: 'Sponsor, speak or host a desk', href: '#partners' },
-  { label: 'Speak', desc: 'Join the practitioner stage', href: '#speakers' },
 ]
 
 export const socials = [

@@ -5,7 +5,6 @@ import { Scores } from '@/components/home/Scores'
 import { Zones } from '@/components/home/Zones'
 import { WhatGoesOn } from '@/components/home/WhatGoesOn'
 import { Partners } from '@/components/home/Partners'
-import { Speakers } from '@/components/home/Speakers'
 import { Statements } from '@/components/home/Statements'
 
 export default function Home() {
@@ -18,7 +17,6 @@ export default function Home() {
       <Zones />
       <WhatGoesOn />
       <Partners />
-      <Speakers />
       <Statements />
     </>
   )

@@ -101,13 +101,13 @@ export function SiteNav() {
       <AnimatePresence>
         {open && (
           <motion.nav
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.35, ease: [0.77, 0.2, 0.05, 1] }}
-            className="overflow-hidden bg-base md:hidden"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25, ease: [0.77, 0.2, 0.05, 1] }}
+            className="absolute inset-x-0 top-full h-[calc(100dvh-72px)] overflow-y-auto bg-base md:hidden"
           >
-            <div className="flex flex-col divide-y divide-surface/10 px-4 pb-6">
+            <div className="flex flex-col divide-y divide-surface/10 px-4 pb-10 pt-2">
               {nav.map((item) => (
                 <div key={item.label} className="py-1">
                   <a
