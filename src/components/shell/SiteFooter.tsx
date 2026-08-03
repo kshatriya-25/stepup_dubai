@@ -23,7 +23,7 @@ export function SiteFooter() {
           <div className="flex flex-col gap-4">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">Explore</p>
             <nav className="flex flex-col gap-2.5 text-sm">
-              {['Our Vision', 'Two-Day Format', 'Growth Zones', 'Key Initiatives', 'Partners', 'Who Attends', 'Register'].map(
+              {['Our Vision', 'Growth Zones', 'Key Initiatives', 'Partners', 'Who Attends'].map(
                 (l) => (
                   <a
                     key={l}

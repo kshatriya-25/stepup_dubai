@@ -18,7 +18,7 @@ export function CountdownBar() {
         </p>
 
         {/* huge numbers with colon separators */}
-        <div className="flex items-start">
+        <div className="flex items-start justify-center">
           {values.map((v, i) => (
             <div key={units[i]} className="flex items-start">
               {i > 0 && (
@@ -37,14 +37,6 @@ export function CountdownBar() {
             </div>
           ))}
         </div>
-
-        {/* CTA */}
-        <a
-          href={site.register}
-          className="bg-accent px-8 py-4 font-sans text-base font-bold uppercase text-accent-ink transition-colors hover:bg-base hover:text-surface"
-        >
-          Register
-        </a>
       </div>
     </div>
   )

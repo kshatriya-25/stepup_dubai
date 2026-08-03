@@ -32,17 +32,6 @@ export function WhatGoesOn() {
             </Reveal>
           ))}
         </div>
-
-        <Reveal delay={0.1}>
-          <div className="mt-14 flex justify-center">
-            <a
-              href="#register"
-              className="bg-accent px-8 py-4 font-sans text-btn font-bold uppercase text-accent-ink transition-colors hover:bg-base hover:text-surface"
-            >
-              Register for Updates
-            </a>
-          </div>
-        </Reveal>
       </Container>
     </section>
   )
