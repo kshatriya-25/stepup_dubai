@@ -22,6 +22,20 @@ export const site = {
   contactEmail: 'hello@tier2rising.in',
 }
 
+// Google Apps Script Web App URL that appends each registration to your Google Sheet.
+// Set NEXT_PUBLIC_REGISTRATION_ENDPOINT in .env (the /exec URL). Must be NEXT_PUBLIC_*
+// so it is inlined into the static build — see REGISTRATION-SETUP.md.
+export const registrationEndpoint = process.env.NEXT_PUBLIC_REGISTRATION_ENDPOINT ?? ''
+
+export const registrationRoles = [
+  'Founder',
+  'Investor',
+  'Government / Bank',
+  'Ecosystem / Mentor',
+  'Media',
+  'Other',
+] as const
+
 export type NavItem = { label: string; href: string; children?: { label: string; href: string }[] }
 
 export const nav: NavItem[] = [
