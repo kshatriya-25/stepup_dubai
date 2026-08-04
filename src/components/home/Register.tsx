@@ -1,12 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { Check } from 'lucide-react'
+import { Check, Clock } from 'lucide-react'
 import { Container } from '@/components/primitives/Container'
 import { Eyebrow } from '@/components/primitives/SectionHeading'
 import { Reveal } from '@/components/primitives/Reveal'
 import { Select } from '@/components/primitives/Select'
-import { site, registrationEndpoint, registrationRoles } from '@/content/site'
+import { site, registrationEndpoint, registrationOpen, registrationRoles } from '@/content/site'
 
 type Status = 'idle' | 'sending' | 'done' | 'error'
 
@@ -65,13 +65,26 @@ export function Register() {
         {/* Left — copy */}
         <Reveal>
           <div className="flex h-full flex-col justify-center">
-            <Eyebrow className="text-accent">Tickets are limited</Eyebrow>
+            <Eyebrow className="text-accent">{registrationOpen ? 'Tickets are limited' : 'Save the dates'}</Eyebrow>
             <h2 className="mt-4 font-sans text-4xl font-bold uppercase leading-[1.02] tracking-[-0.01em] text-surface md:text-6xl">
-              Register for<br />ticket updates
+              {registrationOpen ? (
+                <>Register for<br />ticket updates</>
+              ) : (
+                <>Registration<br />opens soon</>
+              )}
             </h2>
             <p className="mt-6 max-w-md text-lg text-surface/85">
-              Leave your details and we&apos;ll reach you first the moment tickets open. See you in{' '}
-              {site.city.split(',')[0]}.
+              {registrationOpen ? (
+                <>
+                  Leave your details and we&apos;ll reach you first the moment tickets open. See you in{' '}
+                  {site.city.split(',')[0]}.
+                </>
+              ) : (
+                <>
+                  We&apos;re putting the finishing touches on registration. It opens shortly — check back soon to
+                  reserve your place in {site.city.split(',')[0]}.
+                </>
+              )}
             </p>
             <p className="mt-6 font-sans text-sm font-bold uppercase tracking-[0.14em] text-accent">
               {site.dates} · {site.venue}
@@ -79,10 +92,27 @@ export function Register() {
           </div>
         </Reveal>
 
-        {/* Right — form card */}
+        {/* Right — form card (or "opening soon" when the flag is off) */}
         <Reveal delay={0.1}>
           <div className="rounded-2xl bg-surface p-6 text-ink shadow-2xl sm:p-8">
-            {status === 'done' ? (
+            {!registrationOpen ? (
+              <div className="flex flex-col items-center py-12 text-center">
+                <span className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/10">
+                  <Clock size={30} className="text-accent" />
+                </span>
+                <h3 className="mt-6 font-sans text-2xl font-bold uppercase text-ink">Opening soon</h3>
+                <p className="mt-2 max-w-xs text-muted">
+                  Registration isn&apos;t open just yet. It goes live shortly — meanwhile, reach us at{' '}
+                  <a href={`mailto:${site.contactEmail}`} className="font-medium text-accent hover:underline">
+                    {site.contactEmail}
+                  </a>
+                  .
+                </p>
+                <p className="mt-6 font-sans text-xs font-bold uppercase tracking-[0.14em] text-muted">
+                  {site.dates} · {site.venue}, {site.city.split(',')[0]}
+                </p>
+              </div>
+            ) : status === 'done' ? (
               <div className="flex flex-col items-center py-10 text-center">
                 <span className="flex h-16 w-16 items-center justify-center rounded-full bg-accent">
                   <Check size={30} strokeWidth={3} className="text-accent-ink" />

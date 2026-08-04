@@ -27,6 +27,9 @@ export const site = {
 // so it is inlined into the static build — see REGISTRATION-SETUP.md.
 export const registrationEndpoint = process.env.NEXT_PUBLIC_REGISTRATION_ENDPOINT ?? ''
 
+// Registration toggle: '1' shows the live form, '0' (or unset) shows an "opening soon" state.
+export const registrationOpen = process.env.NEXT_PUBLIC_REGISTRATION_OPEN === '1'
+
 export const registrationRoles = [
   'Founder',
   'Investor',
