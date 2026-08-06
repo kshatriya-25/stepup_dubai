@@ -1,29 +1,47 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Check, Clock } from 'lucide-react'
 import { Container } from '@/components/primitives/Container'
 import { Eyebrow } from '@/components/primitives/SectionHeading'
 import { Reveal } from '@/components/primitives/Reveal'
-import { Select } from '@/components/primitives/Select'
-import { site, registrationEndpoint, registrationOpen, registrationRoles } from '@/content/site'
+import { Combobox } from '@/components/primitives/Combobox'
+import { site, registrationEndpoint, registrationOpen, registrationSectors, tamilNaduCities } from '@/content/site'
 
 type Status = 'idle' | 'sending' | 'done' | 'error'
 
 export function Register() {
   const [status, setStatus] = useState<Status>('idle')
-  const [role, setRole] = useState('')
-  const [roleError, setRoleError] = useState(false)
+  const [sector, setSector] = useState('')
+  const [city, setCity] = useState('')
+  const [sectorError, setSectorError] = useState(false)
+  const [cityError, setCityError] = useState(false)
+
+  // Any click on a link to #register (nav Register, mobile nav, "Attend") scrolls
+  // there via the anchor — then we drop the cursor into the Name field. Using the
+  // click (not hashchange) means it works even when already at #register.
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      const link = (e.target as HTMLElement | null)?.closest('a[href$="#register"]')
+      if (!link) return
+      window.setTimeout(() => {
+        document.getElementById('reg-name')?.focus({ preventScroll: true })
+      }, 400)
+    }
+    document.addEventListener('click', onClick)
+    return () => document.removeEventListener('click', onClick)
+  }, [])
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const form = e.currentTarget
     const fd = new FormData(form)
 
-    if (!role) {
-      setRoleError(true)
-      return
-    }
+    const missingSector = !sector
+    const missingCity = !city
+    setSectorError(missingSector)
+    setCityError(missingCity)
+    if (missingSector || missingCity) return
 
     if (!registrationEndpoint) {
       console.error('NEXT_PUBLIC_REGISTRATION_ENDPOINT is not set — see REGISTRATION-SETUP.md')
@@ -42,7 +60,8 @@ export function Register() {
       })
       setStatus('done')
       form.reset()
-      setRole('')
+      setSector('')
+      setCity('')
     } catch {
       setStatus('error')
     }
@@ -130,34 +149,58 @@ export function Register() {
               </div>
             ) : (
               <form onSubmit={onSubmit} className="flex flex-col gap-4">
-                <Field label="Full name">
-                  <input name="name" type="text" required placeholder="Your name" className={inputCls} />
+                <Field label="Name">
+                  <input id="reg-name" name="name" type="text" required placeholder="Your full name" className={inputCls} />
                 </Field>
+
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Mobile">
-                    <input name="mobile" type="tel" required placeholder="+91" className={inputCls} />
+                  <Field label="Email">
+                    <input name="email" type="email" required placeholder="you@email.com" className={inputCls} />
                   </Field>
-                  <Field label="City">
-                    <input name="city" type="text" required placeholder="Erode" className={inputCls} />
+                  <Field label="Phone no">
+                    <input
+                      name="phone"
+                      type="tel"
+                      required
+                      inputMode="tel"
+                      placeholder="+91"
+                      className={inputCls}
+                    />
                   </Field>
                 </div>
-                <Field label="Email">
-                  <input name="email" type="email" required placeholder="you@email.com" className={inputCls} />
-                </Field>
-                <Field label="I'm coming as a…">
-                  <Select
-                    label="I'm coming as a…"
-                    placeholder="Select one"
-                    value={role}
+
+                <Field label="Sector">
+                  <Combobox
+                    label="Sector"
+                    placeholder="Please select"
+                    searchPlaceholder="Search sectors…"
+                    value={sector}
                     onChange={(v) => {
-                      setRole(v)
-                      setRoleError(false)
+                      setSector(v)
+                      setSectorError(false)
                     }}
-                    options={registrationRoles}
-                    invalid={roleError}
+                    options={registrationSectors}
+                    invalid={sectorError}
                   />
-                  <input type="hidden" name="role" value={role} />
-                  {roleError && <span className="text-xs font-medium text-accent">Please pick one.</span>}
+                  <input type="hidden" name="sector" value={sector} />
+                  {sectorError && <span className="text-xs font-medium text-accent">Please pick a sector.</span>}
+                </Field>
+
+                <Field label="City (Tamil Nadu)">
+                  <Combobox
+                    label="City (Tamil Nadu)"
+                    placeholder="Select your city"
+                    searchPlaceholder="Search Tamil Nadu cities…"
+                    value={city}
+                    onChange={(v) => {
+                      setCity(v)
+                      setCityError(false)
+                    }}
+                    options={tamilNaduCities}
+                    invalid={cityError}
+                  />
+                  <input type="hidden" name="city" value={city} />
+                  {cityError && <span className="text-xs font-medium text-accent">Please pick your city.</span>}
                 </Field>
 
                 <label className="mt-1 flex items-start gap-3 text-sm text-muted">
@@ -173,7 +216,7 @@ export function Register() {
                   disabled={status === 'sending'}
                   className="mt-2 bg-accent py-4 font-sans text-btn font-bold uppercase text-accent-ink transition-colors hover:bg-base hover:text-surface disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {status === 'sending' ? 'Sending…' : 'Notify me about tickets'}
+                  {status === 'sending' ? 'Sending…' : 'Register'}
                 </button>
 
                 {status === 'error' && (

@@ -60,9 +60,15 @@ Then rebuild and redeploy: `npm run build` → rsync `out/` (see `HOSTING.md`).
   **Data → Protect sheets and ranges**.
 
 ## Fields captured
-`Timestamp · Full name · Mobile · City · Email · Role`
-(To add/remove fields, update both the form in `src/components/home/Register.tsx`
-and the `HEADERS` + `appendRow(...)` in `registration/Code.gs`.)
+`Timestamp · Name · Sector · Email · Phone · City`
+
+> The columns changed. Replace the old script with the current `registration/Code.gs`,
+> then reset the sheet to the new columns: clear the `Registrations` tab (delete the old
+> header + any test rows), run the **`setupHeaders`** function once, and
+> **Deploy → Manage deployments → New version**. The `/exec` URL stays the same.
+
+To add/remove fields later, update both the form in `src/components/home/Register.tsx`
+and the `COLUMNS` list in `registration/Code.gs`.
 
 ## If you change the script later
 Re-deploy: **Deploy → Manage deployments → (edit) → Version: New version → Deploy**.

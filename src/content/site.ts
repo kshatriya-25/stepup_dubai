@@ -39,6 +39,56 @@ export const registrationRoles = [
   'Other',
 ] as const
 
+export const registrationSectors = [
+  'Agriculture',
+  'Automobile',
+  'Arts and Crafts',
+  'Automobile components',
+  'Aviation',
+  'Biotechnology',
+  'Chemical',
+  'Construction',
+  'Defence manufacturing',
+  'Education',
+  'Electrical machinery',
+  'Electronic systems',
+  'Food Processing',
+  'Health',
+  'IT and BPM',
+  'Leather',
+  'Media and entertainment',
+  'Mining',
+  'Oil and gas',
+  'Pharmaceuticals',
+  'Ports and shipping',
+  'Railways',
+  'Renewable energy',
+  'Roads and highways',
+  'Space',
+  'Textiles and garments',
+  'Thermal power',
+  'Tourism and hospitality',
+  'Wellness',
+  'Other',
+] as const
+
+// Tamil Nadu cities / towns (searchable). 'Other' as a fallback.
+export const tamilNaduCities = [
+  'Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem', 'Tirunelveli', 'Tiruppur', 'Erode',
+  'Vellore', 'Thoothukudi', 'Dindigul', 'Thanjavur', 'Ranipet', 'Sivakasi', 'Karur', 'Ooty (Udhagamandalam)',
+  'Hosur', 'Nagercoil', 'Kanchipuram', 'Kumbakonam', 'Cuddalore', 'Pudukkottai', 'Ambur', 'Tambaram',
+  'Avadi', 'Tiruvannamalai', 'Nagapattinam', 'Viluppuram', 'Rajapalayam', 'Neyveli', 'Namakkal', 'Karaikudi',
+  'Vaniyambadi', 'Theni', 'Arakkonam', 'Virudhunagar', 'Srivilliputhur', 'Tindivanam', 'Virudhachalam',
+  'Chidambaram', 'Mannargudi', 'Tiruchengode', 'Perambalur', 'Ariyalur', 'Krishnagiri', 'Dharmapuri',
+  'Palani', 'Pollachi', 'Mettupalayam', 'Sankarankovil', 'Tenkasi', 'Pattukkottai', 'Arani', 'Sivaganga',
+  'Ramanathapuram', 'Paramakudi', 'Aruppukkottai', 'Kovilpatti', 'Bodinayakanur', 'Oddanchatram',
+  'Vedaranyam', 'Tiruvarur', 'Mayiladuthurai', 'Sirkazhi', 'Jayankondam', 'Chengalpattu', 'Gummidipoondi',
+  'Ponneri', 'Tiruvallur', 'Sriperumbudur', 'Walajapet', 'Arcot', 'Tirupathur', 'Harur', 'Denkanikottai',
+  'Kangeyam', 'Dharapuram', 'Udumalaipettai', 'Valparai', 'Gobichettipalayam', 'Bhavani', 'Sathyamangalam',
+  'Mettur', 'Attur', 'Omalur', 'Rasipuram', 'Sankagiri', 'Palladam', 'Avinashi', 'Coonoor', 'Kotagiri',
+  'Gudalur', 'Other',
+] as const
+
 export type NavItem = { label: string; href: string; children?: { label: string; href: string }[] }
 
 export const nav: NavItem[] = [
