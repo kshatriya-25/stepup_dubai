@@ -37,7 +37,7 @@ MAIL_FROM_NAME=Tier-2 Rising Startup Summit
 MAIL_REPLY_TO=info@tier2rising.com
 MAIL_ORGANISER=info@tier2rising.com   # comma-separated for more than one inbox
 
-NEXT_PUBLIC_SITE_URL=https://expo.tier2rising.com   # link target inside the emails
+NEXT_PUBLIC_SITE_URL=https://tier2rising.com   # link target inside the emails
 ```
 
 ## Two things to do in Brevo before mail flows
@@ -92,7 +92,7 @@ Override the sample data with query params to check long names, odd cities, etc.
 `GET /api/register` is a health check that reports config without sending anything:
 
 ```bash
-curl -s https://expo.tier2rising.com/api/register
+curl -s https://tier2rising.com/api/register
 {"ok":true,"service":"tier2-rising-registrations","sheet":"configured","mail":"configured","organiser":["info@tier2rising.com"]}
 ```
 

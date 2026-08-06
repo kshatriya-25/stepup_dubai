@@ -30,7 +30,7 @@ const C = {
 
 const FONT = "'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,'Helvetica Neue',Arial,sans-serif"
 
-export const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://expo.tier2rising.com'
+export const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://tier2rising.com'
 
 export type Registration = {
   name: string

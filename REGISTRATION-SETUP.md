@@ -48,10 +48,10 @@ NEXT_PUBLIC_REGISTRATION_ENDPOINT=https://script.google.com/macros/s/AKfy.../exe
 - `NEXT_PUBLIC_REGISTRATION_DEPLOYMENT_ID` is kept for reference only; the code doesn't
   use it (the `/exec` URL already contains the deployment id).
 
-Then rebuild and restart: `npm run build && pm2 restart expo-tier2` (see `HOSTING.md`).
+Then rebuild and restart: `npm run build && pm2 restart tier2rising` (see `HOSTING.md`).
 
 ## Test it
-1. Check what's wired: `curl -s https://expo.tier2rising.com/api/register` — it should
+1. Check what's wired: `curl -s https://tier2rising.com/api/register` — it should
    report `"sheet":"configured"` and `"mail":"configured"`.
 2. Open the live site, scroll to **Register for ticket updates**, submit a test entry.
 3. A new row should appear in the Sheet within a second or two, and both emails should
@@ -60,7 +60,7 @@ Then rebuild and restart: `npm run build && pm2 restart expo-tier2` (see `HOSTIN
    `{"ok":true,...}` to confirm the Apps Script endpoint itself is live.
 
 If step 2 shows an error, the message is the real server-side reason (the form now reads
-the response instead of guessing). Server-side detail is in `pm2 logs expo-tier2`.
+the response instead of guessing). Server-side detail is in `pm2 logs tier2rising`.
 
 ## Making the Sheet read-only
 - **For teammates who should only view:** Share → give them **Viewer** access.
