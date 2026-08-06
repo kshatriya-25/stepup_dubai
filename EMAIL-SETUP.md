@@ -121,37 +121,26 @@ when you edit copy — some clients show it, and a missing text part hurts spam 
 
 ## Abuse protection
 
-The endpoint is public and triggers outbound mail, so two guards sit in
+The endpoint is public and triggers outbound mail, so one guard sits in
 [`src/app/api/register/route.ts`](src/app/api/register/route.ts):
 
-- **Honeypot** — a `reg_note` field hidden off-screen and skipped in tab order. Only a
-  bot should fill it.
-
-  **It never discards a registration.** A honeypot cannot be made fully
-  false-positive-proof — autofill heuristics and password-manager extensions can
-  populate a hidden input — and the costs are lopsided: a spam row takes seconds to
-  delete from the sheet, but a real founder who saw the thank-you screen and was
-  silently binned is lost for good. So a trip suppresses exactly one thing: the
-  confirmation to the submitted address, which is the only abusable capability here
-  (otherwise the form is a relay for mailing arbitrary strangers). The sheet row is
-  still written, and the organiser notification still goes out — subject prefixed
-  `[Check]`, with a gold warning band explaining what to look at. A human makes the
-  call the code deliberately refuses to make.
-
-  Every trip logs `[register] honeypot tripped — entry kept, confirmation suppressed.`
-
-  > The field was originally named `company`, which browsers autofilled from the saved
-  > address profile ("Organization"). Combined with the old discard-on-trip behaviour,
-  > that silently binned real registrations while showing the visitor a thank-you. If
-  > you ever rename it, pick something no autofill heuristic recognises: not `company`,
-  > `organization`, `address`, `url`, `nickname` or similar.
-  >
-  > Preview the flagged email: `/api/email-preview?type=organiser&flagged=1`
 - **Rate limit** — currently **50** registrations per IP per hour, in memory
   (`MAX_PER_WINDOW` in the route). Raised from 5 for testing; **drop it back to ~5
   before launch** — at 50/hour one IP can burn a third of the Brevo free-tier daily
   quota. In-memory is fine for the current single-process deployment; move it to Redis
-  only if you ever run more than one Node process.
+  only if you ever run more than one Node process. The counter resets on
+  `pm2 restart`.
+
+> **There is no honeypot field.** One was tried and removed. Browser autofill kept
+> populating the hidden input from the saved address profile — first as `company`
+> (picking up Organization), then as `reg_note` (picking up the city) — so every trip
+> it ever logged was a genuine registration, never a bot. Off-screen positioning
+> (`left:-9999px`) does not stop Chrome/Brave autofill the way `display:none` does.
+>
+> It also defended against the wrong threat: anyone abusing this endpoint as a mail
+> relay POSTs JSON to `/api/register` directly and never renders the form, so a
+> honeypot is invisible to them. Rate limiting is the control that actually applies.
+> Don't reintroduce one without solving both problems.
 
 ## Troubleshooting
 

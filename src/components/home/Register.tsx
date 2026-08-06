@@ -157,26 +157,6 @@ export function Register() {
               </div>
             ) : (
               <form onSubmit={onSubmit} className="flex flex-col gap-4">
-                {/* Honeypot — off-screen and skipped by tab order, so only bots fill it.
-                    The route discards any submission that has it set.
-
-                    The name matters: this was `company` and browsers autofilled it from
-                    the saved address profile ("Organization"), silently binning real
-                    registrations. Chrome ignores autoComplete="off" on such fields. Keep
-                    this name meaningless to autofill heuristics, and keep the
-                    password-manager ignore hints. */}
-                <input
-                  type="text"
-                  name="reg_note"
-                  tabIndex={-1}
-                  autoComplete="off"
-                  aria-hidden="true"
-                  data-lpignore="true"
-                  data-1p-ignore
-                  data-form-type="other"
-                  className="absolute left-[-9999px] h-0 w-0 opacity-0"
-                />
-
                 <Field label="Name">
                   <input id="reg-name" name="name" type="text" required placeholder="Your full name" className={inputCls} />
                 </Field>

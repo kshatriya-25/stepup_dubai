@@ -21,7 +21,6 @@ const C = {
   night: '#04162E',
   orange: '#F47B20',
   onOrange: '#072B5F', // navy on orange — white fails contrast against #F47B20
-  gold: '#F2B705',     // Investor Gold — reused here for the flagged-submission band
   white: '#FFFFFF',
   foam: '#F4F6FA',
   ink: '#0B2447',
@@ -358,33 +357,15 @@ ${detailRow('City', r.city, { last: true })}
  * Organiser notification
  * ------------------------------------------------------------------ */
 
-export function organiserEmail(
-  r: Registration,
-  at = new Date(),
-  opts: { flagged?: boolean } = {}
-): { subject: string; html: string; text: string } {
-  const subject = opts.flagged
-    ? `[Check] Registration — ${r.name} · ${r.sector} · ${r.city}`
-    : `New registration — ${r.name} · ${r.sector} · ${r.city}`
+export function organiserEmail(r: Registration, at = new Date()): {
+  subject: string
+  html: string
+  text: string
+} {
+  const subject = `New registration — ${r.name} · ${r.sector} · ${r.city}`
   const when = stamp(at)
 
-  // A flagged entry is still recorded — the honeypot never discards. This band is
-  // how a human gets to make the call the code deliberately refused to make.
-  const flagBand = opts.flagged
-    ? `
-          <tr>
-            <td style="background-color:${C.gold};padding:16px 36px;font-family:${FONT};">
-              <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;color:${C.navy};text-transform:uppercase;">Flagged &mdash; check before replying</div>
-              <div style="font-size:14px;line-height:1.6;color:${C.navy};padding-top:6px;">
-                The hidden anti-bot field was filled, so this may be spam. <strong>It is still saved to the
-                sheet</strong>, but no confirmation was sent to ${esc(r.email)}. If it looks genuine, reply
-                and they&rsquo;ll hear from you directly.
-              </div>
-            </td>
-          </tr>`
-    : ''
-
-  const body = `${flagBand}
+  const body = `
           <!-- Hero -->
           <tr>
             <td style="background-color:${C.white};padding:40px 36px 0 36px;font-family:${FONT};">
@@ -435,29 +416,16 @@ ${button('Reply to ' + firstName(r.name), `mailto:${r.email}?subject=${encodeURI
                 </tr>
               </table>
               <p style="margin:22px 0 0 0;font-family:${FONT};font-size:13px;line-height:1.6;color:${C.muted};">
-                ${
-                  opts.flagged
-                    ? `No confirmation was sent to ${esc(r.email)} &mdash; see the notice above. The entry is
-                       still appended to the registrations sheet.`
-                    : `A confirmation has already gone out to ${esc(r.email)}. This entry is also appended to the
-                       registrations sheet.`
-                }
+                A confirmation has already gone out to ${esc(r.email)}. This entry is also appended to the
+                registrations sheet.
               </p>
             </td>
           </tr>
 `
 
   const text = [
-    opts.flagged ? 'REGISTRATION — FLAGGED, CHECK BEFORE REPLYING' : 'NEW REGISTRATION',
+    'NEW REGISTRATION',
     '',
-    ...(opts.flagged
-      ? [
-          'The hidden anti-bot field was filled, so this may be spam. It IS still saved',
-          `to the sheet, but no confirmation was sent to ${r.email}.`,
-          'If it looks genuine, reply and they will hear from you directly.',
-          '',
-        ]
-      : []),
     r.name,
     `Submitted ${when}`,
     '',
@@ -467,9 +435,7 @@ ${button('Reply to ' + firstName(r.name), `mailto:${r.email}?subject=${encodeURI
     `Sector  ${r.sector}`,
     `City    ${r.city}`,
     '',
-    opts.flagged
-      ? `No confirmation was sent to ${r.email}.`
-      : `A confirmation has already gone out to ${r.email}.`,
+    `A confirmation has already gone out to ${r.email}.`,
     'This entry is also appended to the registrations sheet.',
     '',
     '—',

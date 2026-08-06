@@ -3,9 +3,8 @@
  * browser with sample data, so copy and layout can be checked without submitting
  * the form or burning a Brevo send.
  *
- *   /api/email-preview                              → participant confirmation
- *   /api/email-preview?type=organiser               → organiser notification
- *   /api/email-preview?type=organiser&flagged=1     → …with the honeypot warning band
+ *   /api/email-preview                    → participant confirmation
+ *   /api/email-preview?type=organiser     → organiser notification
  *   /api/email-preview?type=organiser&name=Priya&city=Salem
  *
  * Disabled outside development — this endpoint would otherwise let anyone probe
@@ -40,10 +39,7 @@ export async function GET(req: Request) {
     city: q.get('city') || SAMPLE.city,
   }
 
-  const mail =
-    q.get('type') === 'organiser'
-      ? organiserEmail(reg, new Date(), { flagged: q.get('flagged') === '1' })
-      : participantEmail(reg)
+  const mail = q.get('type') === 'organiser' ? organiserEmail(reg) : participantEmail(reg)
 
   return new NextResponse(mail.html, {
     headers: { 'content-type': 'text/html; charset=utf-8' },

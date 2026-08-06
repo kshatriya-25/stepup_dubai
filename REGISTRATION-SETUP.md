@@ -94,5 +94,5 @@ The `/exec` URL stays the same, so no site change is needed.
   SMTP password *is* a secret and lives only in the server's `.env` — see
   [`EMAIL-SETUP.md`](EMAIL-SETUP.md).
 - The endpoint is rate-limited (currently 50 submissions per IP per hour, raised from 5
-  for testing) and carries a honeypot field, because it can now trigger outbound mail.
-  See [`EMAIL-SETUP.md`](EMAIL-SETUP.md).
+  for testing) because it can now trigger outbound mail. See
+  [`EMAIL-SETUP.md`](EMAIL-SETUP.md).

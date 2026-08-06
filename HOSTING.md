@@ -302,12 +302,14 @@ and read `/var/log/apache2/tier2rising_error.log`.
 write failed. `pm2 logs tier2rising` will show `[register] sheet append failed:` with
 the real reason. Usually the Apps Script deployment's *Who has access* isn't **Anyone**.
 
-**Row lands in the Sheet but the participant got no confirmation, and the organiser
-subject starts `[Check]`** — the honeypot was tripped, so the confirmation to that
-address was suppressed on purpose. Nothing was lost. Confirm with
-`pm2 logs tier2rising | grep honeypot`. If genuine registrations are being flagged,
-browser autofill is filling the hidden field — see the honeypot note in
-[`EMAIL-SETUP.md`](EMAIL-SETUP.md).
+**Response says `"mailed":false`** — the Sheet row was written but the participant
+confirmation didn't send. `pm2 logs tier2rising | grep "mail failed"` gives Brevo's own
+error text; it's usually the IP allowlist. The registration itself is safe.
+
+**You changed code but the old behaviour persists** — `npm ci` does not rebuild.
+The redeploy sequence is **pull → install → build → restart**, and skipping the build
+is silent: `next start` just keeps serving the previous `.next/`. Verify what's actually
+live by grepping the served HTML for something you changed.
 
 **Registration succeeds but no email arrives** — almost certainly the Brevo IP
 allowlist (step 1a). `pm2 logs tier2rising` shows
