@@ -27,7 +27,10 @@ const SHEET_ENDPOINT = process.env.NEXT_PUBLIC_REGISTRATION_ENDPOINT || ''
  * could burn the Brevo quota and the sending reputation with it. In-memory is
  * enough for a single-process deployment; swap for Redis only if you scale out. */
 const WINDOW_MS = 60 * 60 * 1000
-const MAX_PER_WINDOW = 5
+// Raised from 5 to 50 while the site is being tested — repeated submissions from one
+// office IP were the limit's most likely victim. Drop it back to ~5 before launch:
+// at 50/hour a single IP can burn a third of the Brevo free-tier daily quota.
+const MAX_PER_WINDOW = 50
 const hits = new Map<string, number[]>()
 
 function rateLimited(ip: string): boolean {
@@ -58,22 +61,27 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Invalid request body.' }, { status: 400 })
   }
 
-  // Honeypot: a field hidden from humans. Anything that fills it is a bot — return
-  // a success it can't distinguish from the real thing, and send nothing.
+  // Honeypot: a field hidden from humans, so only a bot should fill it.
   //
-  // ALWAYS LOG IT. This branch discards a registration, so a false positive is
-  // invisible from the outside: the visitor sees the thank-you state and nothing
-  // reaches the sheet. That is exactly what happened when the field was named
-  // `company` — browsers autofilled it from the saved address profile. If these
-  // lines ever appear in bursts alongside real names, the honeypot is misfiring,
-  // not catching bots.
-  const honeypot = clean(raw.reg_note)
-  if (honeypot) {
+  // It deliberately does NOT discard the registration. A honeypot can never be
+  // fully false-positive-proof — an autofill heuristic or a password-manager
+  // extension can populate a hidden input — and the costs are lopsided: a spam row
+  // takes seconds to delete from the sheet, while a real founder who saw the
+  // thank-you screen and was silently binned is lost for good. (That is exactly
+  // what happened when this field was named `company` and browsers autofilled it
+  // from the saved address profile.)
+  //
+  // So a trip suppresses one thing only: the confirmation to the submitted address.
+  // That is the sole abusable capability here — otherwise the form is a relay for
+  // mailing arbitrary strangers. The sheet row is still written and the organiser is
+  // still notified, with the flag shown in the email so a human can judge it.
+  const suspectedBot = Boolean(clean(raw.reg_note))
+  if (suspectedBot) {
     console.warn(
-      `[register] honeypot tripped — discarded. value=${JSON.stringify(honeypot)} ` +
-        `name=${JSON.stringify(clean(raw.name, 120))} email=${JSON.stringify(clean(raw.email, 160))}`
+      `[register] honeypot tripped — entry kept, confirmation suppressed. ` +
+        `value=${JSON.stringify(clean(raw.reg_note))} name=${JSON.stringify(clean(raw.name, 120))} ` +
+        `email=${JSON.stringify(clean(raw.email, 160))}`
     )
-    return NextResponse.json({ ok: true })
   }
 
   const reg: Registration = {
@@ -110,16 +118,22 @@ export async function POST(req: Request) {
   }
 
   // 2 + 3. Mail both sides concurrently; neither can fail the request.
+  // The organiser notification always goes out — it targets a fixed address we own,
+  // so it carries no abuse risk. The participant confirmation goes to whatever
+  // address was typed in, so it is the one thing a flagged submission skips.
   const now = new Date()
-  const participant = participantEmail(reg)
-  const organiser = organiserEmail(reg, now)
+  const organiser = organiserEmail(reg, now, { flagged: suspectedBot })
 
   const [toParticipant, toOrganiser] = await Promise.all([
-    sendMail({ to: reg.email, ...participant }),
+    suspectedBot
+      ? Promise.resolve({ ok: false as const, error: 'suppressed: honeypot' })
+      : sendMail({ to: reg.email, ...participantEmail(reg) }),
     sendMail({ to: organiserRecipients, replyTo: reg.email, ...organiser }),
   ])
 
-  if (!toParticipant.ok) console.error('[register] participant mail failed:', toParticipant.error)
+  if (!toParticipant.ok && !suspectedBot) {
+    console.error('[register] participant mail failed:', toParticipant.error)
+  }
   if (!toOrganiser.ok) console.error('[register] organiser mail failed:', toOrganiser.error)
 
   return NextResponse.json({
