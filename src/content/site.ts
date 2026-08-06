@@ -22,10 +22,9 @@ export const site = {
   contactEmail: 'hello@tier2rising.in',
 }
 
-// Google Apps Script Web App URL that appends each registration to your Google Sheet.
-// Set NEXT_PUBLIC_REGISTRATION_ENDPOINT in .env (the /exec URL). Must be NEXT_PUBLIC_*
-// so it is inlined into the static build — see REGISTRATION-SETUP.md.
-export const registrationEndpoint = process.env.NEXT_PUBLIC_REGISTRATION_ENDPOINT ?? ''
+// The Apps Script /exec URL is no longer read here — the browser posts to
+// /api/register, and that route reads NEXT_PUBLIC_REGISTRATION_ENDPOINT server-side.
+// See REGISTRATION-SETUP.md and EMAIL-SETUP.md.
 
 // Registration toggle: '1' shows the live form, '0' (or unset) shows an "opening soon" state.
 export const registrationOpen = process.env.NEXT_PUBLIC_REGISTRATION_OPEN === '1'

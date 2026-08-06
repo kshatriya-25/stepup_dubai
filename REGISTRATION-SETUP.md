@@ -1,13 +1,19 @@
 # Registration → Google Sheet (setup)
 
-The site is a **static export on Apache** — there is no backend. Registrations are
-captured with a **Google Apps Script Web App** that appends each submission as a row
-in a Google Sheet you own. The Sheet is your read-only record; only the script
-(running as you) writes to it.
+Registrations are captured with a **Google Apps Script Web App** that appends each
+submission as a row in a Google Sheet you own. The Sheet is your read-only record;
+only the script (running as you) writes to it.
 
 ```
-Form on site  ──POST──▶  Apps Script Web App  ──append row──▶  Google Sheet
+Form on site  ──POST──▶  /api/register  ──POST──▶  Apps Script Web App  ──append row──▶  Google Sheet
+                              │
+                              └── also sends the two confirmation emails (EMAIL-SETUP.md)
 ```
+
+> **This changed.** The form used to POST straight to Apps Script from the browser.
+> It now goes through the site's own `/api/register` route, which writes the Sheet
+> *and* sends the emails. The Apps Script side is unchanged — same script, same
+> deployment, same `/exec` URL.
 
 ## One-time setup (~5 minutes)
 
@@ -36,22 +42,25 @@ The URL is read from `.env` (gitignored, so it is never committed). Set:
 ```
 NEXT_PUBLIC_REGISTRATION_ENDPOINT=https://script.google.com/macros/s/AKfy.../exec
 ```
-- The `NEXT_PUBLIC_` prefix is **required** — this is a static export with no server, so
-  only `NEXT_PUBLIC_*` vars get inlined into the browser bundle at build time.
+- The name keeps its `NEXT_PUBLIC_` prefix for backwards compatibility, but the value is
+  now read **server-side** by `src/app/api/register/route.ts`. It's harmless either way —
+  the `/exec` URL is a public write-only endpoint by design.
 - `NEXT_PUBLIC_REGISTRATION_DEPLOYMENT_ID` is kept for reference only; the code doesn't
   use it (the `/exec` URL already contains the deployment id).
 
-Then rebuild and redeploy: `npm run build` → rsync `out/` (see `HOSTING.md`).
-
-> The endpoint URL is baked into the static files in `out/` at build time. That's expected —
-> it's a public write-only endpoint. **Re-run `npm run build` after any `.env` change**, or the
-> old value stays in the bundle.
+Then rebuild and restart: `npm run build && pm2 restart expo-tier2` (see `HOSTING.md`).
 
 ## Test it
-1. Open the live site, scroll to **Register for ticket updates**, submit a test entry.
-2. A new row should appear in the Sheet within a second or two.
-3. You can also open the `/exec` URL directly in a browser — it returns
-   `{"ok":true,...}` to confirm the endpoint is live.
+1. Check what's wired: `curl -s https://expo.tier2rising.com/api/register` — it should
+   report `"sheet":"configured"` and `"mail":"configured"`.
+2. Open the live site, scroll to **Register for ticket updates**, submit a test entry.
+3. A new row should appear in the Sheet within a second or two, and both emails should
+   arrive.
+4. You can also open the `/exec` URL directly in a browser — it returns
+   `{"ok":true,...}` to confirm the Apps Script endpoint itself is live.
+
+If step 2 shows an error, the message is the real server-side reason (the form now reads
+the response instead of guessing). Server-side detail is in `pm2 logs expo-tier2`.
 
 ## Making the Sheet read-only
 - **For teammates who should only view:** Share → give them **Viewer** access.
@@ -67,17 +76,22 @@ Then rebuild and redeploy: `npm run build` → rsync `out/` (see `HOSTING.md`).
 > header + any test rows), run the **`setupHeaders`** function once, and
 > **Deploy → Manage deployments → New version**. The `/exec` URL stays the same.
 
-To add/remove fields later, update both the form in `src/components/home/Register.tsx`
-and the `COLUMNS` list in `registration/Code.gs`.
+To add/remove fields later, update all four places: the form in
+`src/components/home/Register.tsx`, the validation in `src/app/api/register/route.ts`,
+the `Registration` type and templates in `src/lib/email/templates.ts`, and the
+`COLUMNS` list in `registration/Code.gs`.
 
 ## If you change the script later
 Re-deploy: **Deploy → Manage deployments → (edit) → Version: New version → Deploy**.
 The `/exec` URL stays the same, so no site change is needed.
 
 ## Notes
-- The form POSTs with `mode: 'no-cors'`, so the browser can't read the response;
-  the site optimistically shows the thank-you state. A network failure shows an
-  error message with your contact email. This is the standard pattern for a static
-  site + Apps Script and is reliable in practice.
-- No API keys or secrets live in the site — the `/exec` URL is a public write-only
-  endpoint by design.
+- The browser POSTs same-origin to `/api/register` and reads the real response, so the
+  thank-you state means the row actually landed. (Previously the form fired at Apps
+  Script with `mode: 'no-cors'` and showed success optimistically, whether or not the
+  write succeeded.)
+- The `/exec` URL is a public write-only endpoint by design and carries no secret. The
+  SMTP password *is* a secret and lives only in the server's `.env` — see
+  [`EMAIL-SETUP.md`](EMAIL-SETUP.md).
+- The endpoint is rate-limited to 5 submissions per IP per hour and carries a honeypot
+  field, because it can now trigger outbound mail.

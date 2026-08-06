@@ -6,12 +6,13 @@ import { Container } from '@/components/primitives/Container'
 import { Eyebrow } from '@/components/primitives/SectionHeading'
 import { Reveal } from '@/components/primitives/Reveal'
 import { Combobox } from '@/components/primitives/Combobox'
-import { site, registrationEndpoint, registrationOpen, registrationSectors, tamilNaduCities } from '@/content/site'
+import { site, registrationOpen, registrationSectors, tamilNaduCities } from '@/content/site'
 
 type Status = 'idle' | 'sending' | 'done' | 'error'
 
 export function Register() {
   const [status, setStatus] = useState<Status>('idle')
+  const [errorMsg, setErrorMsg] = useState('')
   const [sector, setSector] = useState('')
   const [city, setCity] = useState('')
   const [sectorError, setSectorError] = useState(false)
@@ -43,26 +44,32 @@ export function Register() {
     setCityError(missingCity)
     if (missingSector || missingCity) return
 
-    if (!registrationEndpoint) {
-      console.error('NEXT_PUBLIC_REGISTRATION_ENDPOINT is not set — see REGISTRATION-SETUP.md')
-      setStatus('error')
-      return
-    }
-
     setStatus('sending')
+    setErrorMsg('')
     try {
-      // Static site → Google Apps Script Web App. no-cors: fire-and-forget POST
-      // (Apps Script doesn't return CORS headers, so we can't read the response).
-      await fetch(registrationEndpoint, {
+      // Same-origin POST to our own route handler, which writes the Google Sheet
+      // row and sends both confirmation emails. Unlike the old no-cors call
+      // straight to Apps Script, this response is readable — so a failure here is
+      // a real failure, not an optimistic guess.
+      const res = await fetch('/api/register', {
         method: 'POST',
-        mode: 'no-cors',
-        body: new URLSearchParams(fd as unknown as Record<string, string>),
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(Object.fromEntries(fd)),
       })
+      const data = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null
+
+      if (!res.ok || !data?.ok) {
+        setErrorMsg(data?.error || '')
+        setStatus('error')
+        return
+      }
+
       setStatus('done')
       form.reset()
       setSector('')
       setCity('')
     } catch {
+      setErrorMsg('')
       setStatus('error')
     }
   }
@@ -138,7 +145,8 @@ export function Register() {
                 </span>
                 <h3 className="mt-6 font-sans text-2xl font-bold uppercase text-ink">You&apos;re on the list.</h3>
                 <p className="mt-2 max-w-xs text-muted">
-                  We&apos;ll be in touch the moment tickets open. See you in {site.city.split(',')[0]}.
+                  A confirmation is on its way to your inbox. We&apos;ll be in touch the moment tickets open — see you
+                  in {site.city.split(',')[0]}.
                 </p>
                 <button
                   onClick={() => setStatus('idle')}
@@ -149,6 +157,17 @@ export function Register() {
               </div>
             ) : (
               <form onSubmit={onSubmit} className="flex flex-col gap-4">
+                {/* Honeypot — off-screen and skipped by tab order, so only bots fill it.
+                    The route silently discards any submission that has it set. */}
+                <input
+                  type="text"
+                  name="company"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  aria-hidden="true"
+                  className="absolute left-[-9999px] h-0 w-0 opacity-0"
+                />
+
                 <Field label="Name">
                   <input id="reg-name" name="name" type="text" required placeholder="Your full name" className={inputCls} />
                 </Field>
@@ -221,7 +240,7 @@ export function Register() {
 
                 {status === 'error' && (
                   <p className="text-sm font-medium text-accent">
-                    Something went wrong — please try again, or email {site.contactEmail}.
+                    {errorMsg || 'Something went wrong'} — please try again, or email {site.contactEmail}.
                   </p>
                 )}
               </form>

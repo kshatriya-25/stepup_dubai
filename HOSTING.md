@@ -1,12 +1,20 @@
-# Hosting — expo.tier2rising.com (Apache)
+# Hosting — expo.tier2rising.com (Apache + Node)
 
 Deploying the Tier-2 Rising summit site onto the existing Apache box
 (`/var/www/tier2expo/stepup_dubai`) that already serves other vhosts.
 
-The site is **100% static** (all routes prerender, plain `<img>` — no image
-optimizer, no API routes, no server data). So Apache serves the files directly —
-**no Node process, no PM2, no reverse proxy, no port to babysit.** Total payload
-is ~6.6 MB (one 2.7 MB hero video + a handful of images/logos).
+> **This changed.** The site used to be a 100% static export that Apache served
+> straight off disk. Adding registration emails required a server: the SMTP password
+> must never reach the browser, and `output: 'export'` cannot run a route handler.
+> The site is now a **Node process behind an Apache reverse proxy**. Images, the hero
+> video and Next's hashed assets are still served directly by Apache off disk, so only
+> HTML and `/api/*` actually touch Node.
+
+```
+Browser ──▶ Apache :443 ──┬── /logos /posters /happens /video  → disk (immutable cache)
+                          ├── /_next/static                    → disk (immutable cache)
+                          └── everything else                  → proxy → Node :3211
+```
 
 ---
 
@@ -19,80 +27,111 @@ is ~6.6 MB (one 2.7 MB hero video + a handful of images/logos).
 const nextConfig = {
   reactStrictMode: true,
   eslint: { ignoreDuringBuilds: true },
-  output: 'export',            // emits ./out
-  images: { unoptimized: true },
-  trailingSlash: true,         // /page/index.html — matches Apache dir resolution
+  images: { unoptimized: true },     // plain <img> everywhere — optimizer buys nothing
+  trailingSlash: true,
+  skipTrailingSlashRedirect: true,   // so POST /api/register isn't bounced via a redirect
 }
 export default nextConfig
 ```
 
-> If a `next build` ever errors with *"Page … is not compatible with output: export"*,
-> something added a dynamic route handler or server action. There are none today;
-> keep it that way, or move to Option B below.
+There must be **no `output: 'export'`**. If someone re-adds it, `/api/register` stops
+existing and every registration silently fails.
 
-## 2. Build
+## 2. Secrets on the server
+
+`.env` is gitignored, so `git pull` will never deliver it. Create it once on the box
+and keep it out of the repo:
+
+```bash
+cd /var/www/tier2expo/stepup_dubai
+cp /path/to/your/.env .env        # or write it by hand
+chmod 600 .env
+chown www-data:www-data .env
+```
+
+Required keys are listed in [`EMAIL-SETUP.md`](EMAIL-SETUP.md). **Also do the two
+Brevo account steps in that doc** — the server's public IP must be allowlisted, and
+`tier2rising.com` must be a verified sending domain, or no mail goes out.
+
+## 3. Build
 
 ```bash
 cd /var/www/tier2expo/stepup_dubai
 git pull
 npm ci
-npm run build            # emits ./out  (~6.6 MB)
+npm run build
 ```
 
-Verify before going further:
+## 4. Run it under PM2
 
 ```bash
-ls out/index.html out/logos/sidbi.png out/video/hero.mp4 out/happens/bootcamp.jpg
-du -sh out
+npm i -g pm2
+pm2 start "npx next start -p 3211" --name expo-tier2
+pm2 save && pm2 startup      # run the command it prints, so it survives reboot
 ```
 
-## 3. Point a docroot at it (decoupled from the build)
+Pick a free port if 3211 is taken: `ss -tlnp | grep 3211`.
 
-Keep the build dir and the *served* dir separate, so a failed build never takes
-the live site down (and never collides with the other vhost under this box):
+Verify Node is actually up before touching Apache:
 
 ```bash
-mkdir -p /var/www/tier2expo/expo-public
-rsync -a --delete out/ /var/www/tier2expo/expo-public/
-chown -R www-data:www-data /var/www/tier2expo/expo-public
+curl -s localhost:3211/api/register     # → {"ok":true,...,"mail":"configured"}
 ```
 
-## 4. Enable the modules
+## 5. Enable the modules
 
 ```bash
-a2enmod headers expires deflate http2 ssl
+a2enmod headers expires deflate http2 ssl proxy proxy_http
 systemctl restart apache2
 ```
 
-## 5. Vhost
+## 6. Vhost
 
 `/etc/apache2/sites-available/expo.tier2rising.com.conf`
 
 ```apache
 <VirtualHost *:80>
     ServerName expo.tier2rising.com
-    DocumentRoot /var/www/tier2expo/expo-public
     Redirect permanent / https://expo.tier2rising.com/
 </VirtualHost>
 
 <VirtualHost *:443>
     ServerName expo.tier2rising.com
-    DocumentRoot /var/www/tier2expo/expo-public
+    DocumentRoot /var/www/tier2expo/stepup_dubai/public
 
     Protocols h2 http/1.1
 
-    <Directory /var/www/tier2expo/expo-public>
+    # --- static off disk, never through Node --------------------------------
+    Alias /_next/static /var/www/tier2expo/stepup_dubai/.next/static
+    Alias /logos        /var/www/tier2expo/stepup_dubai/public/logos
+    Alias /posters      /var/www/tier2expo/stepup_dubai/public/posters
+    Alias /happens      /var/www/tier2expo/stepup_dubai/public/happens
+    Alias /brand        /var/www/tier2expo/stepup_dubai/public/brand
+    Alias /video        /var/www/tier2expo/stepup_dubai/public/video
+
+    <Directory /var/www/tier2expo/stepup_dubai/public>
         Options -Indexes +FollowSymLinks
-        AllowOverride None
         Require all granted
-        DirectoryIndex index.html
+    </Directory>
+    <Directory /var/www/tier2expo/stepup_dubai/.next/static>
+        Options -Indexes +FollowSymLinks
+        Require all granted
     </Directory>
 
-    ErrorDocument 404 /404.html
+    # --- proxy the rest to Next ---------------------------------------------
+    ProxyPreserveHost On
+    ProxyPass        /_next/static !
+    ProxyPass        /logos !
+    ProxyPass        /posters !
+    ProxyPass        /happens !
+    ProxyPass        /brand !
+    ProxyPass        /video !
+    ProxyPass        / http://127.0.0.1:3211/
+    ProxyPassReverse / http://127.0.0.1:3211/
 
-    # --- caching -----------------------------------------------------------
+    # --- caching -------------------------------------------------------------
     # Images, logos and the hero video are content-stable: cache hard.
-    <LocationMatch "^/(logos|posters|happens|video)/">
+    <LocationMatch "^/(logos|posters|happens|video|brand)/">
         Header set Cache-Control "public, max-age=31536000, immutable"
     </LocationMatch>
 
@@ -101,17 +140,17 @@ systemctl restart apache2
         Header set Cache-Control "public, max-age=31536000, immutable"
     </LocationMatch>
 
-    # HTML must revalidate or a redeploy won't be picked up.
-    <FilesMatch "\.html$">
-        Header set Cache-Control "no-cache, must-revalidate"
-    </FilesMatch>
+    # The registration endpoint must never be cached by anything.
+    <LocationMatch "^/api/">
+        Header set Cache-Control "no-store"
+    </LocationMatch>
 
-    # --- compression -------------------------------------------------------
+    # --- compression ---------------------------------------------------------
     # Text only. Never gzip the mp4 or the JPEGs.
     AddOutputFilterByType DEFLATE text/html text/css application/javascript \
                                   application/json image/svg+xml text/plain
 
-    # --- hardening ---------------------------------------------------------
+    # --- hardening -----------------------------------------------------------
     Header always set X-Content-Type-Options "nosniff"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
     Header always set X-Frame-Options "SAMEORIGIN"
@@ -127,7 +166,10 @@ apachectl configtest        # must say: Syntax OK
 systemctl reload apache2
 ```
 
-## 6. DNS + TLS
+> The old `/var/www/tier2expo/expo-public` docroot and its `rsync` are no longer
+> used. Once the proxy is confirmed working, that directory can be deleted.
+
+## 7. DNS + TLS
 
 Point an `A` record for `expo.tier2rising.com` at the server, then:
 
@@ -135,16 +177,22 @@ Point an `A` record for `expo.tier2rising.com` at the server, then:
 certbot --apache -d expo.tier2rising.com
 ```
 
-Certbot rewrites the `:443` block. Re-check afterwards that `Protocols h2 http/1.1`
-and the `Header` rules survived — certbot occasionally reorders directives.
+Certbot rewrites the `:443` block. Re-check afterwards that `Protocols h2 http/1.1`,
+the `ProxyPass` rules and the `Header` rules survived — certbot occasionally reorders
+directives.
 
-## 7. Verify
+## 8. Verify
 
 ```bash
-curl -I https://expo.tier2rising.com/                       # 200, Cache-Control: no-cache
-curl -I https://expo.tier2rising.com/video/hero.mp4         # 200, immutable
-curl -I https://expo.tier2rising.com/logos/sidbi.png        # 200, immutable
+curl -I https://expo.tier2rising.com/                    # 200
+curl -I https://expo.tier2rising.com/video/hero.mp4      # 200, immutable, served by Apache
+curl -I https://expo.tier2rising.com/logos/sidbi.png     # 200, immutable
+curl -s https://expo.tier2rising.com/api/register        # {"ok":true,...} — sheet + mail configured
 ```
+
+Then submit one real registration through the form and confirm three things: the row
+lands in the Sheet, the participant confirmation arrives, and the organiser
+notification arrives.
 
 In the browser: hero video autoplays (muted), Network → Protocol column reads `h2`.
 
@@ -157,59 +205,32 @@ cd /var/www/tier2expo/stepup_dubai
 git pull
 npm ci
 npm run build
-rsync -a --delete out/ /var/www/tier2expo/expo-public/
+pm2 restart expo-tier2
 ```
 
-No Apache reload needed — HTML is `no-cache`, hashed assets are immutable.
-
----
-
-## Option B — Node + reverse proxy (only if you add server features)
-
-Only if you later add API routes, server actions or ISR. Otherwise Option A wins.
-
-Remove `output: 'export'` from `next.config.mjs`, then:
-
-```bash
-npm ci && npm run build
-npm i -g pm2
-pm2 start "npx next start -p 3211" --name expo-tier2
-pm2 save && pm2 startup
-```
-
-```apache
-a2enmod proxy proxy_http
-# inside the :443 vhost — serve static off disk, proxy the rest:
-Alias /_next/static /var/www/tier2expo/stepup_dubai/.next/static
-Alias /logos        /var/www/tier2expo/stepup_dubai/public/logos
-Alias /posters      /var/www/tier2expo/stepup_dubai/public/posters
-Alias /happens      /var/www/tier2expo/stepup_dubai/public/happens
-Alias /video        /var/www/tier2expo/stepup_dubai/public/video
-
-ProxyPreserveHost On
-ProxyPass        /_next/static !
-ProxyPass        /logos !
-ProxyPass        /posters !
-ProxyPass        /happens !
-ProxyPass        /video !
-ProxyPass        / http://127.0.0.1:3211/
-ProxyPassReverse / http://127.0.0.1:3211/
-```
-
-Pick a free port: `ss -tlnp | grep 3211`.
+No Apache reload needed. `.env` is not in git — if you changed it, edit it on the box
+and restart PM2 (env vars are read at process start).
 
 ---
 
 ## Troubleshooting
 
-**Redeploy didn't take** — HTML got cached. Confirm `Cache-Control: no-cache` on
-`/` and that `mod_headers` is enabled (`a2enmod headers`).
+**502 Bad Gateway** — Node isn't running. `pm2 status`, `pm2 logs expo-tier2`.
+
+**Registrations fail with "could not save"** — the Apps Script write failed. Check
+`pm2 logs expo-tier2` for the `[register] sheet append failed:` line.
+
+**Registrations succeed but no email** — see the troubleshooting table in
+[`EMAIL-SETUP.md`](EMAIL-SETUP.md). Most likely the server IP isn't authorised in Brevo.
+
+**`EADDRINUSE`** — a process holds the port:
+`kill $(lsof -t -iTCP:3211 -sTCP:LISTEN)`.
+
+**404s on images** — an `Alias` path is wrong, or Apache lacks read permission on
+`public/`. Confirm with `curl -I .../logos/sidbi.png` and check the error log.
 
 **Hero video doesn't play** — it's `muted autoplay loop playsinline`; browsers only
 autoplay muted video. Confirm `/video/hero.mp4` returns `200 video/mp4`.
 
-**`EADDRINUSE`** (Option B) — a process holds the port:
-`kill $(lsof -t -iTCP:3211 -sTCP:LISTEN)`.
-
-**404s on assets** — `DocumentRoot` is pointing at the repo instead of
-`/var/www/tier2expo/expo-public`. Re-run the rsync in step 3.
+**A change didn't take** — you rebuilt but didn't `pm2 restart`. The running process
+still holds the old build.
