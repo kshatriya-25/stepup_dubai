@@ -302,6 +302,12 @@ and read `/var/log/apache2/tier2rising_error.log`.
 write failed. `pm2 logs tier2rising` will show `[register] sheet append failed:` with
 the real reason. Usually the Apps Script deployment's *Who has access* isn't **Anyone**.
 
+**Form shows "You're on the list" but nothing reaches the Sheet and no email arrives** —
+the honeypot was tripped. In DevTools the response to `POST /api/register` will be a bare
+`{"ok":true}` with no `mailed` field; a genuine success always includes `mailed`. Confirm
+with `pm2 logs tier2rising | grep honeypot`. Cause is usually browser autofill filling the
+hidden field — see the honeypot note in [`EMAIL-SETUP.md`](EMAIL-SETUP.md).
+
 **Registration succeeds but no email arrives** — almost certainly the Brevo IP
 allowlist (step 1a). `pm2 logs tier2rising` shows
 `[register] participant mail failed:` with Brevo's own error text. Full table in

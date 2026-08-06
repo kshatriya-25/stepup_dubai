@@ -60,7 +60,21 @@ export async function POST(req: Request) {
 
   // Honeypot: a field hidden from humans. Anything that fills it is a bot — return
   // a success it can't distinguish from the real thing, and send nothing.
-  if (clean(raw.company)) return NextResponse.json({ ok: true })
+  //
+  // ALWAYS LOG IT. This branch discards a registration, so a false positive is
+  // invisible from the outside: the visitor sees the thank-you state and nothing
+  // reaches the sheet. That is exactly what happened when the field was named
+  // `company` — browsers autofilled it from the saved address profile. If these
+  // lines ever appear in bursts alongside real names, the honeypot is misfiring,
+  // not catching bots.
+  const honeypot = clean(raw.reg_note)
+  if (honeypot) {
+    console.warn(
+      `[register] honeypot tripped — discarded. value=${JSON.stringify(honeypot)} ` +
+        `name=${JSON.stringify(clean(raw.name, 120))} email=${JSON.stringify(clean(raw.email, 160))}`
+    )
+    return NextResponse.json({ ok: true })
+  }
 
   const reg: Registration = {
     name: clean(raw.name, 120),

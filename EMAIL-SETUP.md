@@ -124,8 +124,15 @@ when you edit copy — some clients show it, and a missing text part hurts spam 
 The endpoint is public and triggers outbound mail, so two guards sit in
 [`src/app/api/register/route.ts`](src/app/api/register/route.ts):
 
-- **Honeypot** — a `company` field hidden off-screen and skipped in tab order. Only
-  bots fill it; those submissions get a success response and are silently discarded.
+- **Honeypot** — a `reg_note` field hidden off-screen and skipped in tab order. Only
+  bots fill it; those submissions get a success response and are discarded. Every hit
+  is logged as `[register] honeypot tripped`, because this branch throws a registration
+  away and a false positive is otherwise invisible.
+
+  > The field was originally named `company`, which browsers autofilled from the saved
+  > address profile ("Organization") — silently binning real registrations while showing
+  > the visitor a thank-you. If you ever rename it, pick something no autofill heuristic
+  > recognises: not `company`, `organization`, `address`, `url`, `nickname` or similar.
 - **Rate limit** — 5 registrations per IP per hour, in memory. Fine for the current
   single-process deployment; move it to Redis only if you ever run more than one
   Node process.
