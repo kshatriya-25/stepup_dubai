@@ -37,14 +37,14 @@ export function SiteNav() {
             normal laptop and only appeared on very wide monitors. Now matches the
             venue chip's `lg` (1200px).
 
-            The white box is gone too: the logo now carries an alpha channel, so the
-            wordmark sits straight on the navy.
+            The asset is the official transparent wordmark supplied by Namma Office, so
+            it sits straight on the navy with no white box behind it.
 
-            The `-v2` in the filename is a cache-bust, not decoration. Apache serves
-            /logos/ with `Cache-Control: immutable`, so browsers that already fetched
-            the old opaque PNG would never re-request the same URL — they kept showing
-            the white box for a year. Replacing an image under this path means giving
-            it a NEW name. (The header has since been relaxed; see deploy/.)
+            The `-v3` in the filename is a cache-bust, not decoration. Apache served
+            /logos/ with `Cache-Control: immutable`, so browsers that already fetched an
+            older version would never re-request the same URL. Replacing an image under
+            this path means giving it a NEW name. (The header has since been relaxed to
+            a day + stale-while-revalidate; see deploy/.)
           */}
           <span className="hidden items-center gap-2.5 border-l border-surface/25 pl-3 lg:flex">
             <span className="whitespace-nowrap text-[10px] font-semibold uppercase leading-tight tracking-[0.12em] text-surface/60">
@@ -54,10 +54,10 @@ export function SiteNav() {
             </span>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/logos/nammaoffice-v2.png"
+              src="/logos/nammaoffice-v3.png"
               alt="Namma Office"
-              width={760}
-              height={160}
+              width={900}
+              height={154}
               className="h-6 w-auto object-contain xl:h-7"
             />
           </span>

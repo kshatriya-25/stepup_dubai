@@ -103,15 +103,30 @@ export const nav: NavItem[] = [
   { label: 'Partners', href: '#partners' },
 ]
 
-export const participateRoutes = [
+// `action: 'partner'` swaps the modal to the enquiry form instead of navigating.
+// TODO: 'Nominate a Startup' should point at the Startup Singam URL once we have it —
+// it currently falls back to the registration form.
+export const participateRoutes: {
+  label: string
+  desc: string
+  href?: string
+  action?: 'partner'
+}[] = [
   { label: 'Attend', desc: 'Register for ticket updates', href: '#register' },
   { label: 'Nominate a Startup', desc: 'For the Top 10 shortlist', href: '#register' },
-  { label: 'Partner with us', desc: 'Sponsor, speak or host a desk', href: '#partners' },
+  { label: 'Partner with us', desc: 'Sponsor, speak or host a desk', action: 'partner' },
 ]
 
-export const socials = [
-  { label: 'LinkedIn', href: '#' },
-  { label: 'Instagram', href: '#' },
-  { label: 'X', href: '#' },
-  { label: 'YouTube', href: '#' },
+// The footer renders these as icons, so `label` is the accessible name rather than
+// visible text — screen readers and hover tooltips both read it.
+//
+// TODO: every href is still a '#' placeholder. Fill in the real profile URLs; until
+// then the icons render but go nowhere.
+export type Social = { label: string; href: string; icon: 'linkedin' | 'instagram' | 'x' | 'youtube' }
+
+export const socials: Social[] = [
+  { label: 'LinkedIn', href: '#', icon: 'linkedin' },
+  { label: 'Instagram', href: '#', icon: 'instagram' },
+  { label: 'X', href: '#', icon: 'x' },
+  { label: 'YouTube', href: '#', icon: 'youtube' },
 ]

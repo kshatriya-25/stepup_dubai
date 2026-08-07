@@ -1,5 +1,5 @@
 /**
- * POST /api/register — the one place a registration is handled.
+ * POST /api/register — attendee registration.
  *
  * Does three things, in this order of importance:
  *   1. Appends the row to the Google Sheet (the record of truth — must not be lost).
@@ -10,67 +10,26 @@
  * still return ok — a captured lead with no confirmation email beats a visitor who
  * gets told "something went wrong" and never registers again.
  *
- * This route is why next.config.mjs no longer sets `output: 'export'`; see HOSTING.md.
+ * Shared validation, throttling and the sheet write live in @/lib/submission, which
+ * /api/partner uses too. This route is why next.config.mjs no longer sets
+ * `output: 'export'`; see HOSTING.md.
  */
 
 import { NextResponse } from 'next/server'
 import { sendMail, organiserRecipients, mailConfigured } from '@/lib/email/mailer'
 import { participantEmail, organiserEmail, type Registration } from '@/lib/email/templates'
+import {
+  SHEET_ENDPOINT,
+  EMAIL_RE,
+  clean,
+  normalisePhone,
+  rateLimited,
+  clientIp,
+  appendToSheet,
+} from '@/lib/submission'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-
-const SHEET_ENDPOINT = process.env.NEXT_PUBLIC_REGISTRATION_ENDPOINT || ''
-
-/* -- Rate limit ----------------------------------------------------------- *
- * The endpoint is public and now triggers outbound mail, so an unthrottled bot
- * could burn the Brevo quota and the sending reputation with it. In-memory is
- * enough for a single-process deployment; swap for Redis only if you scale out. */
-const WINDOW_MS = 60 * 60 * 1000
-// Raised from 5 to 50 while the site is being tested — repeated submissions from one
-// office IP were the limit's most likely victim. Drop it back to ~5 before launch:
-// at 50/hour a single IP can burn a third of the Brevo free-tier daily quota.
-const MAX_PER_WINDOW = 50
-const hits = new Map<string, number[]>()
-
-function rateLimited(ip: string): boolean {
-  const now = Date.now()
-  const recent = (hits.get(ip) || []).filter((t) => now - t < WINDOW_MS)
-  recent.push(now)
-  hits.set(ip, recent)
-  if (hits.size > 5000) hits.clear() // crude bound; this map must never grow forever
-  return recent.length > MAX_PER_WINDOW
-}
-
-function clientIp(req: Request): string {
-  const fwd = req.headers.get('x-forwarded-for')
-  return (fwd ? fwd.split(',')[0] : req.headers.get('x-real-ip'))?.trim() || 'unknown'
-}
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
-
-function clean(value: unknown, max = 200): string {
-  return typeof value === 'string' ? value.trim().slice(0, max) : ''
-}
-
-/**
- * Force every phone number into one shape: `+91 98765 43210`.
- *
- * The form already constrains input, but this endpoint is public — a direct POST can
- * send anything. Normalising here rather than trusting the client is what actually
- * guarantees the sheet and the emails hold a single format.
- *
- * Tolerates the common variants on the way in (+91…, 0091…, 091…, spaced, hyphenated)
- * and rejects anything that isn't an Indian 10-digit mobile.
- */
-function normalisePhone(raw: string): string | null {
-  // Leading zeros are always trunk/international prefixes here — no Indian mobile
-  // starts with one — so stripping them collapses 0…, 00…, 0091… in one step.
-  let d = raw.replace(/\D/g, '').replace(/^0+/, '')
-  if (d.length === 12 && d.startsWith('91')) d = d.slice(2)
-  if (!/^[6-9]\d{9}$/.test(d)) return null
-  return `+91 ${d.slice(0, 5)} ${d.slice(5)}`
-}
 
 export async function POST(req: Request) {
   let raw: Record<string, unknown>
@@ -86,7 +45,7 @@ export async function POST(req: Request) {
   // so every trip it ever logged was a real person. And it never defended against the
   // threat that matters: anyone using this endpoint as a mail relay POSTs JSON
   // directly and never renders the form, so they never see a honeypot at all.
-  // Rate limiting is the real control here — see rateLimited() above.
+  // Rate limiting is the real control here — see rateLimited() in @/lib/submission.
 
   const reg: Registration = {
     name: clean(raw.name, 120),
@@ -123,7 +82,7 @@ export async function POST(req: Request) {
   }
 
   // 1. Record it. Everything else is secondary to not losing the lead.
-  const recorded = await appendToSheet(reg)
+  const recorded = await appendToSheet('registration', reg as unknown as Record<string, string>)
   if (!recorded.ok) {
     console.error('[register] sheet append failed:', recorded.error)
     return NextResponse.json(
@@ -149,7 +108,7 @@ export async function POST(req: Request) {
   })
 }
 
-/** Health check: `curl https://…/api/register/` tells you what is actually wired. */
+/** Health check: `curl https://…/api/register` tells you what is actually wired. */
 export async function GET() {
   return NextResponse.json({
     ok: true,
@@ -158,33 +117,4 @@ export async function GET() {
     mail: mailConfigured() ? 'configured' : 'NOT CONFIGURED',
     organiser: organiserRecipients,
   })
-}
-
-/**
- * Append to the Google Sheet via the existing Apps Script Web App.
- *
- * Unlike the old browser-side call this runs server-side, so there is no CORS
- * constraint and we can finally read the response instead of firing blind.
- * Apps Script answers the /exec URL with a 302 to googleusercontent.com; fetch
- * follows it by default and the JSON body arrives from there.
- */
-async function appendToSheet(reg: Registration): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (!SHEET_ENDPOINT) return { ok: false, error: 'NEXT_PUBLIC_REGISTRATION_ENDPOINT is not set' }
-  try {
-    const res = await fetch(SHEET_ENDPOINT, {
-      method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams(reg as unknown as Record<string, string>),
-      signal: AbortSignal.timeout(15000),
-      cache: 'no-store',
-    })
-    if (!res.ok) return { ok: false, error: `Apps Script returned ${res.status}` }
-    const text = await res.text()
-    // A successful script returns {"ok":true}. An HTML body means the deployment is
-    // not public ("Who has access: Anyone") and Google served a sign-in page instead.
-    if (text.includes('"ok":true')) return { ok: true }
-    return { ok: false, error: `Unexpected Apps Script response: ${text.slice(0, 200)}` }
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) }
-  }
 }

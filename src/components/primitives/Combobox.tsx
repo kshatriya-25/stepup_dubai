@@ -142,12 +142,47 @@ export function Combobox({
     listRef.current?.children[active]?.scrollIntoView({ block: 'nearest' })
   }, [active, open])
 
+  /**
+   * Close and hand focus to the next control in the form.
+   *
+   * Two reasons this is explicit rather than left to the browser:
+   *  1. The panel is portalled to <body>, so it is nowhere near the trigger in DOM
+   *     order. A native Tab out of the search box would jump to whatever follows the
+   *     portal, not to the next form field.
+   *  2. Picking a value should carry the user onward, and if the next control is
+   *     itself a dropdown it should already be open when they arrive.
+   */
+  const advance = useCallback(() => {
+    setOpen(false)
+    const trigger = triggerRef.current
+    if (!trigger) return
+    const next = nextFocusable(trigger)
+    if (!next) {
+      trigger.focus()
+      return
+    }
+    next.focus()
+    // Focus alone only auto-opens for keyboard focus; this is a programmatic move,
+    // so tell the next combobox to open explicitly.
+    if (next.hasAttribute('data-combobox')) next.dispatchEvent(new CustomEvent(OPEN_EVENT))
+  }, [])
+
+  // Lets a sibling combobox open this one when it hands focus over.
+  useEffect(() => {
+    const el = triggerRef.current
+    if (!el) return
+    const onOpen = () => {
+      measure()
+      setOpen(true)
+    }
+    el.addEventListener(OPEN_EVENT, onOpen)
+    return () => el.removeEventListener(OPEN_EVENT, onOpen)
+  }, [measure])
+
   function pick(opt: string) {
     onChange(opt)
-    setOpen(false)
     setQuery('')
-    // Return focus so the next Tab continues through the form rather than restarting.
-    triggerRef.current?.focus()
+    advance()
   }
 
   function onKey(e: React.KeyboardEvent) {
@@ -165,7 +200,14 @@ export function Combobox({
       setOpen(false)
       triggerRef.current?.focus()
     } else if (e.key === 'Tab') {
-      setOpen(false)
+      // Never let the browser resolve this one — see advance().
+      e.preventDefault()
+      if (e.shiftKey) {
+        setOpen(false)
+        triggerRef.current?.focus()
+      } else {
+        advance()
+      }
     }
   }
 
@@ -273,8 +315,18 @@ export function Combobox({
       <button
         ref={triggerRef}
         type="button"
+        data-combobox
         aria-haspopup="listbox"
         aria-expanded={open}
+        onFocus={(e) => {
+          // Open when focus arrives from the KEYBOARD, so tabbing into the field
+          // lands you straight in the list. Deliberately gated on :focus-visible —
+          // a mouse click also focuses, and opening here would race the onClick
+          // toggle below and immediately shut the panel again.
+          if (!isFocusVisible(e.currentTarget)) return
+          measure()
+          setOpen(true)
+        }}
         onClick={() => {
           setQuery('')
           if (!open) measure()
@@ -308,6 +360,36 @@ export function Combobox({
         )}
     </div>
   )
+}
+
+/** Fired at a trigger to make its combobox open. See advance(). */
+const OPEN_EVENT = 'combobox:open'
+
+/** True when the element is showing a keyboard focus ring rather than a click focus. */
+function isFocusVisible(el: HTMLElement): boolean {
+  try {
+    return el.matches(':focus-visible')
+  } catch {
+    return false // very old browsers: fall back to click-only opening
+  }
+}
+
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+/**
+ * The next focusable control after `from`, within the same form.
+ *
+ * Scoped to the form on purpose: the open panel lives in a portal at the end of
+ * <body>, so a document-wide search would walk into it instead of moving on.
+ */
+function nextFocusable(from: HTMLElement): HTMLElement | null {
+  const scope = from.closest('form') ?? from.ownerDocument.body
+  const items = Array.from(scope.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+    (el) => el === from || (el.offsetParent !== null && el.tabIndex !== -1),
+  )
+  const i = items.indexOf(from)
+  return i === -1 ? null : (items[i + 1] ?? null)
 }
 
 type Anchor = { left: number; width: number; top: number; bottom: number; maxHeight: number; flipUp: boolean }

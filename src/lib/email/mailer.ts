@@ -19,10 +19,28 @@ export const mailFromName = process.env.MAIL_FROM_NAME || 'Tier-2 Rising Startup
 export const mailReplyTo = process.env.MAIL_REPLY_TO || mailFrom
 
 /** Comma-separated in env, so you can notify more than one inbox. */
-export const organiserRecipients = (process.env.MAIL_ORGANISER || mailFrom)
-  .split(',')
-  .map((s) => s.trim())
-  .filter(Boolean)
+function recipientList(value: string | undefined): string[] {
+  return (value || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
+/** Who gets the attendee-registration notification. */
+export const organiserRecipients = recipientList(process.env.MAIL_ORGANISER).length
+  ? recipientList(process.env.MAIL_ORGANISER)
+  : [mailFrom]
+
+/**
+ * Who gets the partner-enquiry notification.
+ *
+ * Separate from MAIL_ORGANISER because sponsorship leads often want a different
+ * inbox from ticket registrations. Falls back to MAIL_ORGANISER when unset, so
+ * leaving it out simply means "same people".
+ */
+export const partnerRecipients = recipientList(process.env.MAIL_PARTNER_ORGANISER).length
+  ? recipientList(process.env.MAIL_PARTNER_ORGANISER)
+  : organiserRecipients
 
 /** True when SMTP is configured well enough to attempt a send. */
 export function mailConfigured(): boolean {

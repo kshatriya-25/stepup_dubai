@@ -458,3 +458,261 @@ ${button('Reply to ' + firstName(r.name), `mailto:${r.email}?subject=${encodeURI
     }),
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * Partner enquiries — "Partner with us" in the Participate modal
+ *
+ * Same chrome as the registration mail on purpose: one visual system, one place to
+ * change the branding. Only the copy differs, because a prospective sponsor asking
+ * about a desk should not be told "You're on the list" about tickets.
+ * ------------------------------------------------------------------ */
+
+export type PartnerEnquiry = {
+  name: string
+  businessName: string
+  email: string
+  phone: string
+}
+
+export function partnerEnquiryEmail(p: PartnerEnquiry): {
+  subject: string
+  html: string
+  text: string
+} {
+  const subject = `We've got your partnership enquiry — ${site.fullName}`
+
+  const body = `
+          <!-- Hero -->
+          <tr>
+            <td style="background-color:${C.white};padding:44px 36px 8px 36px;font-family:${FONT};">
+              <div style="font-size:11px;font-weight:700;letter-spacing:0.16em;color:${C.orange};text-transform:uppercase;">Partnership enquiry received</div>
+              <h1 style="margin:14px 0 0 0;font-size:32px;line-height:1.1;font-weight:700;letter-spacing:-0.01em;color:${
+                C.navy
+              };text-transform:uppercase;">Thank you,<br>${esc(firstName(p.name))}.</h1>
+              <p style="margin:18px 0 0 0;font-size:16px;line-height:1.65;color:${C.muted};">
+                We&rsquo;ve received your enquiry on behalf of <strong style="color:${C.ink};">${esc(
+                  p.businessName
+                )}</strong>. Someone from the ${esc(
+                  site.name
+                )} team will be in touch shortly to talk through sponsorship, speaking slots and desk options.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Event card -->
+          <tr>
+            <td style="background-color:${C.white};padding:28px 36px 0 36px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${
+                C.foam
+              };border-left:4px solid ${C.orange};">
+                <tr>
+                  <td style="padding:22px 24px;font-family:${FONT};">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="padding-bottom:18px;">
+                          <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;color:${
+                            C.muted
+                          };text-transform:uppercase;">When</div>
+                          <div style="font-size:17px;font-weight:700;color:${C.navy};padding-top:4px;">${esc(
+                            site.dates
+                          )}</div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;color:${
+                            C.muted
+                          };text-transform:uppercase;">Where</div>
+                          <div style="font-size:17px;font-weight:700;color:${C.navy};padding-top:4px;">${esc(
+                            site.venue
+                          )}, ${esc(site.city)}</div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- What happens next -->
+          <tr>
+            <td style="background-color:${C.white};padding:36px 36px 0 36px;font-family:${FONT};">
+              <div style="font-size:11px;font-weight:700;letter-spacing:0.16em;color:${
+                C.navy
+              };text-transform:uppercase;padding-bottom:20px;">What happens next</div>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+${step(1, 'We read it properly', 'Your enquiry goes straight to the organising team, not a queue.')}
+${step(2, 'We call you', 'To understand what you want out of the summit before proposing anything.')}
+${step(3, 'You get the options', 'Sponsorship tiers, speaking slots and desk formats, with what each includes.')}
+              </table>
+            </td>
+          </tr>
+
+          <!-- CTA -->
+          <tr>
+            <td style="background-color:${C.white};padding:14px 36px 36px 36px;">
+${button('Explore the summit', siteUrl)}
+            </td>
+          </tr>
+
+          <!-- Their details -->
+          <tr>
+            <td style="background-color:${C.white};padding:0 36px 40px 36px;font-family:${FONT};">
+              <div style="height:1px;line-height:1px;font-size:0;background-color:${
+                C.hairline
+              };margin-bottom:24px;">&nbsp;</div>
+              <div style="font-size:11px;font-weight:700;letter-spacing:0.16em;color:${
+                C.navy
+              };text-transform:uppercase;">What you sent us</div>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="padding-top:6px;">
+${detailRow('Name', p.name)}
+${detailRow('Business', p.businessName)}
+${detailRow('Email', p.email)}
+${detailRow('Phone', p.phone, { last: true })}
+              </table>
+              <p style="margin:18px 0 0 0;font-size:13px;line-height:1.6;color:${C.muted};">
+                Spotted a mistake? Just reply to this email and we&rsquo;ll fix it.
+              </p>
+            </td>
+          </tr>
+`
+
+  const text = [
+    `THANK YOU, ${firstName(p.name).toUpperCase()}.`,
+    '',
+    `We've received your enquiry on behalf of ${p.businessName}. Someone from the`,
+    `${site.name} team will be in touch shortly to talk through sponsorship,`,
+    'speaking slots and desk options.',
+    '',
+    `WHEN   ${site.dates}`,
+    `WHERE  ${site.venue}, ${site.city}`,
+    '',
+    'WHAT HAPPENS NEXT',
+    '1. We read it properly — your enquiry goes straight to the organising team.',
+    '2. We call you — to understand what you want out of the summit.',
+    '3. You get the options — sponsorship tiers, speaking slots and desk formats.',
+    '',
+    `Explore the summit: ${siteUrl}`,
+    '',
+    'WHAT YOU SENT US',
+    `Name      ${p.name}`,
+    `Business  ${p.businessName}`,
+    `Email     ${p.email}`,
+    `Phone     ${p.phone}`,
+    '',
+    "Spotted a mistake? Just reply to this email and we'll fix it.",
+    '',
+    '—',
+    `${site.fullName}`,
+    `${site.initiativeBy} · ${site.season}`,
+    `${site.venue}, ${site.city} · ${site.dates}`,
+    `${organiserContact}`,
+  ].join('\n')
+
+  return {
+    subject,
+    text,
+    html: shell({
+      preheader: `We'll be in touch about partnering with the ${site.fullName}.`,
+      body,
+      footerNote: 'You received this because you enquired about partnering with us on our website.',
+    }),
+  }
+}
+
+export function partnerOrganiserEmail(p: PartnerEnquiry, at = new Date()): {
+  subject: string
+  html: string
+  text: string
+} {
+  // Deliberately distinct from the attendee subject ("New registration — …") so the
+  // two are filterable and never confused in the inbox.
+  const subject = `New Partner registration — ${p.businessName}`
+  const when = stamp(at)
+
+  const body = `
+          <!-- Hero -->
+          <tr>
+            <td style="background-color:${C.white};padding:40px 36px 0 36px;font-family:${FONT};">
+              <div style="font-size:11px;font-weight:700;letter-spacing:0.16em;color:${C.orange};text-transform:uppercase;">New partner enquiry</div>
+              <h1 style="margin:12px 0 0 0;font-size:28px;line-height:1.15;font-weight:700;letter-spacing:-0.01em;color:${
+                C.navy
+              };">${esc(p.businessName)}</h1>
+              <div style="font-size:13px;color:${C.muted};padding-top:8px;">Submitted ${esc(when)}</div>
+            </td>
+          </tr>
+
+          <!-- Details -->
+          <tr>
+            <td style="background-color:${C.white};padding:26px 36px 0 36px;font-family:${FONT};">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid ${
+                C.hairline
+              };">
+${detailRow('Business', p.businessName)}
+${detailRow('Contact', p.name)}
+${detailRow('Email', p.email, { href: `mailto:${p.email}` })}
+${detailRow('Phone', p.phone, { href: `tel:${p.phone.replace(/[^\d+]/g, '')}`, last: true })}
+              </table>
+            </td>
+          </tr>
+
+          <!-- Actions -->
+          <tr>
+            <td style="background-color:${C.white};padding:28px 36px 40px 36px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="padding-right:10px;">
+${button('Reply to ' + firstName(p.name), `mailto:${p.email}?subject=${encodeURIComponent(
+    'Re: partnering with ' + site.name
+  )}`)}
+                  </td>
+                  <td>
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td align="center" style="border:1px solid ${C.navy};">
+                          <a href="tel:${esc(p.phone.replace(/[^\d+]/g, ''))}" style="display:inline-block;padding:14px 28px;font-family:${FONT};font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:${
+                            C.navy
+                          };text-decoration:none;">Call</a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:22px 0 0 0;font-family:${FONT};font-size:13px;line-height:1.6;color:${C.muted};">
+                An acknowledgement has already gone out to ${esc(p.email)}. This enquiry is also appended to the
+                <strong>Partners</strong> tab of the registrations sheet.
+              </p>
+            </td>
+          </tr>
+`
+
+  const text = [
+    'NEW PARTNER ENQUIRY',
+    '',
+    p.businessName,
+    `Submitted ${when}`,
+    '',
+    `Business  ${p.businessName}`,
+    `Contact   ${p.name}`,
+    `Email     ${p.email}`,
+    `Phone     ${p.phone}`,
+    '',
+    `An acknowledgement has already gone out to ${p.email}.`,
+    'This enquiry is also appended to the Partners tab of the registrations sheet.',
+    '',
+    '—',
+    `${site.fullName}`,
+  ].join('\n')
+
+  return {
+    subject,
+    text,
+    html: shell({
+      preheader: `${p.businessName} · ${p.name} · ${p.email}`,
+      body,
+      footerNote: 'Automated notification from the Participate form on the summit website.',
+    }),
+  }
+}

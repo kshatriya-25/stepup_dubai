@@ -1,5 +1,22 @@
-import { site, socials } from '@/content/site'
+import { Linkedin, Instagram, Youtube } from 'lucide-react'
+import { site, socials, type Social } from '@/content/site'
 import { Container } from '@/components/primitives/Container'
+
+/**
+ * lucide-react ships linkedin/instagram/youtube but no X — only the retired Twitter
+ * bird, which would be wrong next to three current marks. So X is inlined.
+ */
+function SocialIcon({ icon }: { icon: Social['icon'] }) {
+  const size = 18
+  if (icon === 'linkedin') return <Linkedin size={size} />
+  if (icon === 'instagram') return <Instagram size={size} />
+  if (icon === 'youtube') return <Youtube size={size} />
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" aria-hidden="true">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  )
+}
 
 export function SiteFooter() {
   return (
@@ -69,10 +86,21 @@ export function SiteFooter() {
             >
               {site.contactPhone}
             </a>
-            <div className="mt-1 flex flex-col gap-2.5 text-sm">
+            {/* Icons on one row. `aria-label` carries the name the visible text used
+                to provide — an icon-only link is unlabelled to a screen reader
+                otherwise. The 40px box is the tap target, not decoration. */}
+            <div className="mt-2 flex items-center gap-2.5">
               {socials.map((s) => (
-                <a key={s.label} href={s.href} className="w-fit text-surface/70 transition-colors hover:text-accent">
-                  {s.label}
+                <a
+                  key={s.label}
+                  href={s.href}
+                  aria-label={s.label}
+                  title={s.label}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="flex h-10 w-10 items-center justify-center border border-surface/20 text-surface/70 transition-colors hover:border-accent hover:text-accent"
+                >
+                  <SocialIcon icon={s.icon} />
                 </a>
               ))}
             </div>

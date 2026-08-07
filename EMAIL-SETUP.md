@@ -35,7 +35,8 @@ SMTP_PASS=xsmtpsib-…               # Brevo SMTP key
 MAIL_FROM=info@tier2rising.com
 MAIL_FROM_NAME=Tier-2 Rising Startup Summit
 MAIL_REPLY_TO=info@tier2rising.com
-MAIL_ORGANISER=info@tier2rising.com   # comma-separated for more than one inbox
+MAIL_ORGANISER=info@tier2rising.com               # comma-separated for more than one inbox
+MAIL_PARTNER_ORGANISER=tier2rising@nammaoffice.com # partner enquiries; omit = same as above
 
 NEXT_PUBLIC_SITE_URL=https://tier2rising.com   # link target inside the emails
 ```
