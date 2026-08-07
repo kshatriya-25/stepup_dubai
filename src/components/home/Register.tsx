@@ -211,8 +211,16 @@ export function Register() {
                   {cityError && <span className="text-xs font-medium text-accent">Please pick your city.</span>}
                 </Field>
 
+                {/* Opt-in, pre-ticked and optional: it was `required`, so anyone who
+                    missed it got a browser validation stop with no visible error on the
+                    submit button. It is a preference, not a gate. */}
                 <label className="mt-1 flex items-start gap-3 text-sm text-muted">
-                  <input type="checkbox" required className="mt-0.5 h-4 w-4 shrink-0 accent-accent" />
+                  <input
+                    type="checkbox"
+                    name="updates"
+                    defaultChecked
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-accent"
+                  />
                   <span>
                     Keep me posted about tickets, the agenda and speaker announcements for the Tier-2 Rising Startup
                     Summit.
@@ -224,7 +232,7 @@ export function Register() {
                   disabled={status === 'sending'}
                   className="mt-2 bg-accent py-4 font-sans text-btn font-bold uppercase text-accent-ink transition-colors hover:bg-base hover:text-surface disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {status === 'sending' ? 'Sending…' : 'Register'}
+                  {status === 'sending' ? 'Registering…' : 'Register'}
                 </button>
 
                 {status === 'error' && (
