@@ -46,17 +46,22 @@ export function SiteNav() {
             this path means giving it a NEW name. (The header has since been relaxed to
             a day + stale-while-revalidate; see deploy/.)
           */}
-          <span className="hidden items-center gap-2.5 border-l border-surface/25 pl-3 lg:flex">
-            <span className="whitespace-nowrap text-[10px] font-semibold uppercase leading-tight tracking-[0.12em] text-surface/60">
-              Presented
-              <br />
-              by
-            </span>
-            {/* Wordmark stacked over their strapline. The tagline is tracked out to
-                sit flush with the logo's width rather than floating short under it,
-                and kept dimmer than "Presented by" so the eye still reads the logo
-                first. */}
+          <span className="hidden items-center border-l border-surface/25 pl-3 lg:flex">
+            {/* A three-line lockup, centred on the wordmark:
+                  1  PRESENTED BY                 white @ 45%
+                  2  [Namma Office wordmark]
+                  3  YOUR CO-WORKING DESTINATION  white @ 60%
+                The strapline is the brighter of the two labels on purpose — it is
+                Namma Office's own line, while "Presented by" is only connective tissue.
+                Its tracking is tuned per breakpoint so its width lands flush with the
+                logo rather than overhanging it. */}
             <span className="flex flex-col items-center gap-[3px]">
+              <span
+                data-presented
+                className="whitespace-nowrap text-[7px] font-semibold uppercase leading-none tracking-[0.2em] text-surface/45 xl:text-[8px]"
+              >
+                Presented By
+              </span>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/logos/nammaoffice-v3.png"
@@ -67,7 +72,7 @@ export function SiteNav() {
               />
               <span
                 data-tagline
-                className="whitespace-nowrap text-[7px] font-semibold uppercase leading-none tracking-[0.085em] text-surface/45 xl:text-[8px] xl:tracking-[0.1em]"
+                className="whitespace-nowrap text-[7px] font-semibold uppercase leading-none tracking-[0.085em] text-surface/60 xl:text-[8px] xl:tracking-[0.1em]"
               >
                 {site.presenterTagline}
               </span>
