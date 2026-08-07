@@ -19,7 +19,10 @@ export const site = {
   city: 'Erode, Tamil Nadu',
   entry: 'Ticketed · details announced soon',
   register: '#register',
-  contactEmail: 'hello@tier2rising.in',
+  // Public contact details shown on the site. Separate from the transactional sender
+  // (MAIL_FROM / MAIL_REPLY_TO in .env) that the registration emails go out as.
+  contactEmail: 'tier2rising@nammaoffice.com',
+  contactPhone: '+91 90921 09213',
 }
 
 // The Apps Script /exec URL is no longer read here — the browser posts to

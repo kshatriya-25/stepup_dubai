@@ -8,8 +8,21 @@ export function SiteFooter() {
         <Container wide className="grid gap-12 py-14 md:grid-cols-[1.6fr_1fr_1fr] md:gap-8 md:py-16 lg:gap-12">
           {/* Brand */}
           <div className="flex flex-col gap-5">
+            {/*
+              Constrain the WIDTH, not the height. This is a `flex flex-col` column, so
+              the cross axis is horizontal and the default `align-items: stretch` pulls a
+              `w-auto` image out to the full column width — which is what was skewing the
+              logo. An explicit width resists that, and `h-auto` keeps the native 623×401
+              ratio. The rendered sizes are 150×97 and 200×129.
+            */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/logo.png" alt="Tier-2 Rising Startup Summit" className="h-16 w-auto md:h-20" />
+            <img
+              src="/brand/logo.png"
+              alt="Tier-2 Rising Startup Summit"
+              width={623}
+              height={401}
+              className="h-auto w-[150px] max-w-full md:w-[200px]"
+            />
             <p className="max-w-sm text-sm leading-relaxed text-surface/70">
               A flagship event under the Tier-2 Rising campaign by NammaOffice — building a funding-ready startup
               ecosystem beyond the metros.
@@ -42,6 +55,13 @@ export function SiteFooter() {
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">Connect</p>
             <a href={`mailto:${site.contactEmail}`} className="w-fit text-sm text-surface/70 transition-colors hover:text-accent">
               {site.contactEmail}
+            </a>
+            {/* tel: needs the digits unspaced to dial reliably; the label keeps the spacing. */}
+            <a
+              href={`tel:${site.contactPhone.replace(/[^\d+]/g, '')}`}
+              className="w-fit text-sm text-surface/70 transition-colors hover:text-accent"
+            >
+              {site.contactPhone}
             </a>
             <div className="mt-1 flex flex-col gap-2.5 text-sm">
               {socials.map((s) => (

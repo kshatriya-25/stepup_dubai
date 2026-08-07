@@ -3,7 +3,7 @@
 export const story = {
   title: 'Why We Built the Room',
   body:
-    'There’s a founder in Erode as good as anyone in Bangalore — working just as hard, with an idea just as good. What she doesn’t have is easy access to a room full of investors, the thing a metro founder barely thinks about. The talent was never the problem. The access was. We’re closing that gap over a single weekend.',
+    'There are founders in Tier 2 cities as good as anyone in Chennai or Bangalore — working just as hard, with an idea just as good. What they don’t have is easy access to a room full of investors, the thing a metro founder barely thinks about. The talent was never the problem. The access was. We’re closing that gap over a single weekend.',
 }
 
 export const scores = [
