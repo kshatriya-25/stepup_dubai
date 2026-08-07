@@ -6,6 +6,8 @@ export const site = {
   fullName: 'Tier-2 Rising Startup Summit',
   season: 'In association with Startup Singam',
   initiativeBy: 'NammaOffice Presents',
+  // Namma Office's own strapline, shown under their wordmark in the header.
+  presenterTagline: 'Your Co-Working Destination',
   theme: 'When investors, government grants and bank funding come to Tier-2 — not the other way around',
   tagline: 'Where Tier-2 startups become funding-ready',
   taglineLong:

@@ -52,14 +52,26 @@ export function SiteNav() {
               <br />
               by
             </span>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/logos/nammaoffice-v3.png"
-              alt="Namma Office"
-              width={900}
-              height={154}
-              className="h-6 w-auto object-contain xl:h-7"
-            />
+            {/* Wordmark stacked over their strapline. The tagline is tracked out to
+                sit flush with the logo's width rather than floating short under it,
+                and kept dimmer than "Presented by" so the eye still reads the logo
+                first. */}
+            <span className="flex flex-col items-center gap-[3px]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/logos/nammaoffice-v3.png"
+                alt="Namma Office"
+                width={900}
+                height={154}
+                className="h-6 w-auto object-contain xl:h-7"
+              />
+              <span
+                data-tagline
+                className="whitespace-nowrap text-[7px] font-semibold uppercase leading-none tracking-[0.085em] text-surface/45 xl:text-[8px] xl:tracking-[0.1em]"
+              >
+                {site.presenterTagline}
+              </span>
+            </span>
           </span>
         </div>
 
