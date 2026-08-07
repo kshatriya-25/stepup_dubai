@@ -37,8 +37,14 @@ export function SiteNav() {
             normal laptop and only appeared on very wide monitors. Now matches the
             venue chip's `lg` (1200px).
 
-            The white box is gone too: /logos/nammaoffice.png now carries an alpha
-            channel, so the wordmark sits straight on the navy.
+            The white box is gone too: the logo now carries an alpha channel, so the
+            wordmark sits straight on the navy.
+
+            The `-v2` in the filename is a cache-bust, not decoration. Apache serves
+            /logos/ with `Cache-Control: immutable`, so browsers that already fetched
+            the old opaque PNG would never re-request the same URL — they kept showing
+            the white box for a year. Replacing an image under this path means giving
+            it a NEW name. (The header has since been relaxed; see deploy/.)
           */}
           <span className="hidden items-center gap-2.5 border-l border-surface/25 pl-3 lg:flex">
             <span className="whitespace-nowrap text-[10px] font-semibold uppercase leading-tight tracking-[0.12em] text-surface/60">
@@ -48,7 +54,7 @@ export function SiteNav() {
             </span>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/logos/nammaoffice.png"
+              src="/logos/nammaoffice-v2.png"
               alt="Namma Office"
               width={760}
               height={160}

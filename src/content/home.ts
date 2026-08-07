@@ -73,7 +73,7 @@ export const speakers: Speaker[] = [
 // Real partner logos + their roles.
 export type Partner = { label: string; logo: string; name: string }
 export const partners: Partner[] = [
-  { label: 'Event Founder & Principal Organiser', logo: '/logos/nammaoffice.png', name: 'NammaOffice' },
+  { label: 'Event Founder & Principal Organiser', logo: '/logos/nammaoffice-v2.png', name: 'NammaOffice' },
   { label: 'Event Co-Founder & Strategic Partner', logo: '/logos/3ios.png', name: '3iOS' },
   { label: 'Pitch & Media Partner', logo: '/logos/startupsingam.png', name: 'Startup Singam' },
   { label: 'Technology Partner', logo: '/logos/tealorca.png', name: 'TealOrca' },

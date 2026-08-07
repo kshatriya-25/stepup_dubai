@@ -323,6 +323,20 @@ allowlist (step 1a). `pm2 logs tier2rising` shows
 **A change didn't take** — you rebuilt but didn't `pm2 restart`. The running process
 still holds the old build.
 
+**You replaced an image but the old one still shows** — a browser that already fetched
+it is holding a cached copy. Check the server actually has the new bytes first:
+
+```bash
+curl -sI https://tier2rising.com/logos/<file>.png | grep -i 'content-length\|cache-control'
+```
+
+If the length matches the new file, the server is fine and it is purely client-side
+caching. `/logos/`, `/posters/`, `/happens/` and `/brand/` now cache for a day with a
+week of stale-while-revalidate, so a swap propagates on its own — but anything fetched
+while the old `immutable, max-age=31536000` header was live is pinned for a **year**.
+The only reliable fix for those clients is a **new filename** (see
+`/logos/nammaoffice-v2.png`). `/video/` is still immutable by design.
+
 **`EADDRINUSE`** — something already holds the port. `ss -tlnp | grep 3211`, then pick
 a different `Define PORT` and match it in the `pm2 start` command.
 
