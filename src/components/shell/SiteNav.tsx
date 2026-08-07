@@ -31,16 +31,29 @@ export function SiteNav() {
               <MapPin size={12} className="text-accent" /> {site.venue}
             </span>
           </a>
-          <span className="hidden items-center gap-2 border-l border-surface/25 pl-3 xl:flex">
-            <span className="text-[10px] font-semibold uppercase leading-tight tracking-[0.12em] text-surface/60">
+          {/*
+            Was `xl:flex`, which in this project means 1600px (tailwind.config.ts
+            overrides the default breakpoints) — so the credit was invisible on every
+            normal laptop and only appeared on very wide monitors. Now matches the
+            venue chip's `lg` (1200px).
+
+            The white box is gone too: /logos/nammaoffice.png now carries an alpha
+            channel, so the wordmark sits straight on the navy.
+          */}
+          <span className="hidden items-center gap-2.5 border-l border-surface/25 pl-3 lg:flex">
+            <span className="whitespace-nowrap text-[10px] font-semibold uppercase leading-tight tracking-[0.12em] text-surface/60">
               Presented
               <br />
               by
             </span>
-            <span className="flex items-center rounded-sm bg-white px-2 py-1">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logos/nammaoffice.png" alt="Namma Office" className="h-4 w-auto object-contain" />
-            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logos/nammaoffice.png"
+              alt="Namma Office"
+              width={760}
+              height={160}
+              className="h-6 w-auto object-contain xl:h-7"
+            />
           </span>
         </div>
 

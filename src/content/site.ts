@@ -41,6 +41,9 @@ export const registrationRoles = [
   'Other',
 ] as const
 
+// "Register as" — who the attendee is coming as. Sits after Sector in the form.
+export const registerAsOptions = ['Company', 'Government', 'Public', 'Student'] as const
+
 export const registrationSectors = [
   'Agriculture',
   'Automobile',

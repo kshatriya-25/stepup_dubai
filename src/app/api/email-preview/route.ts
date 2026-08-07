@@ -22,6 +22,7 @@ const SAMPLE: Registration = {
   email: 'priya@example.com',
   phone: '+91 98765 43210',
   sector: 'Textiles and garments',
+  registerAs: 'Company',
   city: 'Erode',
 }
 
@@ -36,6 +37,7 @@ export async function GET(req: Request) {
     email: q.get('email') || SAMPLE.email,
     phone: q.get('phone') || SAMPLE.phone,
     sector: q.get('sector') || SAMPLE.sector,
+    registerAs: q.get('registerAs') || SAMPLE.registerAs,
     city: q.get('city') || SAMPLE.city,
   }
 

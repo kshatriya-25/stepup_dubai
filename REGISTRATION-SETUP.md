@@ -69,7 +69,16 @@ the response instead of guessing). Server-side detail is in `pm2 logs tier2risin
   **Data → Protect sheets and ranges**.
 
 ## Fields captured
-`Timestamp · Name · Sector · Email · Phone · City`
+`Timestamp · Name · Sector · Email · Phone · City · Register As`
+
+> **`Register As` was added later**, which is why it sits last in the sheet even though
+> the form asks for it right after Sector. Columns are written positionally, so a new
+> one must always go on the **end** of `COLUMNS` — inserting it in the middle would
+> shift every existing row out of step with its headers.
+>
+> To pick it up on an existing sheet: paste the current `registration/Code.gs`, run
+> **`setupHeaders`** once (it only rewrites row 1, so existing data is untouched), then
+> **Deploy → Manage deployments → New version**. The `/exec` URL stays the same.
 
 > The columns changed. Replace the old script with the current `registration/Code.gs`,
 > then reset the sheet to the new columns: clear the `Registrations` tab (delete the old
@@ -80,6 +89,17 @@ To add/remove fields later, update all four places: the form in
 `src/components/home/Register.tsx`, the validation in `src/app/api/register/route.ts`,
 the `Registration` type and templates in `src/lib/email/templates.ts`, and the
 `COLUMNS` list in `registration/Code.gs`.
+
+## Why the script doesn't use `appendRow`
+
+`appendRow()` parses each value the way typing into the grid does, so anything starting
+with `=`, `+`, `-` or `@` is read as a formula. A phone number like `+91 98765 43210`
+lands as **`#ERROR!` Formula parse error**.
+
+`writeRow_()` sets the cell number format to `@` (plain text) *before* writing, so
+values are stored verbatim. Don't revert it to `appendRow` for tidiness — the phone
+column will break again, and so would any name or sector beginning with those
+characters.
 
 ## If you change the script later
 Re-deploy: **Deploy → Manage deployments → (edit) → Version: New version → Deploy**.

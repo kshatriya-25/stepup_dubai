@@ -15,14 +15,20 @@ export function SiteFooter() {
               logo. An explicit width resists that, and `h-auto` keeps the native 623×401
               ratio. The rendered sizes are 150×97 and 200×129.
             */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/brand/logo.png"
-              alt="Tier-2 Rising Startup Summit"
-              width={623}
-              height={401}
-              className="h-auto w-[150px] max-w-full md:w-[200px]"
-            />
+            {/* Centred over the text block, not the whole grid column — the column is
+                wider than the copy, so `self-center` alone would push the logo well
+                right of the paragraph it sits above. The wrapper matches the
+                paragraph's max-w-sm and centres the logo inside that. */}
+            <div className="flex w-full max-w-sm justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/brand/logo.png"
+                alt="Tier-2 Rising Startup Summit"
+                width={623}
+                height={401}
+                className="h-auto w-[150px] max-w-full md:w-[200px]"
+              />
+            </div>
             <p className="max-w-sm text-sm leading-relaxed text-surface/70">
               A flagship event under the Tier-2 Rising campaign by NammaOffice — building a funding-ready startup
               ecosystem beyond the metros.

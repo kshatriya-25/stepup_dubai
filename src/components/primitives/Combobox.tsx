@@ -24,6 +24,7 @@ export function Combobox({
   placeholder = 'Select',
   searchPlaceholder = 'Type to search…',
   invalid,
+  searchable,
 }: {
   value: string
   onChange: (v: string) => void
@@ -32,7 +33,10 @@ export function Combobox({
   placeholder?: string
   searchPlaceholder?: string
   invalid?: boolean
+  /** Defaults to on only past 8 options — a search box over four choices is noise. */
+  searchable?: boolean
 }) {
+  const canSearch = searchable ?? options.length > 8
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
@@ -75,8 +79,8 @@ export function Combobox({
   const measure = useCallback(() => {
     const el = triggerRef.current
     if (!el) return
-    setAnchor(anchorFor(el))
-  }, [])
+    setAnchor(anchorFor(el, canSearch ? 48 : 0))
+  }, [canSearch])
 
   useLayoutEffect(() => {
     if (!open || isMobile) return
@@ -103,11 +107,13 @@ export function Combobox({
     return () => document.removeEventListener('mousedown', onDoc)
   }, [open, isMobile])
 
+  // With a search box, focus it. Without one there is nothing to type into, so focus
+  // stays on the trigger — which carries the same key handler.
   useEffect(() => {
-    if (!open) return
+    if (!open || !canSearch) return
     const t = setTimeout(() => inputRef.current?.focus(), 60)
     return () => clearTimeout(t)
-  }, [open])
+  }, [open, canSearch])
 
   // Mobile scroll lock. Plain `overflow: hidden` on the body loses the scroll position
   // on iOS, so the page jumps to the top behind the sheet — which reads as the form
@@ -163,7 +169,7 @@ export function Combobox({
     }
   }
 
-  const searchBox = (
+  const searchBox = !canSearch ? null : (
     <div className="flex items-center gap-2 border-b border-ink/10 px-3">
       <Search size={16} className="shrink-0 text-muted" />
       <input
@@ -274,6 +280,17 @@ export function Combobox({
           if (!open) measure()
           setOpen((o) => !o)
         }}
+        onKeyDown={(e) => {
+          // Open on Down/Enter/Space when closed; otherwise hand off to the shared
+          // handler. Only reached when there is no search box holding focus.
+          if (!open && (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault()
+            measure()
+            setOpen(true)
+            return
+          }
+          if (open) onKey(e)
+        }}
         className={cn(
           'flex w-full items-center justify-between border bg-foam px-4 py-3 text-left text-sm outline-none transition-colors focus:bg-surface',
           invalid ? 'border-accent' : 'border-ink/15 focus:border-accent',
@@ -296,7 +313,7 @@ export function Combobox({
 type Anchor = { left: number; width: number; top: number; bottom: number; maxHeight: number; flipUp: boolean }
 
 /** Position the panel below the trigger, or above it when there isn't room. */
-function anchorFor(el: HTMLElement): Anchor {
+function anchorFor(el: HTMLElement, chromeHeight: number): Anchor {
   const r = el.getBoundingClientRect()
   const GAP = 4
   const MAX = 300
@@ -309,8 +326,8 @@ function anchorFor(el: HTMLElement): Anchor {
     width: r.width,
     top: r.bottom + GAP,
     bottom: window.innerHeight - r.top + GAP,
-    // Subtract the search box so the list itself never pushes the panel off-screen.
-    maxHeight: Math.max(120, Math.min(MAX, space) - 48),
+    // Subtract the search box, when there is one, so the list never overflows the panel.
+    maxHeight: Math.max(120, Math.min(MAX, space) - chromeHeight),
     flipUp,
   }
 }

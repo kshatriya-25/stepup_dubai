@@ -37,6 +37,8 @@ export type Registration = {
   email: string
   phone: string
   sector: string
+  /** Company | Government | Public | Student */
+  registerAs: string
   city: string
 }
 
@@ -300,6 +302,7 @@ ${detailRow('Name', r.name)}
 ${detailRow('Email', r.email)}
 ${detailRow('Phone', r.phone)}
 ${detailRow('Sector', r.sector)}
+${detailRow('Registered as', r.registerAs)}
 ${detailRow('City', r.city, { last: true })}
               </table>
               <p style="margin:18px 0 0 0;font-size:13px;line-height:1.6;color:${C.muted};">
@@ -327,11 +330,12 @@ ${detailRow('City', r.city, { last: true })}
     `Explore the summit: ${siteUrl}`,
     '',
     'WHAT YOU REGISTERED WITH',
-    `Name    ${r.name}`,
-    `Email   ${r.email}`,
-    `Phone   ${r.phone}`,
-    `Sector  ${r.sector}`,
-    `City    ${r.city}`,
+    `Name           ${r.name}`,
+    `Email          ${r.email}`,
+    `Phone          ${r.phone}`,
+    `Sector         ${r.sector}`,
+    `Registered as  ${r.registerAs}`,
+    `City           ${r.city}`,
     '',
     "Spotted a mistake? Just reply to this email and we'll fix it.",
     '',
@@ -387,6 +391,7 @@ ${detailRow('Name', r.name)}
 ${detailRow('Email', r.email, { href: `mailto:${r.email}` })}
 ${detailRow('Phone', r.phone, { href: `tel:${r.phone.replace(/[^\d+]/g, '')}` })}
 ${detailRow('Sector', r.sector)}
+${detailRow('Registered as', r.registerAs)}
 ${detailRow('City', r.city, { last: true })}
               </table>
             </td>
@@ -429,11 +434,12 @@ ${button('Reply to ' + firstName(r.name), `mailto:${r.email}?subject=${encodeURI
     r.name,
     `Submitted ${when}`,
     '',
-    `Name    ${r.name}`,
-    `Email   ${r.email}`,
-    `Phone   ${r.phone}`,
-    `Sector  ${r.sector}`,
-    `City    ${r.city}`,
+    `Name           ${r.name}`,
+    `Email          ${r.email}`,
+    `Phone          ${r.phone}`,
+    `Sector         ${r.sector}`,
+    `Registered as  ${r.registerAs}`,
+    `City           ${r.city}`,
     '',
     `A confirmation has already gone out to ${r.email}.`,
     'This entry is also appended to the registrations sheet.',

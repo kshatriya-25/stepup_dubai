@@ -60,7 +60,7 @@ export function Hero() {
 
           <motion.div variants={item} className="mt-7 sm:mt-8">
             <Button href={site.register} variant="solid" full className="py-4 sm:w-auto">
-              Register for Updates
+              Register
             </Button>
           </motion.div>
         </motion.div>

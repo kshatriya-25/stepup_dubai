@@ -6,7 +6,8 @@ import { Container } from '@/components/primitives/Container'
 import { Eyebrow } from '@/components/primitives/SectionHeading'
 import { Reveal } from '@/components/primitives/Reveal'
 import { Combobox } from '@/components/primitives/Combobox'
-import { site, registrationOpen, registrationSectors, tamilNaduCities } from '@/content/site'
+import { cn } from '@/lib/cn'
+import { site, registrationOpen, registrationSectors, registerAsOptions, tamilNaduCities } from '@/content/site'
 
 type Status = 'idle' | 'sending' | 'done' | 'error'
 
@@ -14,9 +15,15 @@ export function Register() {
   const [status, setStatus] = useState<Status>('idle')
   const [errorMsg, setErrorMsg] = useState('')
   const [sector, setSector] = useState('')
+  const [registerAs, setRegisterAs] = useState('')
   const [city, setCity] = useState('')
+  // Stored as the bare 10 digits. The +91 is a fixed prefix in the UI and is added
+  // back on submit, so there is exactly one format in the sheet and the emails.
+  const [phone, setPhone] = useState('')
   const [sectorError, setSectorError] = useState(false)
+  const [registerAsError, setRegisterAsError] = useState(false)
   const [cityError, setCityError] = useState(false)
+  const [phoneError, setPhoneError] = useState(false)
 
   // Any click on a link to #register (nav Register, mobile nav, "Attend") scrolls
   // there via the anchor — then we drop the cursor into the Name field. Using the
@@ -38,11 +45,19 @@ export function Register() {
     const form = e.currentTarget
     const fd = new FormData(form)
 
+    // The comboboxes are custom controls, so the browser's own required-field
+    // validation can't see them — check them here before we hit the network.
     const missingSector = !sector
+    const missingRegisterAs = !registerAs
     const missingCity = !city
+    // Indian mobiles are 10 digits starting 6–9. The range check is what catches a
+    // pasted leading 0 or 91, which would otherwise truncate to a wrong number.
+    const badPhone = !/^[6-9]\d{9}$/.test(phone)
     setSectorError(missingSector)
+    setRegisterAsError(missingRegisterAs)
     setCityError(missingCity)
-    if (missingSector || missingCity) return
+    setPhoneError(badPhone)
+    if (missingSector || missingRegisterAs || missingCity || badPhone) return
 
     setStatus('sending')
     setErrorMsg('')
@@ -67,7 +82,9 @@ export function Register() {
       setStatus('done')
       form.reset()
       setSector('')
+      setRegisterAs('')
       setCity('')
+      setPhone('')
     } catch {
       setErrorMsg('')
       setStatus('error')
@@ -166,14 +183,35 @@ export function Register() {
                     <input name="email" type="email" required placeholder="you@email.com" className={inputCls} />
                   </Field>
                   <Field label="Phone no">
-                    <input
-                      name="phone"
-                      type="tel"
-                      required
-                      inputMode="tel"
-                      placeholder="+91"
-                      className={inputCls}
-                    />
+                    {/* +91 is fixed chrome, not typed input — that is what makes the
+                        stored format single-valued. The visible box holds digits only
+                        and the hidden field carries the canonical string. */}
+                    <div
+                      className={cn(
+                        'flex items-center border bg-foam transition-colors focus-within:bg-surface',
+                        phoneError ? 'border-accent' : 'border-ink/15 focus-within:border-accent',
+                      )}
+                    >
+                      <span className="select-none border-r border-ink/10 px-3 py-3 text-sm text-muted">+91</span>
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        autoComplete="tel-national"
+                        maxLength={10}
+                        aria-label="Phone number, 10 digits"
+                        placeholder="9876543210"
+                        value={phone}
+                        onChange={(e) => {
+                          setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))
+                          setPhoneError(false)
+                        }}
+                        className="w-full bg-transparent px-3 py-3 text-sm text-ink outline-none placeholder:text-muted/70"
+                      />
+                    </div>
+                    <input type="hidden" name="phone" value={phone ? `+91 ${phone.slice(0, 5)} ${phone.slice(5)}` : ''} />
+                    {phoneError && (
+                      <span className="text-xs font-medium text-accent">Enter a 10-digit mobile number.</span>
+                    )}
                   </Field>
                 </div>
 
@@ -192,6 +230,24 @@ export function Register() {
                   />
                   <input type="hidden" name="sector" value={sector} />
                   {sectorError && <span className="text-xs font-medium text-accent">Please pick a sector.</span>}
+                </Field>
+
+                <Field label="Register as">
+                  <Combobox
+                    label="Register as"
+                    placeholder="Please select"
+                    value={registerAs}
+                    onChange={(v) => {
+                      setRegisterAs(v)
+                      setRegisterAsError(false)
+                    }}
+                    options={registerAsOptions}
+                    invalid={registerAsError}
+                  />
+                  <input type="hidden" name="registerAs" value={registerAs} />
+                  {registerAsError && (
+                    <span className="text-xs font-medium text-accent">Please pick how you&apos;re registering.</span>
+                  )}
                 </Field>
 
                 <Field label="City (Tamil Nadu)">

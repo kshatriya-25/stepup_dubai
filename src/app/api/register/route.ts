@@ -53,6 +53,25 @@ function clean(value: unknown, max = 200): string {
   return typeof value === 'string' ? value.trim().slice(0, max) : ''
 }
 
+/**
+ * Force every phone number into one shape: `+91 98765 43210`.
+ *
+ * The form already constrains input, but this endpoint is public — a direct POST can
+ * send anything. Normalising here rather than trusting the client is what actually
+ * guarantees the sheet and the emails hold a single format.
+ *
+ * Tolerates the common variants on the way in (+91…, 0091…, 091…, spaced, hyphenated)
+ * and rejects anything that isn't an Indian 10-digit mobile.
+ */
+function normalisePhone(raw: string): string | null {
+  // Leading zeros are always trunk/international prefixes here — no Indian mobile
+  // starts with one — so stripping them collapses 0…, 00…, 0091… in one step.
+  let d = raw.replace(/\D/g, '').replace(/^0+/, '')
+  if (d.length === 12 && d.startsWith('91')) d = d.slice(2)
+  if (!/^[6-9]\d{9}$/.test(d)) return null
+  return `+91 ${d.slice(0, 5)} ${d.slice(5)}`
+}
+
 export async function POST(req: Request) {
   let raw: Record<string, unknown>
   try {
@@ -74,6 +93,7 @@ export async function POST(req: Request) {
     email: clean(raw.email, 160).toLowerCase(),
     phone: clean(raw.phone, 40),
     sector: clean(raw.sector, 80),
+    registerAs: clean(raw.registerAs, 40),
     city: clean(raw.city, 80),
   }
 
@@ -84,6 +104,16 @@ export async function POST(req: Request) {
   if (!EMAIL_RE.test(reg.email)) {
     return NextResponse.json({ ok: false, error: 'That email address looks wrong.' }, { status: 400 })
   }
+
+  // Rewrite the phone into the canonical shape before it is stored or emailed.
+  const phone = normalisePhone(reg.phone)
+  if (!phone) {
+    return NextResponse.json(
+      { ok: false, error: 'Enter a valid 10-digit Indian mobile number.' },
+      { status: 400 }
+    )
+  }
+  reg.phone = phone
 
   if (rateLimited(clientIp(req))) {
     return NextResponse.json(
