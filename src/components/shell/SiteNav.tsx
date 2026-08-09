@@ -26,7 +26,16 @@ export function SiteNav() {
         <div className="flex items-center gap-3">
           <a href="#top" className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/logo.png" alt="Tier-2 Rising Startup Summit" className="h-9 w-auto md:h-12" />
+            {/* `-v2` is a cache-bust: the previous file misspelt RISING as "RASTING",
+                and /brand/ was served `immutable`, so reusing the name would have left
+                the typo on screen for anyone who had already loaded the site. */}
+            <img
+              src="/brand/logo-v2.png"
+              alt="Tier-2 Rising Startup Summit"
+              width={600}
+              height={386}
+              className="h-9 w-auto md:h-12"
+            />
             <span className="hidden items-center gap-1 border-l border-surface/25 pl-3 text-[11px] uppercase text-surface/70 lg:flex">
               <MapPin size={12} className="text-accent" /> {site.venue}
             </span>

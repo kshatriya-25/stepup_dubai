@@ -39,10 +39,10 @@ export function SiteFooter() {
             <div className="flex w-full max-w-sm justify-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/brand/logo.png"
+                src="/brand/logo-v2.png"
                 alt="Tier-2 Rising Startup Summit"
-                width={623}
-                height={401}
+                width={600}
+                height={386}
                 className="h-auto w-[150px] max-w-full md:w-[200px]"
               />
             </div>
