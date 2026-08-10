@@ -14,6 +14,12 @@
  */
 
 import { site } from '@/content/site'
+import {
+  REGISTRANT_CONFIRMATION_HTML,
+  REGISTRANT_SUBJECT,
+  PARTNER_CONFIRMATION_HTML,
+  PARTNER_SUBJECT,
+} from './approved'
 
 const C = {
   navy: '#072B5F',
@@ -29,8 +35,6 @@ const C = {
 }
 
 const FONT = "'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,'Helvetica Neue',Arial,sans-serif"
-
-export const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://tier2rising.com'
 
 export type Registration = {
   name: string
@@ -55,6 +59,31 @@ function esc(value: string): string {
 /** "Ankit Rajput" -> "Ankit". Falls back to the whole string. */
 function firstName(name: string): string {
   return name.trim().split(/\s+/)[0] || name.trim()
+}
+
+/**
+ * Substitute {{TOKEN}} placeholders in the approved markup.
+ *
+ * Values are HTML-escaped by default because they are untrusted form input — a name
+ * containing `<` would otherwise break the layout or inject markup. Subject lines pass
+ * `escape: false`, since a mail header is not HTML and would show a literal `&#39;`.
+ *
+ * An unrecognised token resolves to '' and logs rather than throwing: a template typo
+ * should leave a gap in one email, not take down the endpoint that captures the lead.
+ */
+function fillTokens(
+  template: string,
+  values: Record<string, string>,
+  opts: { escape?: boolean } = {},
+): string {
+  const escape = opts.escape !== false
+  return template.replace(/\{\{([A-Z_]+)\}\}/g, (_match, key: string) => {
+    if (!(key in values)) {
+      console.warn(`[email] unknown template token {{${key}}} — rendered empty`)
+      return ''
+    }
+    return escape ? esc(values[key]) : values[key]
+  })
 }
 
 /** Submission time, always rendered in IST — the organiser reads these in Erode. */
@@ -168,22 +197,6 @@ function detailRow(label: string, value: string, opts: { last?: boolean; href?: 
                 </tr>`
 }
 
-/** A numbered "what happens next" step with an orange square numeral. */
-function step(n: number, title: string, copy: string): string {
-  return `
-                <tr>
-                  <td width="34" valign="top" style="padding:0 14px 18px 0;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                      <tr><td width="28" height="28" align="center" valign="middle" style="width:28px;height:28px;background-color:${C.orange};font-family:${FONT};font-size:13px;font-weight:700;color:${C.onOrange};">${n}</td></tr>
-                    </table>
-                  </td>
-                  <td valign="top" style="padding:0 0 18px 0;font-family:${FONT};">
-                    <div style="font-size:14px;font-weight:700;color:${C.ink};letter-spacing:0.01em;">${esc(title)}</div>
-                    <div style="font-size:14px;line-height:1.6;color:${C.muted};padding-top:3px;">${esc(copy)}</div>
-                  </td>
-                </tr>`
-}
-
 /** Bulletproof-ish CTA. Table-based so Outlook renders the fill, not just the text. */
 function button(label: string, href: string): string {
   return `
@@ -203,133 +216,34 @@ function button(label: string, href: string): string {
  * ------------------------------------------------------------------ */
 
 export function participantEmail(r: Registration): { subject: string; html: string; text: string } {
-  const subject = `You're on the list — ${site.fullName}, ${site.dates}`
-
-  const body = `
-          <!-- Hero -->
-          <tr>
-            <td style="background-color:${C.white};padding:44px 36px 8px 36px;font-family:${FONT};">
-              <div style="font-size:11px;font-weight:700;letter-spacing:0.16em;color:${C.orange};text-transform:uppercase;">Registration confirmed</div>
-              <h1 style="margin:14px 0 0 0;font-size:32px;line-height:1.1;font-weight:700;letter-spacing:-0.01em;color:${
-                C.navy
-              };text-transform:uppercase;">You&rsquo;re on the<br>list, ${esc(firstName(r.name))}.</h1>
-              <p style="margin:18px 0 0 0;font-size:16px;line-height:1.65;color:${C.muted};">
-                Your registration for the <strong style="color:${C.ink};">${esc(
-                  site.fullName
-                )}</strong> is in. The moment tickets open, you hear from us first &mdash; before it goes public.
-              </p>
-            </td>
-          </tr>
-
-          <!-- Event card -->
-          <tr>
-            <td style="background-color:${C.white};padding:28px 36px 0 36px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${
-                C.foam
-              };border-left:4px solid ${C.orange};">
-                <tr>
-                  <td style="padding:22px 24px;font-family:${FONT};">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-                      <tr>
-                        <td style="padding-bottom:18px;">
-                          <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;color:${
-                            C.muted
-                          };text-transform:uppercase;">When</div>
-                          <div style="font-size:17px;font-weight:700;color:${C.navy};padding-top:4px;">${esc(
-                            site.dates
-                          )}</div>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="padding-bottom:18px;">
-                          <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;color:${
-                            C.muted
-                          };text-transform:uppercase;">Where</div>
-                          <div style="font-size:17px;font-weight:700;color:${C.navy};padding-top:4px;">${esc(
-                            site.venue
-                          )}, ${esc(site.city)}</div>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;color:${
-                            C.muted
-                          };text-transform:uppercase;">Entry</div>
-                          <div style="font-size:15px;font-weight:600;color:${C.navy};padding-top:4px;">${esc(
-                            site.entry
-                          )}</div>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
-          <!-- What happens next -->
-          <tr>
-            <td style="background-color:${C.white};padding:36px 36px 0 36px;font-family:${FONT};">
-              <div style="font-size:11px;font-weight:700;letter-spacing:0.16em;color:${
-                C.navy
-              };text-transform:uppercase;padding-bottom:20px;">What happens next</div>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-${step(1, 'You get first access', 'When ticketing opens, your link arrives before the public announcement.')}
-${step(2, 'The programme lands here', 'Agenda, speakers and the Top 10 startup shortlist, straight to this inbox.')}
-${step(3, 'We see you in Erode', `${site.dates} at ${site.venue}. Block the dates now.`)}
-              </table>
-            </td>
-          </tr>
-
-          <!-- CTA -->
-          <tr>
-            <td style="background-color:${C.white};padding:14px 36px 36px 36px;">
-${button('Explore the summit', siteUrl)}
-            </td>
-          </tr>
-
-          <!-- Their details -->
-          <tr>
-            <td style="background-color:${C.white};padding:0 36px 40px 36px;font-family:${FONT};">
-              <div style="height:1px;line-height:1px;font-size:0;background-color:${
-                C.hairline
-              };margin-bottom:24px;">&nbsp;</div>
-              <div style="font-size:11px;font-weight:700;letter-spacing:0.16em;color:${
-                C.navy
-              };text-transform:uppercase;">What you registered with</div>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="padding-top:6px;">
-${detailRow('Name', r.name)}
-${detailRow('Email', r.email)}
-${detailRow('Phone', r.phone)}
-${detailRow('Sector', r.sector)}
-${detailRow('Registered as', r.registerAs)}
-${detailRow('City', r.city, { last: true })}
-              </table>
-              <p style="margin:18px 0 0 0;font-size:13px;line-height:1.6;color:${C.muted};">
-                Spotted a mistake? Just reply to this email and we&rsquo;ll fix it.
-              </p>
-            </td>
-          </tr>
-`
+  const tokens = {
+    FIRST_NAME: firstName(r.name),
+    NAME: r.name,
+    EMAIL: r.email,
+    PHONE: r.phone,
+    SECTOR: r.sector,
+    REGISTERED_AS: r.registerAs,
+    CITY: r.city,
+    EVENT_DATES: site.dates,
+    EVENT_LOCATION: `${site.venue}, ${site.city}`,
+  }
 
   const text = [
-    `YOU'RE ON THE LIST, ${firstName(r.name).toUpperCase()}.`,
+    `THANKS, ${firstName(r.name).toUpperCase()}. YOU'RE ON THE WAITLIST.`,
     '',
-    `Your registration for the ${site.fullName} is in. The moment tickets open,`,
-    `you hear from us first — before it goes public.`,
+    "Your details are in, and you're on the event waitlist. The summit is a paid",
+    "ticket event, and ticketing isn't live yet — early-bird registration and the",
+    'payment link are being set up now.',
     '',
-    `WHEN   ${site.dates}`,
-    `WHERE  ${site.venue}, ${site.city}`,
-    `ENTRY  ${site.entry}`,
+    "You'll be notified the moment the early-bird link opens. Waitlist entries get",
+    'first access, along with the pricing and the agenda.',
     '',
-    'WHAT HAPPENS NEXT',
-    '1. You get first access — your ticket link arrives before the public announcement.',
-    '2. The programme lands here — agenda, speakers and the Top 10 startup shortlist.',
-    `3. We see you in Erode — ${site.dates} at ${site.venue}.`,
+    site.dates,
+    `${site.venue}, ${site.city}`,
     '',
-    `Explore the summit: ${siteUrl}`,
+    'Explore the summit: https://tier2rising.com/',
     '',
-    'WHAT YOU REGISTERED WITH',
+    'YOUR DETAILS',
     `Name           ${r.name}`,
     `Email          ${r.email}`,
     `Phone          ${r.phone}`,
@@ -337,23 +251,19 @@ ${detailRow('City', r.city, { last: true })}
     `Registered as  ${r.registerAs}`,
     `City           ${r.city}`,
     '',
-    "Spotted a mistake? Just reply to this email and we'll fix it.",
+    'See you in Erode.',
+    'Team Tier-2 Rising · NammaOffice',
     '',
     '—',
-    `${site.fullName}`,
-    `${site.initiativeBy} · ${site.season}`,
-    `${site.venue}, ${site.city} · ${site.dates}`,
-    `${organiserContact}`,
+    'TIER-2 RISING STARTUP SUMMIT',
+    'NammaOffice Presents · In association with Startup Singam',
+    'info@tier2rising.com · +91 90921 09213',
   ].join('\n')
 
   return {
-    subject,
+    subject: fillTokens(REGISTRANT_SUBJECT, tokens, { escape: false }),
     text,
-    html: shell({
-      preheader: `Your place is registered — ${site.dates}, ${site.venue}, ${site.city.split(',')[0]}.`,
-      body,
-      footerNote: 'You received this because you registered for ticket updates on our website.',
-    }),
+    html: fillTokens(REGISTRANT_CONFIRMATION_HTML, tokens),
   }
 }
 
@@ -479,145 +389,44 @@ export function partnerEnquiryEmail(p: PartnerEnquiry): {
   html: string
   text: string
 } {
-  const subject = `We've got your partnership enquiry — ${site.fullName}`
-
-  const body = `
-          <!-- Hero -->
-          <tr>
-            <td style="background-color:${C.white};padding:44px 36px 8px 36px;font-family:${FONT};">
-              <div style="font-size:11px;font-weight:700;letter-spacing:0.16em;color:${C.orange};text-transform:uppercase;">Partnership enquiry received</div>
-              <h1 style="margin:14px 0 0 0;font-size:32px;line-height:1.1;font-weight:700;letter-spacing:-0.01em;color:${
-                C.navy
-              };text-transform:uppercase;">Thank you,<br>${esc(firstName(p.name))}.</h1>
-              <p style="margin:18px 0 0 0;font-size:16px;line-height:1.65;color:${C.muted};">
-                We&rsquo;ve received your enquiry on behalf of <strong style="color:${C.ink};">${esc(
-                  p.businessName
-                )}</strong>. Someone from the ${esc(
-                  site.name
-                )} team will be in touch shortly to talk through sponsorship, speaking slots and desk options.
-              </p>
-            </td>
-          </tr>
-
-          <!-- Event card -->
-          <tr>
-            <td style="background-color:${C.white};padding:28px 36px 0 36px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${
-                C.foam
-              };border-left:4px solid ${C.orange};">
-                <tr>
-                  <td style="padding:22px 24px;font-family:${FONT};">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-                      <tr>
-                        <td style="padding-bottom:18px;">
-                          <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;color:${
-                            C.muted
-                          };text-transform:uppercase;">When</div>
-                          <div style="font-size:17px;font-weight:700;color:${C.navy};padding-top:4px;">${esc(
-                            site.dates
-                          )}</div>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;color:${
-                            C.muted
-                          };text-transform:uppercase;">Where</div>
-                          <div style="font-size:17px;font-weight:700;color:${C.navy};padding-top:4px;">${esc(
-                            site.venue
-                          )}, ${esc(site.city)}</div>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
-          <!-- What happens next -->
-          <tr>
-            <td style="background-color:${C.white};padding:36px 36px 0 36px;font-family:${FONT};">
-              <div style="font-size:11px;font-weight:700;letter-spacing:0.16em;color:${
-                C.navy
-              };text-transform:uppercase;padding-bottom:20px;">What happens next</div>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-${step(1, 'We read it properly', 'Your enquiry goes straight to the organising team, not a queue.')}
-${step(2, 'We call you', 'To understand what you want out of the summit before proposing anything.')}
-${step(3, 'You get the options', 'Sponsorship tiers, speaking slots and desk formats, with what each includes.')}
-              </table>
-            </td>
-          </tr>
-
-          <!-- CTA -->
-          <tr>
-            <td style="background-color:${C.white};padding:14px 36px 36px 36px;">
-${button('Explore the summit', siteUrl)}
-            </td>
-          </tr>
-
-          <!-- Their details -->
-          <tr>
-            <td style="background-color:${C.white};padding:0 36px 40px 36px;font-family:${FONT};">
-              <div style="height:1px;line-height:1px;font-size:0;background-color:${
-                C.hairline
-              };margin-bottom:24px;">&nbsp;</div>
-              <div style="font-size:11px;font-weight:700;letter-spacing:0.16em;color:${
-                C.navy
-              };text-transform:uppercase;">What you sent us</div>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="padding-top:6px;">
-${detailRow('Name', p.name)}
-${detailRow('Business', p.businessName)}
-${detailRow('Email', p.email)}
-${detailRow('Phone', p.phone, { last: true })}
-              </table>
-              <p style="margin:18px 0 0 0;font-size:13px;line-height:1.6;color:${C.muted};">
-                Spotted a mistake? Just reply to this email and we&rsquo;ll fix it.
-              </p>
-            </td>
-          </tr>
-`
+  const tokens = {
+    CONTACT_FIRST_NAME: firstName(p.name),
+    CONTACT_NAME: p.name,
+    COMPANY_NAME: p.businessName,
+    EMAIL: p.email,
+    PHONE: p.phone,
+    EVENT_DATES: site.dates,
+    EVENT_LOCATION: `${site.venue}, ${site.city}`,
+  }
 
   const text = [
-    `THANK YOU, ${firstName(p.name).toUpperCase()}.`,
+    `THANKS, ${firstName(p.name).toUpperCase()}. WE'VE GOT YOUR ENQUIRY.`,
     '',
-    `We've received your enquiry on behalf of ${p.businessName}. Someone from the`,
-    `${site.name} team will be in touch shortly to talk through sponsorship,`,
-    'speaking slots and desk options.',
+    `Your partnership enquiry for ${p.businessName} with the Tier-2 Rising organising`,
+    'committee. Someone from the team will get back to you shortly.',
     '',
-    `WHEN   ${site.dates}`,
-    `WHERE  ${site.venue}, ${site.city}`,
+    site.dates,
+    `${site.venue}, ${site.city}`,
     '',
-    'WHAT HAPPENS NEXT',
-    '1. We read it properly — your enquiry goes straight to the organising team.',
-    '2. We call you — to understand what you want out of the summit.',
-    '3. You get the options — sponsorship tiers, speaking slots and desk formats.',
+    'WHAT YOU SENT',
+    `Company  ${p.businessName}`,
+    `Contact  ${p.name}`,
+    `Email    ${p.email}`,
+    `Phone    ${p.phone}`,
     '',
-    `Explore the summit: ${siteUrl}`,
-    '',
-    'WHAT YOU SENT US',
-    `Name      ${p.name}`,
-    `Business  ${p.businessName}`,
-    `Email     ${p.email}`,
-    `Phone     ${p.phone}`,
-    '',
-    "Spotted a mistake? Just reply to this email and we'll fix it.",
+    'Thanks for looking at Erode.',
+    'Team Tier-2 Rising · NammaOffice',
     '',
     '—',
-    `${site.fullName}`,
-    `${site.initiativeBy} · ${site.season}`,
-    `${site.venue}, ${site.city} · ${site.dates}`,
-    `${organiserContact}`,
+    'TIER-2 RISING STARTUP SUMMIT',
+    'NammaOffice Presents · In association with Startup Singam',
+    'info@tier2rising.com · +91 90921 09213',
   ].join('\n')
 
   return {
-    subject,
+    subject: fillTokens(PARTNER_SUBJECT, tokens, { escape: false }),
     text,
-    html: shell({
-      preheader: `We'll be in touch about partnering with the ${site.fullName}.`,
-      body,
-      footerNote: 'You received this because you enquired about partnering with us on our website.',
-    }),
+    html: fillTokens(PARTNER_CONFIRMATION_HTML, tokens),
   }
 }
 
