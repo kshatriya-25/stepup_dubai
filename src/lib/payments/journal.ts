@@ -129,12 +129,89 @@ function load(): Map<string, PaymentRecord> {
   return map
 }
 
+/**
+ * Set the moment a journal write fails — almost always a permissions or disk problem
+ * (PAYMENT_JOURNAL_PATH pointing at a directory the pm2 user cannot write).
+ *
+ * When true, durability is gone: the in-memory index still enforces exactly-once for
+ * the life of this process, but a restart would forget everything. New orders are
+ * refused while this is set (see /api/payment/order) — taking money we cannot reliably
+ * track is the one thing worse than briefly not taking money at all.
+ */
+let writeFailed = false
+let lastWriteError = ''
+
+export function journalHealth(): { healthy: boolean; error?: string; path: string } {
+  return { healthy: !writeFailed, error: lastWriteError || undefined, path: JOURNAL_PATH }
+}
+
+/**
+ * Prove the journal is writable BEFORE an order is created.
+ *
+ * Without this the first request after a permissions break still succeeds: we only
+ * learn the disk is bad by writing to it, which happens after the Razorpay order
+ * already exists. Appending nothing creates the file if absent and raises EACCES if
+ * the directory is not writable, so the failure is caught while it is still free —
+ * no order, no customer, no money.
+ */
+export function ensureWritable(): boolean {
+  try {
+    const dir = dirname(JOURNAL_PATH)
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+    appendFileSync(JOURNAL_PATH, '', 'utf8')
+    if (writeFailed) {
+      console.warn('[payments] journal is writable again')
+      writeFailed = false
+      lastWriteError = ''
+    }
+    return true
+  } catch (err) {
+    lastWriteError = err instanceof Error ? err.message : String(err)
+    if (!writeFailed) {
+      console.error(
+        `[payments] CRITICAL: payment journal is not writable at ${JOURNAL_PATH} — ` +
+          `${lastWriteError}. New orders will be refused. Check that the pm2 user owns ` +
+          `the directory and that PAYMENT_JOURNAL_PATH is an ABSOLUTE path.`,
+      )
+    }
+    writeFailed = true
+    return false
+  }
+}
+
+/**
+ * Append one record.
+ *
+ * Never throws. It is called from inside settlement, after money has been captured —
+ * throwing there would turn a disk problem into a 500 in front of a customer who has
+ * already been charged, which is exactly the failure this whole subsystem exists to
+ * avoid. The in-memory index is updated by the caller either way, so fulfilment
+ * continues correctly for this process; only durability across a restart is lost.
+ */
 function persist(rec: PaymentRecord): void {
-  const dir = dirname(JOURNAL_PATH)
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
-  appendFileSync(JOURNAL_PATH, `${JSON.stringify(rec)}\n`, 'utf8')
-  lineCount++
-  if (lineCount > COMPACT_AT_LINES) compact()
+  try {
+    const dir = dirname(JOURNAL_PATH)
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+    appendFileSync(JOURNAL_PATH, `${JSON.stringify(rec)}\n`, 'utf8')
+    lineCount++
+    if (writeFailed) {
+      console.warn('[payments] journal is writable again')
+      writeFailed = false
+      lastWriteError = ''
+    }
+    if (lineCount > COMPACT_AT_LINES) compact()
+  } catch (err) {
+    lastWriteError = err instanceof Error ? err.message : String(err)
+    if (!writeFailed) {
+      console.error(
+        `[payments] CRITICAL: cannot write the payment journal at ${JOURNAL_PATH} — ` +
+          `${lastWriteError}. Payments already captured will still be fulfilled, but ` +
+          `nothing survives a restart and NEW orders will be refused until this is fixed. ` +
+          `Check that the pm2 user owns the directory and that PAYMENT_JOURNAL_PATH is absolute.`,
+      )
+    }
+    writeFailed = true
+  }
 }
 
 /**

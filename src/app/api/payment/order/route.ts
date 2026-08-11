@@ -19,6 +19,8 @@ import {
   createRecord,
   getRecord,
   findReusableByIdempotencyKey,
+  journalHealth,
+  ensureWritable,
   type Registration,
 } from '@/lib/payments/journal'
 
@@ -38,6 +40,27 @@ export async function POST(req: Request) {
   }
   if (!cfg.enabled) {
     return NextResponse.json({ ok: false, error: 'Payment is not enabled.' }, { status: 404 })
+  }
+
+  /*
+   * Refuse to take money we cannot record.
+   *
+   * If the journal is unwritable (wrong permissions on PAYMENT_JOURNAL_PATH, full
+   * disk), fulfilment would still work for the life of this process but nothing would
+   * survive a restart — so a crash at the wrong moment loses a paid registration with
+   * no local trace. Declining to start NEW payments is the safe side of that trade;
+   * money already captured is still settled normally by /verify and /webhook.
+   */
+  // Probe rather than trust the cached flag, so the very first request after a
+  // permissions break is caught too — before an order exists.
+  ensureWritable()
+  const journal = journalHealth()
+  if (!journal.healthy) {
+    console.error(`[payments] refusing new orders — journal unwritable at ${journal.path}`)
+    return NextResponse.json(
+      { ok: false, error: 'Payments are temporarily unavailable. Please try again shortly.' },
+      { status: 503 },
+    )
   }
 
   let raw: Record<string, unknown>
@@ -170,15 +193,24 @@ export async function POST(req: Request) {
   })
 }
 
-/** Health check — what is actually wired, without leaking the secret. */
+/**
+ * Health check — what is actually wired, without leaking the secret.
+ *
+ * Also the runtime source the registration form reconciles its displayed price
+ * against, because the homepage is statically prerendered and its copy of the fee was
+ * frozen at build time. See the comment in components/home/Register.tsx.
+ */
 export async function GET() {
   const cfg = paymentConfig()
+  ensureWritable()
+  const journal = journalHealth()
   return NextResponse.json({
-    ok: cfg.ok,
+    ok: cfg.ok && journal.healthy,
     service: 'tier2-rising-payments',
     enabled: cfg.ok && cfg.enabled,
     mode: isLiveMode() ? 'LIVE' : 'test',
     amount: cfg.ok && cfg.enabled ? formatInr(cfg.amountPaise) : null,
+    journal: { writable: journal.healthy, path: journal.path, error: journal.error },
     error: cfg.ok ? undefined : cfg.error,
   })
 }

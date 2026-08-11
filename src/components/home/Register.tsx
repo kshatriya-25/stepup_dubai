@@ -78,7 +78,38 @@ function loadCheckout(): Promise<void> {
 }
 
 export function Register({ payment }: { payment?: PaymentProps }) {
-  const pay = payment ?? { enabled: false, amountLabel: '' }
+  /*
+   * The price is confirmed against the server at runtime, not just taken from the prop.
+   *
+   * This page is statically prerendered, so the prop's value was frozen at BUILD time.
+   * Change REGISTRATION_FEE_INR and restart without rebuilding and the page would
+   * advertise the old price while /api/payment/order charges the new one — the exact
+   * drift the single-source rule exists to prevent, reintroduced by the build cache.
+   *
+   * The prop is still the initial render (correct at build, no layout shift, and it
+   * keeps working if the fetch fails); this reconciles it with what the server will
+   * actually charge.
+   */
+  const [pay, setPay] = useState<PaymentProps>(payment ?? { enabled: false, amountLabel: '' })
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/payment/order', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d: { enabled?: boolean; amount?: string | null } | null) => {
+        if (cancelled || !d) return
+        const live = { enabled: Boolean(d.enabled), amountLabel: d.amount || '' }
+        setPay((prev) =>
+          prev.enabled === live.enabled && prev.amountLabel === live.amountLabel ? prev : live,
+        )
+      })
+      // A failed check leaves the build-time value in place. It is the best information
+      // available, and the order endpoint remains authoritative for the actual charge.
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const [status, setStatus] = useState<Status>('idle')
   const [errorMsg, setErrorMsg] = useState('')
