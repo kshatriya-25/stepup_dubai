@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Menu, X, ChevronDown, MapPin } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { cn } from '@/lib/cn'
@@ -13,11 +13,111 @@ export function SiteNav() {
   const [open, setOpen] = useState(false)
   const { open: openParticipate } = useParticipate()
 
+  /*
+   * The About dropdown is STATE, not a CSS :hover trick.
+   *
+   * It used to be `group-hover`, which broke badly: this header hides itself on
+   * scroll-down (`-translate-y-full`), and the panel is ~340px tall against an 85px
+   * header — so the header would slide away while the panel, still hovered, stayed
+   * on screen as an orange slab floating over the page with nothing above it.
+   *
+   * Pure CSS has no way to know the header left. State does, so the menu can be
+   * closed by scrolling, by Escape, by clicking away, or by the header hiding — and
+   * the header is pinned open while a menu is showing, so it cannot orphan the panel.
+   */
+  const [openMenu, setOpenMenu] = useState<string | null>(null)
+  const closeTimer = useRef<number | null>(null)
+  const triggerRefs = useRef<Record<string, HTMLAnchorElement | null>>({})
+  /*
+   * Stops Escape from immediately undoing itself.
+   *
+   * Escape closes the panel and returns focus to the trigger — but the trigger opens
+   * the menu on focus (that is what makes it keyboard-reachable), so the close and
+   * the re-open cancelled out and the panel never went away. This suppresses the
+   * focus handler for exactly the one programmatic focus() that Escape performs.
+   */
+  const suppressFocusOpen = useRef(false)
+
+  const cancelClose = useCallback(() => {
+    if (closeTimer.current !== null) {
+      window.clearTimeout(closeTimer.current)
+      closeTimer.current = null
+    }
+  }, [])
+
+  const closeNow = useCallback(() => {
+    cancelClose()
+    setOpenMenu(null)
+  }, [cancelClose])
+
+  const openNow = useCallback(
+    (label: string) => {
+      cancelClose()
+      setOpenMenu(label)
+    },
+    [cancelClose],
+  )
+
+  /*
+   * A grace period on leave, not an instant close.
+   *
+   * The pointer travels diagonally from the trigger toward the items and clips the
+   * edge of the panel on the way. Closing on the first mouseleave makes the menu feel
+   * like it is running away; ~140ms is long enough to forgive the diagonal and short
+   * enough that a deliberate exit still feels immediate.
+   */
+  const closeSoon = useCallback(() => {
+    cancelClose()
+    closeTimer.current = window.setTimeout(() => setOpenMenu(null), 140)
+  }, [cancelClose])
+
+  useEffect(() => cancelClose, [cancelClose])
+
+  /*
+   * Escape and outside-click dismiss it. Scroll deliberately does NOT.
+   *
+   * Closing on scroll was the obvious first instinct, and it was wrong: the pointer
+   * is usually still resting on the trigger afterwards, and since it never left,
+   * no pointerenter fires — so the menu goes dead until you move the mouse away and
+   * back. Pinning the header while the menu is open (see the header className) makes
+   * the panel physically unable to detach, which solves the orphan properly without
+   * that dead-hover side effect.
+   */
+  useEffect(() => {
+    if (!openMenu) return
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      const trigger = triggerRefs.current[openMenu]
+      suppressFocusOpen.current = true
+      closeNow()
+      // Return focus to where it came from, or a keyboard user is dropped at the top
+      // of the document with no idea where they are.
+      trigger?.focus()
+      window.setTimeout(() => {
+        suppressFocusOpen.current = false
+      }, 0)
+    }
+    const onPointerDown = (e: PointerEvent) => {
+      if (!(e.target as HTMLElement | null)?.closest('[data-nav-item]')) closeNow()
+    }
+
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('pointerdown', onPointerDown)
+    }
+  }, [openMenu, closeNow])
+
   return (
     <header
       className={cn(
         'fixed inset-x-0 top-0 z-50 bg-base text-surface transition-transform duration-300 will-change-transform',
-        hidden && '-translate-y-full',
+        // `!openMenu` pins the header while a dropdown is showing. Belt and braces
+        // with the scroll handler above: even a scroll event that has not fired yet
+        // cannot slide the header out from under an open panel.
+        hidden && !openMenu && '-translate-y-full',
       )}
     >
       {/* Bar */}
@@ -90,33 +190,113 @@ export function SiteNav() {
         </div>
 
         {/* Desktop menu */}
-        <nav className="hidden items-center gap-8 md:flex">
-          {nav.map((item) => (
-            <div key={item.label} className="group relative">
-              <a
-                href={item.href}
-                className="flex items-center gap-1 text-base font-medium text-surface transition-colors hover:text-accent"
+        {/*
+          `h-full` on the nav and on each item is what makes the dropdown usable.
+          Without it the trigger is only as tall as its text, so `top-full` puts the
+          panel's top edge in the MIDDLE of the header bar — overlapping it, and
+          leaving a dead gap between the link and the panel that closes the menu the
+          moment the pointer travels down into it. Full-height triggers mean the panel
+          hangs from the header's bottom edge with no gap to cross.
+        */}
+        {/*
+          `h-full` on the nav and each item makes the trigger the full height of the
+          header, so the panel hangs from the header's bottom edge (`top-full`) with
+          no gap for the pointer to fall through on its way down.
+        */}
+        <nav className="hidden h-full items-center gap-8 md:flex">
+          {nav.map((item) => {
+            const isOpen = openMenu === item.label
+            return (
+              <div
+                key={item.label}
+                data-nav-item
+                className="relative flex h-full items-center"
+                onPointerEnter={() => item.children && openNow(item.label)}
+                onPointerLeave={() => item.children && closeSoon()}
               >
-                {item.label}
-                {item.children && <ChevronDown size={14} className="mt-0.5 opacity-70" />}
-              </a>
-              {item.children && (
-                <div className="invisible absolute left-0 top-full min-w-[220px] opacity-0 transition-opacity group-hover:visible group-hover:opacity-100">
-                  <div className="mt-0 bg-accent py-1">
-                    {item.children.map((c) => (
-                      <a
-                        key={c.label}
-                        href={c.href}
-                        className="block px-5 py-2.5 text-sm font-medium text-accent-ink hover:bg-base hover:text-surface"
-                      >
-                        {c.label}
-                      </a>
-                    ))}
+                <a
+                  ref={(el) => {
+                    triggerRefs.current[item.label] = el
+                  }}
+                  href={item.href}
+                  // Opening on focus is what makes the menu reachable by keyboard at
+                  // all; without it Tab lands on About and the children stay hidden.
+                  // The guard is for the focus() that Escape performs — see
+                  // suppressFocusOpen.
+                  onFocus={() => {
+                    if (item.children && !suppressFocusOpen.current) openNow(item.label)
+                  }}
+                  onKeyDown={(e) => {
+                    if (!item.children) return
+                    if (e.key === 'ArrowDown') {
+                      e.preventDefault()
+                      openNow(item.label)
+                      // Defer: the panel may still be mounting on this tick.
+                      window.setTimeout(() => {
+                        document
+                          .querySelector<HTMLAnchorElement>(`[data-submenu="${item.label}"] a`)
+                          ?.focus()
+                      }, 0)
+                    }
+                  }}
+                  // The parent still navigates on click (to #story) — the dropdown is
+                  // purely additive. Clicking must not be turned into a toggle.
+                  onClick={closeNow}
+                  aria-expanded={item.children ? isOpen : undefined}
+                  aria-haspopup={item.children ? 'true' : undefined}
+                  className={cn(
+                    'flex items-center gap-1 text-base font-medium transition-colors',
+                    isOpen ? 'text-accent' : 'text-surface hover:text-accent',
+                  )}
+                >
+                  {item.label}
+                  {item.children && (
+                    <ChevronDown
+                      size={14}
+                      className={cn(
+                        'mt-0.5 opacity-70 transition-transform duration-200',
+                        isOpen && 'rotate-180',
+                      )}
+                    />
+                  )}
+                </a>
+
+                {item.children && (
+                  <div
+                    data-submenu={item.label}
+                    // Kept mounted and hidden rather than unmounted, so the fade can
+                    // play on the way out instead of the panel vanishing mid-gesture.
+                    className={cn(
+                      'absolute left-0 top-full min-w-[240px] origin-top overflow-hidden',
+                      'border-t-2 border-accent bg-base shadow-2xl',
+                      'transition-all duration-150 ease-out',
+                      isOpen
+                        ? 'visible translate-y-0 opacity-100'
+                        : 'invisible -translate-y-1 opacity-0',
+                    )}
+                  >
+                    <div className="py-1.5">
+                      {item.children.map((c) => (
+                        <a
+                          key={c.label}
+                          href={c.href}
+                          onClick={closeNow}
+                          className={cn(
+                            'block whitespace-nowrap border-l-2 border-transparent px-5 py-2.5',
+                            'text-sm font-medium text-surface/85 transition-colors duration-100',
+                            'hover:border-accent hover:bg-base-2 hover:text-surface',
+                            'focus-visible:border-accent focus-visible:bg-base-2 focus-visible:text-surface focus-visible:outline-none',
+                          )}
+                        >
+                          {c.label}
+                        </a>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          ))}
+                )}
+              </div>
+            )
+          })}
         </nav>
 
         {/* Right CTAs */}

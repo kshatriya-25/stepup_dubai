@@ -1,5 +1,5 @@
 import { Linkedin, Instagram, Youtube } from 'lucide-react'
-import { site, socials, type Social } from '@/content/site'
+import { site, socials, exploreLinks, type Social } from '@/content/site'
 import { Container } from '@/components/primitives/Container'
 
 /**
@@ -58,18 +58,21 @@ export function SiteFooter() {
           {/* Explore */}
           <div className="flex flex-col gap-4">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">Explore</p>
+            {/* Shares one list with the About hover menu — see exploreLinks in
+                @/content/site. These hrefs used to be derived from the labels, which
+                produced #our-vision, #growth-zones, #key-initiatives and #who-attends:
+                four anchors that exist nowhere on the page, so four links that did
+                nothing when clicked. */}
             <nav className="flex flex-col gap-2.5 text-sm">
-              {['Our Vision', 'Growth Zones', 'Key Initiatives', 'Partners', 'Who Attends'].map(
-                (l) => (
-                  <a
-                    key={l}
-                    href={`#${l.toLowerCase().replace(/[^a-z]+/g, '-').replace(/(^-|-$)/g, '')}`}
-                    className="w-fit text-surface/70 transition-colors hover:text-accent"
-                  >
-                    {l}
-                  </a>
-                ),
-              )}
+              {exploreLinks.map((l) => (
+                <a
+                  key={l.label}
+                  href={l.href}
+                  className="w-fit text-surface/70 transition-colors hover:text-accent"
+                >
+                  {l.label}
+                </a>
+              ))}
             </nav>
           </div>
 

@@ -98,8 +98,35 @@ export const tamilNaduCities = [
 
 export type NavItem = { label: string; href: string; children?: { label: string; href: string }[] }
 
+/**
+ * The five "explore" destinations, defined once and used in two places: the About
+ * hover menu in the header, and the Explore column in the footer.
+ *
+ * Shared deliberately. The footer used to build its own hrefs by slugifying its
+ * labels — 'Our Vision' -> '#our-vision' — and four of the five anchors it produced
+ * did not exist on the page, so those links scrolled nowhere. Pointing both lists at
+ * one array is what stops the menu and the footer drifting apart again.
+ *
+ * Every href below must match a real `id` on a <section>. Current anchors:
+ *   #story  #zones  #whatgoeson  #partners  #register
+ */
+export const exploreLinks: { label: string; href: string }[] = [
+  { label: 'Our Vision', href: '#story' },
+  { label: 'Growth Zones', href: '#zones' },
+  { label: 'Key Initiatives', href: '#whatgoeson' },
+  { label: 'Partners', href: '#partners' },
+  // NOTE: there is no dedicated "Who Attends" section yet. Growth Zones is the closest
+  // real destination — it is the part of the page that names who is actually in the
+  // room (scheme officers, investors, bank credit heads). Repoint this the moment a
+  // proper section exists.
+  { label: 'Who Attends', href: '#zones' },
+]
+
 export const nav: NavItem[] = [
-  { label: 'About', href: '#story' },
+  // The parent still navigates to #story ("Why We Built the Room") on click. The
+  // children only appear on hover, so adding them must not — and does not — change
+  // what clicking About does.
+  { label: 'About', href: '#story', children: exploreLinks },
   { label: 'Programme', href: '#zones' },
   { label: 'Startups', href: '#whatgoeson' },
   { label: 'Partners', href: '#partners' },
