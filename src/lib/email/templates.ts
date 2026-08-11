@@ -20,6 +20,7 @@ import {
   PARTNER_CONFIRMATION_HTML,
   PARTNER_SUBJECT,
 } from './approved'
+import { PAID_CONFIRMATION_HTML, PAID_SUBJECT, TEST_MODE_BANNER } from './paid'
 
 const C = {
   navy: '#072B5F',
@@ -524,4 +525,272 @@ ${button('Reply to ' + firstName(p.name), `mailto:${p.email}?subject=${encodeURI
       footerNote: 'Automated notification from the Participate form on the summit website.',
     }),
   }
+}
+
+/* ------------------------------------------------------------------ *
+ * Paid registration — receipt + organiser notification + failure alert
+ *
+ * Used only when REGISTRATION_PAYMENT_ENABLED=1 and money was actually captured.
+ * With payment off, the approved waitlist templates above are still what goes out.
+ * ------------------------------------------------------------------ */
+
+export type PaymentInfo = {
+  paymentId: string
+  orderId: string
+  amountPaise: number
+  /** Human-readable amount, formatted once by the payments layer. */
+  amountLabel: string
+  paidAt: Date
+  method?: string
+  /** rzp_test_… keys. Stamps a warning banner so a test receipt can't pass as real. */
+  testMode: boolean
+}
+
+/**
+ * The receipt. Distinct from participantEmail() because that one tells the reader
+ * ticketing hasn't opened yet — see the comment at the top of ./paid.
+ */
+export function paidParticipantEmail(
+  r: Registration,
+  pay: PaymentInfo,
+): { subject: string; html: string; text: string } {
+  const tokens = {
+    FIRST_NAME: firstName(r.name),
+    NAME: r.name,
+    EMAIL: r.email,
+    PHONE: r.phone,
+    SECTOR: r.sector,
+    REGISTERED_AS: r.registerAs,
+    CITY: r.city,
+    EVENT_DATES: site.dates,
+    EVENT_LOCATION: `${site.venue}, ${site.city}`,
+    AMOUNT: pay.amountLabel,
+    PAID_ON: stamp(pay.paidAt),
+    PAYMENT_ID: pay.paymentId,
+    ORDER_ID: pay.orderId,
+    CONTACT_EMAIL: site.contactEmail,
+    CONTACT_PHONE: site.contactPhone,
+    CONTACT_PHONE_HREF: site.contactPhone.replace(/[^\d+]/g, ''),
+  }
+
+  // The banner is trusted markup, so it is substituted before fillTokens rather than
+  // through it — fillTokens escapes, which would print the tags as text.
+  const withBanner = PAID_CONFIRMATION_HTML.replace(
+    '{{TEST_BANNER}}',
+    pay.testMode ? TEST_MODE_BANNER : '',
+  )
+
+  const text = [
+    pay.testMode ? 'TEST MODE — no real money was charged. Not a valid receipt.\n' : '',
+    `THANKS, ${firstName(r.name).toUpperCase()}. YOUR SEAT IS CONFIRMED.`,
+    '',
+    `We've received your payment of ${pay.amountLabel} and your place at the summit is`,
+    "booked. Keep this email — it's your receipt.",
+    '',
+    'Two days in Erode where investors, government scheme officers and bank credit',
+    'heads come to Tier-2, instead of the other way round.',
+    '',
+    site.dates,
+    `${site.venue}, ${site.city}`,
+    '',
+    'PAYMENT RECEIPT',
+    `Amount paid    ${pay.amountLabel}`,
+    `Paid on        ${stamp(pay.paidAt)}`,
+    `Payment ID     ${pay.paymentId}`,
+    `Order ID       ${pay.orderId}`,
+    '',
+    'YOUR DETAILS',
+    `Name           ${r.name}`,
+    `Email          ${r.email}`,
+    `Phone          ${r.phone}`,
+    `Sector         ${r.sector}`,
+    `Registered as  ${r.registerAs}`,
+    `City           ${r.city}`,
+    '',
+    'See you in Erode.',
+    'Team Tier-2 Rising · NammaOffice',
+    '',
+    '—',
+    'TIER-2 RISING STARTUP SUMMIT',
+    'NammaOffice Presents · In association with Startup Singam',
+    `${site.contactEmail} · ${site.contactPhone}`,
+  ]
+    .filter((l) => l !== '')
+    .join('\n')
+
+  return {
+    subject: fillTokens(PAID_SUBJECT, tokens, { escape: false }),
+    text,
+    html: fillTokens(withBanner, tokens),
+  }
+}
+
+/** Organiser copy for a paid registration — the same layout plus the money. */
+export function paidOrganiserEmail(
+  r: Registration,
+  pay: PaymentInfo,
+  at = new Date(),
+): { subject: string; html: string; text: string } {
+  const subject = `Paid registration — ${r.name} · ${pay.amountLabel} · ${r.city}`
+  const when = stamp(at)
+
+  const body = `
+          <tr>
+            <td style="background-color:${C.white};padding:40px 36px 0 36px;font-family:${FONT};">
+              <div style="font-size:11px;font-weight:700;letter-spacing:0.16em;color:${C.orange};text-transform:uppercase;">Paid registration${
+                pay.testMode ? ' · test mode' : ''
+              }</div>
+              <h1 style="margin:12px 0 0 0;font-size:28px;line-height:1.15;font-weight:700;letter-spacing:-0.01em;color:${
+                C.navy
+              };">${esc(r.name)}</h1>
+              <div style="font-size:13px;color:${C.muted};padding-top:8px;">Paid ${esc(when)}</div>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background-color:${C.white};padding:26px 36px 0 36px;font-family:${FONT};">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid ${
+                C.hairline
+              };">
+${detailRow('Amount', pay.amountLabel)}
+${detailRow('Payment ID', pay.paymentId)}
+${detailRow('Order ID', pay.orderId)}
+${detailRow('Method', pay.method || '—')}
+${detailRow('Name', r.name)}
+${detailRow('Email', r.email, { href: `mailto:${r.email}` })}
+${detailRow('Phone', r.phone, { href: `tel:${r.phone.replace(/[^\d+]/g, '')}` })}
+${detailRow('Sector', r.sector)}
+${detailRow('Registered as', r.registerAs)}
+${detailRow('City', r.city, { last: true })}
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background-color:${C.white};padding:28px 36px 40px 36px;">
+${button('Reply to ' + firstName(r.name), `mailto:${r.email}?subject=${encodeURIComponent(
+    'Re: your ' + site.name + ' registration',
+  )}`)}
+              <p style="margin:22px 0 0 0;font-family:${FONT};font-size:13px;line-height:1.6;color:${C.muted};">
+                Payment captured and the receipt has gone to ${esc(r.email)}. This entry is also appended to the
+                registrations sheet.
+              </p>
+            </td>
+          </tr>
+`
+
+  const text = [
+    `PAID REGISTRATION${pay.testMode ? ' (TEST MODE)' : ''}`,
+    '',
+    r.name,
+    `Paid ${when}`,
+    '',
+    `Amount         ${pay.amountLabel}`,
+    `Payment ID     ${pay.paymentId}`,
+    `Order ID       ${pay.orderId}`,
+    `Method         ${pay.method || '—'}`,
+    `Name           ${r.name}`,
+    `Email          ${r.email}`,
+    `Phone          ${r.phone}`,
+    `Sector         ${r.sector}`,
+    `Registered as  ${r.registerAs}`,
+    `City           ${r.city}`,
+    '',
+    `The receipt has gone to ${r.email}.`,
+    '',
+    '—',
+    `${site.fullName}`,
+  ].join('\n')
+
+  return {
+    subject,
+    text,
+    html: shell({
+      preheader: `${pay.amountLabel} · ${r.name} · ${r.sector} · ${r.city}`,
+      body,
+      footerNote: 'Automated notification from the registration form on the summit website.',
+    }),
+  }
+}
+
+/**
+ * THE ALERT THAT MATTERS.
+ *
+ * Sent when money has been captured but the registration could not be recorded after
+ * every retry. It is the only email in this file that asks a human to do something,
+ * so it is written to be actionable at a glance on a phone: what happened, whose money
+ * it is, the exact ids to search, and the two fields needed to re-enter the row by
+ * hand. No branding, no CTA — this is an operational page, not marketing.
+ */
+export function unfulfilledAlertEmail(
+  r: Registration,
+  pay: PaymentInfo,
+  reason: string,
+): { subject: string; html: string; text: string } {
+  const subject = `ACTION REQUIRED — paid but NOT recorded: ${r.name} (${pay.amountLabel})`
+  const rows: [string, string][] = [
+    ['Amount captured', pay.amountLabel],
+    ['Payment ID', pay.paymentId],
+    ['Order ID', pay.orderId],
+    ['Paid at', stamp(pay.paidAt)],
+    ['Mode', pay.testMode ? 'TEST' : 'LIVE'],
+    ['Name', r.name],
+    ['Email', r.email],
+    ['Phone', r.phone],
+    ['Sector', r.sector],
+    ['Registered as', r.registerAs],
+    ['City', r.city],
+    ['Failure', reason],
+  ]
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#FFF5F5;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FFF5F5;"><tr><td align="center" style="padding:24px 12px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#FFFFFF;font-family:${FONT};">
+  <tr><td style="background:#B3261E;padding:20px 28px;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.18em;color:#FFD9D6;">ACTION REQUIRED</div>
+    <div style="font-size:21px;font-weight:700;color:#FFFFFF;padding-top:6px;">Payment captured, registration NOT recorded</div>
+  </td></tr>
+  <tr><td style="padding:24px 28px 0 28px;font-size:15px;line-height:1.6;color:#3D4A5C;">
+    A customer has been charged ${esc(pay.amountLabel)} but the registration could not be written to the
+    sheet after repeated attempts. <strong>Their money is with us and their seat is not booked.</strong>
+    Add the row by hand using the details below, then reply to the customer directly.
+  </td></tr>
+  <tr><td style="padding:20px 28px 0 28px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid ${
+      C.hairline
+    };">
+${rows
+  .map(
+    ([k, v], i) =>
+      `      <tr><td width="150" style="padding:7px 0;font-size:13px;color:${C.muted};border-bottom:${
+        i === rows.length - 1 ? 'none' : `1px solid ${C.hairline}`
+      };">${esc(k)}</td><td style="padding:7px 0;font-size:13px;color:${
+        C.ink
+      };border-bottom:${
+        i === rows.length - 1 ? 'none' : `1px solid ${C.hairline}`
+      };">${esc(v)}</td></tr>`,
+  )
+  .join('\n')}
+    </table>
+  </td></tr>
+  <tr><td style="padding:22px 28px 28px 28px;font-size:13px;line-height:1.6;color:${C.muted};">
+    Look the payment up in the Razorpay dashboard by Payment ID. The full registration is also stored on the
+    order's <em>notes</em> field, so nothing is lost even if this email is.
+  </td></tr>
+</table></td></tr></table></body></html>`
+
+  const text = [
+    'ACTION REQUIRED — PAYMENT CAPTURED, REGISTRATION NOT RECORDED',
+    '',
+    `A customer has been charged ${pay.amountLabel} but the registration could not be`,
+    'written to the sheet. Their money is with us and their seat is not booked.',
+    'Add the row by hand using the details below.',
+    '',
+    ...rows.map(([k, v]) => `${k.padEnd(17)}${v}`),
+    '',
+    "The full registration is also stored on the Razorpay order's notes field.",
+  ].join('\n')
+
+  return { subject, html, text }
 }

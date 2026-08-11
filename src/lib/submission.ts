@@ -78,6 +78,10 @@ export function clientIp(req: Request): string {
 export async function appendToSheet(
   type: 'registration' | 'partner',
   fields: Record<string, string>,
+  // Overridable so the paid-registration path can retry on a shorter leash: a customer
+  // who has already been charged is watching a spinner, and three 15s attempts back to
+  // back is a minute of silence. See fulfil() in @/lib/payments/fulfil.
+  timeoutMs = 15000,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!SHEET_ENDPOINT) return { ok: false, error: 'NEXT_PUBLIC_REGISTRATION_ENDPOINT is not set' }
   try {
@@ -85,7 +89,7 @@ export async function appendToSheet(
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ ...fields, type }),
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(timeoutMs),
       cache: 'no-store',
     })
     if (!res.ok) return { ok: false, error: `Apps Script returned ${res.status}` }

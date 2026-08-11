@@ -27,6 +27,14 @@ var FORMS = {
       ['Phone',       'phone'],
       ['City',        'city'],
       ['Register As', 'registerAs'],
+      // Payment columns. Empty for waitlist rows (payment disabled) and filled once a
+      // Razorpay payment is captured — see src/lib/payments/fulfil.ts. Payment ID is
+      // the one to quote to Razorpay support or a bank in a dispute.
+      ['Payment Status', 'paymentStatus'],
+      ['Amount',         'amount'],
+      ['Payment ID',     'paymentId'],
+      ['Order ID',       'orderId'],
+      ['Paid At',        'paidAt'],
     ],
   },
   partner: {

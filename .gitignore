@@ -38,3 +38,6 @@ Thumbs.db
 # NOTE: public/ IS tracked on purpose — logos, posters, happens images and
 # video/hero.mp4 are required at build time, so the server must receive them
 # from git.
+
+# Payment journal — contains customer registration data. Never commit.
+data/
