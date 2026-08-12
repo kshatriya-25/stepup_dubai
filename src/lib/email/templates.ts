@@ -540,6 +540,8 @@ export type PaymentInfo = {
   amountPaise: number
   /** Human-readable amount, formatted once by the payments layer. */
   amountLabel: string
+  /** Which pass was bought, e.g. "Founder Programme". */
+  ticketName: string
   paidAt: Date
   method?: string
   /** rzp_test_… keys. Stamps a warning banner so a test receipt can't pass as real. */
@@ -565,6 +567,7 @@ export function paidParticipantEmail(
     EVENT_DATES: site.dates,
     EVENT_LOCATION: `${site.venue}, ${site.city}`,
     AMOUNT: pay.amountLabel,
+    TICKET: pay.ticketName,
     PAID_ON: stamp(pay.paidAt),
     PAYMENT_ID: pay.paymentId,
     ORDER_ID: pay.orderId,
@@ -584,8 +587,8 @@ export function paidParticipantEmail(
     pay.testMode ? 'TEST MODE — no real money was charged. Not a valid receipt.\n' : '',
     `THANKS, ${firstName(r.name).toUpperCase()}. YOUR SEAT IS CONFIRMED.`,
     '',
-    `We've received your payment of ${pay.amountLabel} and your place at the summit is`,
-    "booked. Keep this email — it's your receipt.",
+    `We've received your payment of ${pay.amountLabel} for the ${pay.ticketName} and your`,
+    "place at the summit is booked. Keep this email — it's your receipt.",
     '',
     'Two days in Erode where investors, government scheme officers and bank credit',
     'heads come to Tier-2, instead of the other way round.',
@@ -594,6 +597,7 @@ export function paidParticipantEmail(
     `${site.venue}, ${site.city}`,
     '',
     'PAYMENT RECEIPT',
+    `Ticket         ${pay.ticketName}`,
     `Amount paid    ${pay.amountLabel}`,
     `Paid on        ${stamp(pay.paidAt)}`,
     `Payment ID     ${pay.paymentId}`,
@@ -631,7 +635,7 @@ export function paidOrganiserEmail(
   pay: PaymentInfo,
   at = new Date(),
 ): { subject: string; html: string; text: string } {
-  const subject = `Paid registration — ${r.name} · ${pay.amountLabel} · ${r.city}`
+  const subject = `Paid registration — ${r.name} · ${pay.ticketName} · ${pay.amountLabel}`
   const when = stamp(at)
 
   const body = `
@@ -652,6 +656,7 @@ export function paidOrganiserEmail(
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid ${
                 C.hairline
               };">
+${detailRow('Ticket', pay.ticketName)}
 ${detailRow('Amount', pay.amountLabel)}
 ${detailRow('Payment ID', pay.paymentId)}
 ${detailRow('Order ID', pay.orderId)}
@@ -685,6 +690,7 @@ ${button('Reply to ' + firstName(r.name), `mailto:${r.email}?subject=${encodeURI
     r.name,
     `Paid ${when}`,
     '',
+    `Ticket         ${pay.ticketName}`,
     `Amount         ${pay.amountLabel}`,
     `Payment ID     ${pay.paymentId}`,
     `Order ID       ${pay.orderId}`,
@@ -706,7 +712,7 @@ ${button('Reply to ' + firstName(r.name), `mailto:${r.email}?subject=${encodeURI
     subject,
     text,
     html: shell({
-      preheader: `${pay.amountLabel} · ${r.name} · ${r.sector} · ${r.city}`,
+      preheader: `${pay.ticketName} · ${pay.amountLabel} · ${r.name} · ${r.city}`,
       body,
       footerNote: 'Automated notification from the registration form on the summit website.',
     }),
@@ -729,6 +735,7 @@ export function unfulfilledAlertEmail(
 ): { subject: string; html: string; text: string } {
   const subject = `ACTION REQUIRED — paid but NOT recorded: ${r.name} (${pay.amountLabel})`
   const rows: [string, string][] = [
+    ['Ticket', pay.ticketName],
     ['Amount captured', pay.amountLabel],
     ['Payment ID', pay.paymentId],
     ['Order ID', pay.orderId],

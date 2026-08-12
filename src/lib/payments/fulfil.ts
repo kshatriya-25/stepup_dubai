@@ -71,6 +71,7 @@ function paymentInfo(rec: PaymentRecord, paidAt: Date): PaymentInfo {
     orderId: rec.orderId,
     amountPaise: rec.amountPaise,
     amountLabel: formatInr(rec.amountPaise),
+    ticketName: rec.registration.ticketName || 'Ticket',
     paidAt,
     method: rec.method,
     testMode: !isLiveMode(),
@@ -87,6 +88,10 @@ function registrationFromNotes(notes: Record<string, string>): Registration | nu
     registerAs: notes.registerAs || '',
     city: notes.city || '',
     updates: notes.updates || 'no',
+    ticketId: notes.ticketId || '',
+    // Falls back to a readable placeholder rather than an empty cell: a receipt saying
+    // "Ticket —" is confusing, but a blank column in the sheet is worse to audit.
+    ticketName: notes.ticketName || notes.ticketId || 'Ticket',
   }
   // Name and email are the minimum needed to contact the customer and record a row.
   return r.name && r.email ? r : null
@@ -269,6 +274,7 @@ async function fulfil(
         // Payment columns, appended at the END of the sheet — see the ordering rule
         // at the top of registration/Code.gs.
         paymentStatus: 'Paid',
+        ticket: pay.ticketName,
         amount: pay.amountLabel,
         paymentId: pay.paymentId,
         orderId: pay.orderId,

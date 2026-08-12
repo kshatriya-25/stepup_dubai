@@ -114,6 +114,7 @@ export const exploreLinks: { label: string; href: string }[] = [
   { label: 'Our Vision', href: '#story' },
   { label: 'Growth Zones', href: '#zones' },
   { label: 'Key Initiatives', href: '#whatgoeson' },
+  { label: 'Tickets', href: '#tickets' },
   { label: 'Partners', href: '#partners' },
   // NOTE: there is no dedicated "Who Attends" section yet. Growth Zones is the closest
   // real destination — it is the part of the page that names who is actually in the
@@ -129,6 +130,7 @@ export const nav: NavItem[] = [
   { label: 'About', href: '#story', children: exploreLinks },
   { label: 'Programme', href: '#zones' },
   { label: 'Startups', href: '#whatgoeson' },
+  { label: 'Tickets', href: '#tickets' },
   { label: 'Partners', href: '#partners' },
 ]
 
@@ -141,7 +143,10 @@ export const participateRoutes: {
   href?: string
   action?: 'partner'
 }[] = [
-  { label: 'Attend', desc: 'Register for ticket updates', href: '#register' },
+  // Goes to the passes, not the waitlist form: "Attend" means buy a ticket now that
+  // there is something to buy. The ticket brief calls for exactly this — Attend must
+  // land on the pricing slots, and a slot opens the payment gateway.
+  { label: 'Attend', desc: 'Book a delegate or founder pass', href: '#tickets' },
   { label: 'Nominate a Startup', desc: 'For the Top 10 shortlist', href: '#register' },
   { label: 'Partner with us', desc: 'Sponsor, speak or host a desk', action: 'partner' },
 ]

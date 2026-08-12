@@ -45,27 +45,18 @@ export const webhookSecret = (process.env.RAZORPAY_WEBHOOK_SECRET || '').trim()
  */
 export const paymentEnabled = process.env.REGISTRATION_PAYMENT_ENABLED === '1'
 
-/** Ticket price in integer paise, or null if unset/invalid. Single source of truth. */
-export function feePaise(): number | null {
-  const raw = (process.env.REGISTRATION_FEE_INR || '').trim()
-  if (!raw) return null
-  const rupees = Number(raw)
-  if (!Number.isFinite(rupees) || rupees <= 0) return null
-  const paise = Math.round(rupees * 100)
-  // Razorpay's floor is ₹1. Reject sub-rupee config rather than create an order that
-  // the API will bounce at checkout time, in front of the customer.
-  if (paise < 100) return null
-  return paise
-}
-
 export type ConfigResult =
   | { ok: true; enabled: false }
-  | { ok: true; enabled: true; keyId: string; amountPaise: number; currency: 'INR' }
+  | { ok: true; enabled: true; keyId: string; currency: 'INR' }
   | { ok: false; error: string }
 
 /**
  * What the rest of the app asks before touching money. Returns an error rather than
- * throwing so callers can decide whether to 500 or degrade.
+ * throwing so callers can decide whether to 503 or degrade.
+ *
+ * There is no amount here any more. Prices are per-ticket and come from
+ * @/content/tickets, which the server and the page both import — see the header of
+ * that file for why the price is not an env var.
  */
 export function paymentConfig(): ConfigResult {
   if (!paymentEnabled) return { ok: true, enabled: false }
@@ -75,13 +66,7 @@ export function paymentConfig(): ConfigResult {
   if (missing.length) {
     return { ok: false, error: `Payment is enabled but ${missing.join(' and ')} not set.` }
   }
-  const amountPaise = feePaise()
-  if (amountPaise === null) {
-    return { ok: false, error: 'REGISTRATION_FEE_INR is missing or not a valid amount (min 1).' }
-  }
-  // Live keys with a test fee, or vice versa, is the kind of mistake that only shows
-  // up when a real customer is charged. Surface the mode so the UI and logs can say it.
-  return { ok: true, enabled: true, keyId, amountPaise, currency: 'INR' }
+  return { ok: true, enabled: true, keyId, currency: 'INR' }
 }
 
 /** `rzp_live_…` means real money. Used to label logs, alerts and the receipt. */

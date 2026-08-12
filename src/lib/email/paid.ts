@@ -39,7 +39,7 @@ export const PAID_CONFIRMATION_HTML = `<!DOCTYPE html><html lang="en"><head><met
     <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:#E5762A;">PAYMENT RECEIVED</div>
     <h1 style="margin:12px 0 0 0;font-size:27px;line-height:1.25;font-weight:700;color:#14315E;">Thanks, {{FIRST_NAME}}. Your seat is confirmed.</h1>
     <p style="margin:16px 0 0 0;font-size:15px;line-height:1.65;color:#3D4A5C;">
-      We've received your payment of <strong style="color:#14315E;">{{AMOUNT}}</strong> and your place at the summit is booked. Keep this email — it's your receipt.
+      We've received your payment of <strong style="color:#14315E;">{{AMOUNT}}</strong> for the <strong style="color:#14315E;">{{TICKET}}</strong> and your place at the summit is booked. Keep this email — it's your receipt.
     </p>
     <p style="margin:12px 0 0 0;font-size:15px;line-height:1.65;color:#3D4A5C;">
       Two days in Erode where investors, government scheme officers and bank credit heads come to Tier-2, instead of the other way round. Five Growth Zones open all day, ten startups coached, three pitching live on the main stage.
@@ -60,7 +60,8 @@ export const PAID_CONFIRMATION_HTML = `<!DOCTYPE html><html lang="en"><head><met
   <tr><td style="padding:28px 32px 0 32px;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #E3E7ED;">
       <tr><td colspan="2" style="padding:16px 0 6px 0;font-size:10px;font-weight:700;letter-spacing:1.6px;color:#7A8798;">PAYMENT RECEIPT</td></tr>
-      <tr><td width="130" style="padding:6px 0;font-size:14px;color:#7A8798;">Amount paid</td><td style="padding:6px 0;font-size:14px;color:#14315E;font-weight:700;">{{AMOUNT}}</td></tr>
+      <tr><td width="130" style="padding:6px 0;font-size:14px;color:#7A8798;">Ticket</td><td style="padding:6px 0;font-size:14px;color:#14315E;font-weight:700;">{{TICKET}}</td></tr>
+      <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Amount paid</td><td style="padding:6px 0;font-size:14px;color:#14315E;font-weight:700;">{{AMOUNT}}</td></tr>
       <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Paid on</td><td style="padding:6px 0;font-size:14px;color:#3D4A5C;">{{PAID_ON}}</td></tr>
       <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Payment ID</td><td style="padding:6px 0;font-size:13px;color:#3D4A5C;font-family:Consolas,Monaco,monospace;">{{PAYMENT_ID}}</td></tr>
       <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Order ID</td><td style="padding:6px 0;font-size:13px;color:#3D4A5C;font-family:Consolas,Monaco,monospace;">{{ORDER_ID}}</td></tr>

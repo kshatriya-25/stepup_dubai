@@ -6,25 +6,19 @@ import { Zones } from '@/components/home/Zones'
 import { WhatGoesOn } from '@/components/home/WhatGoesOn'
 import { Partners } from '@/components/home/Partners'
 import { Statements } from '@/components/home/Statements'
+import { Tickets } from '@/components/home/Tickets'
 import { Register } from '@/components/home/Register'
-import { paymentConfig, formatInr } from '@/lib/payments/razorpay'
 
 /**
- * The ticket price is read here, in a server component, and handed to the form as a
- * prop. Deliberately NOT a NEXT_PUBLIC_ variable: that would be a second copy of the
- * price living in the browser bundle, free to drift from the REGISTRATION_FEE_INR the
- * server actually charges — and a displayed price that disagrees with the amount
- * debited is the kind of bug that ends in refunds. One source, read once.
+ * Tickets sit directly before Register: by this point the page has explained the
+ * growth zones, the programme and who is in the room, so the reader has what they need
+ * to pick a pass. Register follows as the softer option for anyone not ready to buy.
+ *
+ * No payment config is read here any more. Prices live in @/content/tickets, which the
+ * ticket section and the order endpoint both import — see that file for why the price
+ * is not an env var.
  */
 export default function Home() {
-  const cfg = paymentConfig()
-  const payment =
-    cfg.ok && cfg.enabled
-      ? { enabled: true as const, amountLabel: formatInr(cfg.amountPaise) }
-      : { enabled: false as const, amountLabel: '' }
-
-  if (!cfg.ok) console.error('[payments]', cfg.error)
-
   return (
     <>
       <Hero />
@@ -35,7 +29,8 @@ export default function Home() {
       <WhatGoesOn />
       <Partners />
       <Statements />
-      <Register payment={payment} />
+      <Tickets />
+      <Register />
     </>
   )
 }

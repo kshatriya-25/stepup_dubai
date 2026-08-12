@@ -1,8 +1,12 @@
 # Payments — Razorpay integration runbook
 
-Registration is a **paid** flow: the attendee pays first, and the registration is
-recorded only once Razorpay confirms the money was captured. Partner enquiries are
-unaffected and remain free.
+Tickets are the paid flow: the buyer pays first, and the registration is recorded only
+once Razorpay confirms the money was captured.
+
+**The registration form itself is free.** It is a waitlist — leave your details, hear
+first when something opens — and sends the client-approved waitlist email. Paying
+happens in the ticket section (`#tickets`), where the visitor picks one of three
+passes. Partner enquiries are unaffected and remain free.
 
 This document is the operational guide. If you only read one section, read
 [When a customer pays but is not registered](#when-a-customer-pays-but-is-not-registered).
@@ -39,8 +43,8 @@ fine, duplicated *effect* is not.
 The flow:
 
 ```
-Register form
-   │  POST /api/payment/order      validate, journal the intent, create Razorpay order
+Ticket card (#tickets) ──► checkout sheet: details + chosen pass
+   │  POST /api/payment/order      price the ticket, journal the intent, create the order
    ▼
 Razorpay Checkout                  customer pays
    │
@@ -83,11 +87,8 @@ value into the browser bundle, and publishing `RAZORPAY_KEY_SECRET` would let an
 forge a "payment succeeded" callback and register for free.
 
 ```bash
-# Master switch. 1 = charge before registering. Anything else = free waitlist flow.
+# Master switch. 1 = the ticket section can take payments. Anything else = tickets off.
 REGISTRATION_PAYMENT_ENABLED=1
-
-# Ticket price in RUPEES (minimum 1). The ONLY place the price is defined.
-REGISTRATION_FEE_INR=499
 
 RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxx
 RAZORPAY_KEY_SECRET=xxxxxxxxxxxxxxxx
@@ -101,6 +102,38 @@ PAYMENT_RECONCILE_SECRET=
 # MUST be an absolute path. See section 4.
 PAYMENT_JOURNAL_PATH=/var/www/tier2expo/stepup_dubai/data/payments.jsonl
 ```
+
+### Prices are NOT in .env
+
+The three ticket prices live in `src/content/tickets.ts`. The order endpoint prices an
+order from that file and the pricing section renders its price tags from the same
+import, so the figure shown and the figure charged are the same constant.
+
+An env var could not give that guarantee: the homepage is statically prerendered, so an
+env price is frozen into the HTML at build time, and a later change would leave the page
+advertising one number while the server charged another.
+
+Changing a price is therefore a code change — correct for money, since it goes through
+review and lands in git history.
+
+| Ticket | id | Price |
+|---|---|---|
+| Delegate Pass | `delegate` | ₹999 per person |
+| Investor Pitch Day | `investor-pitch` | ₹2,599 per startup |
+| Founder Programme | `founder` | ₹3,999 per startup |
+
+The browser never sends an amount — only a ticket `id`. An unknown id is rejected
+outright rather than defaulted to something cheap.
+
+### ⚠️ Seat counts are copy, not inventory
+
+The cards advertise "14 / 40 left" and "9 / 30 left". **Nothing decrements those numbers
+when a ticket sells**, and nothing stops the 41st person buying a pitch slot. They are
+static strings in `tickets.ts`.
+
+If pitch slots are genuinely limited, either keep the counts vague ("Limited") or ask
+for real inventory tracking to be built — overselling a slot that does not exist means
+issuing refunds to founders you have already told they are pitching.
 
 ### The switch is explicit on purpose
 
@@ -198,20 +231,15 @@ curl -s https://tier2rising.com/api/payment/webhook
 # {"secret":"configured"}  — if it says NOT CONFIGURED, the webhook will reject everything
 ```
 
-### A price change requires a rebuild, not just a restart
+### Changing a price
 
-The homepage is statically prerendered, so the fee shown in the page HTML is baked at
-build time. The form re-checks the live price against `/api/payment/order` on mount, so
-a stale build self-corrects in the browser — but rebuild anyway so the served HTML is
-right:
+Edit `src/content/tickets.ts`, then deploy as usual. Because the page and the server
+read the same constant, a rebuild updates both together — there is no window in which
+they disagree.
 
 ```bash
-# after editing REGISTRATION_FEE_INR
 npm run build && pm2 restart tier2rising
 ```
-
-The amount actually charged always comes from the server at order time and cannot be
-influenced by the browser.
 
 ---
 
@@ -326,12 +354,16 @@ Work through this in order.
       banner**, then refund yourself from the dashboard.
 - [ ] Drop `MAX_PER_WINDOW` in `src/lib/submission.ts` from 50 back to ~5. It was raised
       for testing; at 50/hour one IP can burn a third of the Brevo daily quota.
+- [ ] Decide what to do about the advertised seat counts (see the warning in section 3).
+- [ ] Buy one of **each** of the three passes in test mode and confirm the receipt and
+      the Sheet row both name the right ticket.
 
 ### Rolling back
 
-Set `REGISTRATION_PAYMENT_ENABLED=0`, rebuild, restart. The form reverts to the free
-waitlist flow and the approved waitlist email. Payments already captured are unaffected
-and can still be settled by the reconcile sweep.
+Set `REGISTRATION_PAYMENT_ENABLED=0`, rebuild, restart. `/api/payment/order` then
+returns 404 and the ticket buttons stop working. The registration form is unaffected —
+it is already free — so the site still captures leads through the waitlist. Payments
+already captured are unaffected and can still be settled by the reconcile sweep.
 
 ---
 

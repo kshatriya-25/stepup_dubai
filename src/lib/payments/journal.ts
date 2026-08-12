@@ -55,6 +55,11 @@ export type Registration = {
   registerAs: string
   city: string
   updates: string
+  /** Which pass was bought — 'delegate' | 'investor-pitch' | 'founder'. */
+  ticketId: string
+  /** Human label, stored alongside the id so a receipt reads correctly even if the
+   *  catalogue is later renamed or a ticket is retired. */
+  ticketName: string
 }
 
 export type PaymentRecord = {

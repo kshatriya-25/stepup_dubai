@@ -1,9 +1,14 @@
 /**
- * POST /api/payment/order — start a paid registration.
+ * POST /api/payment/order — buy a ticket.
  *
  * Validates the form, writes the intent to the journal, and creates a Razorpay order.
  * Returns only what Checkout needs. It does NOT record a registration: nothing is
  * recorded until money is confirmed captured, by /verify or /webhook.
+ *
+ * THE AMOUNT IS NEVER TAKEN FROM THE REQUEST. The browser sends a ticket `id`; the
+ * price is looked up here from @/content/tickets. A client that POSTs
+ * `{"ticketId":"founder","priceInr":1}` gets charged ₹3,999 like everyone else, and an
+ * unknown id is rejected outright rather than defaulted to something cheap.
  *
  * ORDERING MATTERS HERE. The journal row is written BEFORE the order is created, so a
  * crash in the gap leaves a harmless orphan record rather than a paid order nobody
@@ -15,6 +20,7 @@ import { NextResponse } from 'next/server'
 import { createHash } from 'node:crypto'
 import { EMAIL_RE, clean, normalisePhone, rateLimited, clientIp } from '@/lib/submission'
 import { paymentConfig, createOrder, formatInr, isLiveMode } from '@/lib/payments/razorpay'
+import { ticketById, ticketPaise, tickets, formatTicketPrice } from '@/content/tickets'
 import {
   createRecord,
   getRecord,
@@ -70,7 +76,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Invalid request body.' }, { status: 400 })
   }
 
-  // Same validation as /api/register — a paid registration is a registration first.
+  /*
+   * Resolve the ticket BEFORE anything else touches money.
+   *
+   * An unrecognised id is rejected rather than falling back to a default price — a
+   * silent default is how a typo turns into a ₹999 charge for a ₹3,999 programme.
+   */
+  const ticket = ticketById(clean(raw.ticketId, 40))
+  if (!ticket) {
+    return NextResponse.json({ ok: false, error: 'Unknown ticket type.' }, { status: 400 })
+  }
+  const amountPaise = ticketPaise(ticket)
+
+  // Same validation as /api/register — a ticket buyer is a registration first.
   const reg: Registration = {
     name: clean(raw.name, 120),
     email: clean(raw.email, 160).toLowerCase(),
@@ -79,6 +97,8 @@ export async function POST(req: Request) {
     registerAs: clean(raw.registerAs, 40),
     city: clean(raw.city, 80),
     updates: raw.updates ? 'yes' : 'no',
+    ticketId: ticket.id,
+    ticketName: ticket.name,
   }
 
   const required: (keyof Registration)[] = ['name', 'email', 'phone', 'sector', 'registerAs', 'city']
@@ -118,9 +138,12 @@ export async function POST(req: Request) {
    * fresh order rather than being pinned to a stale one, and findReusableByIdempotencyKey
    * refuses to reuse anything already paid.
    */
+  // The ticket id is part of the key: buying a Delegate Pass and then a Founder
+  // Programme within the same five minutes are two genuine purchases, not a double
+  // click, and must not collapse into one order.
   const bucket = Math.floor(Date.now() / (5 * 60 * 1000))
   const idempotencyKey = createHash('sha256')
-    .update(`${reg.email}|${reg.phone}|${cfg.amountPaise}|${bucket}`)
+    .update(`${reg.email}|${reg.phone}|${ticket.id}|${amountPaise}|${bucket}`)
     .digest('hex')
     .slice(0, 32)
 
@@ -133,6 +156,7 @@ export async function POST(req: Request) {
       amount: reusable.amountPaise,
       amountLabel: formatInr(reusable.amountPaise),
       currency: 'INR',
+      ticketName: ticket.name,
       reused: true,
       testMode: !isLiveMode(),
       prefill: { name: reg.name, email: reg.email, contact: reg.phone.replace(/\s/g, '') },
@@ -144,10 +168,11 @@ export async function POST(req: Request) {
   const receipt = `t2r_${idempotencyKey.slice(0, 24)}`
 
   const order = await createOrder({
-    amountPaise: cfg.amountPaise,
+    amountPaise,
     receipt,
     // Carries the full registration into Razorpay's own storage — the backstop that
     // makes every paid registration recoverable even if this server's disk is lost.
+    // The ticket is included so a recovered order can be fulfilled with the right pass.
     notes: {
       name: reg.name,
       email: reg.email,
@@ -156,7 +181,9 @@ export async function POST(req: Request) {
       registerAs: reg.registerAs,
       city: reg.city,
       updates: reg.updates,
-      source: 'tier2rising.com/#register',
+      ticketId: reg.ticketId,
+      ticketName: reg.ticketName,
+      source: 'tier2rising.com/#tickets',
     },
     idempotencyKey,
   })
@@ -188,18 +215,13 @@ export async function POST(req: Request) {
     amount: order.data.amount,
     amountLabel: formatInr(order.data.amount),
     currency: order.data.currency,
+    ticketName: ticket.name,
     testMode: !isLiveMode(),
     prefill: { name: reg.name, email: reg.email, contact: reg.phone.replace(/\s/g, '') },
   })
 }
 
-/**
- * Health check — what is actually wired, without leaking the secret.
- *
- * Also the runtime source the registration form reconciles its displayed price
- * against, because the homepage is statically prerendered and its copy of the fee was
- * frozen at build time. See the comment in components/home/Register.tsx.
- */
+/** Health check — what is actually wired, without leaking the secret. */
 export async function GET() {
   const cfg = paymentConfig()
   ensureWritable()
@@ -209,7 +231,7 @@ export async function GET() {
     service: 'tier2-rising-payments',
     enabled: cfg.ok && cfg.enabled,
     mode: isLiveMode() ? 'LIVE' : 'test',
-    amount: cfg.ok && cfg.enabled ? formatInr(cfg.amountPaise) : null,
+    tickets: tickets.map((t) => ({ id: t.id, name: t.name, price: formatTicketPrice(t) })),
     journal: { writable: journal.healthy, path: journal.path, error: journal.error },
     error: cfg.ok ? undefined : cfg.error,
   })

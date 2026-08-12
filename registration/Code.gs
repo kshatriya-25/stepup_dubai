@@ -31,6 +31,7 @@ var FORMS = {
       // Razorpay payment is captured — see src/lib/payments/fulfil.ts. Payment ID is
       // the one to quote to Razorpay support or a bank in a dispute.
       ['Payment Status', 'paymentStatus'],
+      ['Ticket',         'ticket'],
       ['Amount',         'amount'],
       ['Payment ID',     'paymentId'],
       ['Order ID',       'orderId'],
