@@ -29,7 +29,17 @@ export function Hero() {
       <div className="absolute inset-0 bg-gradient-to-r from-night/80 via-night/25 to-transparent" />
 
       <div className="relative mx-auto w-full max-w-container-wide px-4 pb-16 pt-28 sm:px-6 sm:pt-24">
-        <motion.div variants={container} initial="hidden" animate="show" className="max-w-2xl">
+        {/* Copy sits on a translucent navy panel rather than straight on the footage —
+            75% of the brand navy (#072B5F), so the video still reads through it.
+            Padding is the design's 60px, stepped down under 400px where 120px of
+            horizontal padding would leave "TIER-2" at text-5xl wider than the line box
+            it has to fit in. */}
+        <motion.div
+          variants={container}
+          initial="hidden"
+          animate="show"
+          className="max-w-2xl bg-base/75 p-8 min-[400px]:p-[60px]"
+        >
           <motion.p variants={item} className="mb-3 text-[11px] font-bold uppercase tracking-[0.2em] text-accent sm:mb-4 sm:text-sm">
             {site.initiativeBy} · {site.season}
           </motion.p>

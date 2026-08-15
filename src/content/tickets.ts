@@ -48,7 +48,14 @@ export type Ticket = {
   unit: string
   /** Button label. "Book" buys a seat; "Apply" buys a slot that is still selected on. */
   cta: string
-  /** Filled orange button vs outlined. Two filled, one outlined, per the approved comp. */
+  /**
+   * Filled orange button vs outlined navy.
+   *
+   * All three are 'solid' today: each card's button is the one and only action on that
+   * card, so there is no secondary CTA for an outline to rank below — an outlined one
+   * just read as disabled next to its orange neighbours. 'outline' is kept for a future
+   * card that genuinely needs to sit lower in the hierarchy.
+   */
   emphasis: 'solid' | 'outline'
   /** Colour of the rule above the eyebrow. Maps to a token in tailwind.config.ts. */
   accent: 'accent' | 'cyan' | 'green'
@@ -87,7 +94,7 @@ export const tickets: Ticket[] = [
     priceInr: 2599,
     unit: 'per startup',
     cta: 'Apply',
-    emphasis: 'outline',
+    emphasis: 'solid',
     accent: 'cyan',
     meta: [
       { label: 'Access', value: 'Day 2' },
