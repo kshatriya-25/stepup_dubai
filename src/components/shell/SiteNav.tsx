@@ -270,7 +270,17 @@ export function SiteNav() {
                   aria-expanded={item.children ? isOpen : undefined}
                   aria-haspopup={item.children ? 'true' : undefined}
                   className={cn(
-                    'flex items-center gap-1 text-base font-medium transition-colors',
+                    // `text-[1rem]`, NOT `text-base`.
+                    //
+                    // tailwind.config.ts overrides `base` as a COLOUR (#072B5F, the navy
+                    // this bar is painted in), so Tailwind emits `.text-base` twice: once
+                    // as the font size we want and once as navy text. The colour rule is
+                    // emitted after `.text-accent`, so it wins — and the open item's label
+                    // rendered navy-on-navy and disappeared. It survived on the other
+                    // items only because `.hover\:text-accent` happens to be emitted later
+                    // still, so plain hover was unaffected and the bug looked like it only
+                    // hit About.
+                    'flex items-center gap-1 text-[1rem] font-medium transition-colors',
                     isOpen ? 'text-accent' : 'text-surface hover:text-accent',
                   )}
                 >
