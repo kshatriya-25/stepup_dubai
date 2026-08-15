@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { cn } from '@/lib/cn'
 import { useScrollDirection } from '@/lib/hooks'
 import { nav, site } from '@/content/site'
+import { WavingFlag } from './WavingFlag'
 import { useParticipate } from './ParticipateModal'
 
 export function SiteNav() {
@@ -121,9 +122,33 @@ export function SiteNav() {
       )}
     >
       {/* Bar */}
-      <div className="mx-auto flex h-[72px] max-w-container-wide items-center justify-between px-4 sm:px-6 md:h-[85px]">
-        {/* Left: wordmark + venue chip + presented-by */}
+      {/*
+        FULL WIDTH, not the 1300px page container.
+
+        The bar used to be `mx-auto max-w-container-wide`, which on anything wider than
+        1300px left a band of empty navy at each end while the logo, the nav and the two
+        buttons fought over the middle — worst on the widest screens, where there is the
+        most room going spare. The bar is a solid navy band edge to edge, so there is no
+        reason for its CONTENTS to stop short of the edges too; only the sections below,
+        which sit on the page background, need the container line.
+
+        `justify-between` then spends the reclaimed width on the gaps between the three
+        groups instead of on empty margins.
+      */}
+      <div className="flex h-[72px] items-center justify-between px-4 sm:px-6 md:h-[85px] lg:px-8 xl:px-12">
+        {/* Left: flag + wordmark + venue chip + presented-by */}
         <div className="flex items-center gap-3">
+          {/* Full bar height on purpose, so the mast runs out of the bottom of the
+              canvas and is cut by the header's own edge — a short pole ending in mid-air
+              beside the logo reads as a floating object. Outside the logo's <a> so it
+              isn't part of the "go to top" link's hit area or its accessible name.
+
+              No left margin: the camera puts the mast a couple of pixels inside the
+              canvas, so the flag starts at the bar's padding edge. `-mr-2` claws back the
+              strip of empty canvas the flag leaves downwind of itself, which would
+              otherwise read as a gap before the wordmark on top of the flex gap. */}
+          <WavingFlag className="pointer-events-none -mr-2 h-full w-[68px] shrink-0 md:w-[88px]" />
+
           <a href="#top" className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {/* `-v2` is a cache-bust: the previous file misspelt RISING as "RASTING",

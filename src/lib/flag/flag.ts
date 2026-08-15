@@ -19,8 +19,12 @@ export type FlagOptions = {
   /** Fabric density in kg/m². Bunting is light; 0.11 is a reasonable flag. */
   mass?: number
   /**
-   * Grid spacing in metres. This is the quality/cost dial and it is quadratic — halving
-   * it roughly quadruples the particle count and the per-frame work.
+   * Grid spacing in metres. The quality/cost dial, and quadratic — halving it roughly
+   * quadruples the particle count and the per-frame work.
+   *
+   * Must divide `width` and `height` exactly. Cells are square and their count is
+   * rounded, so a spacing that doesn't divide evenly quietly changes the flag's
+   * proportions rather than erroring.
    */
   restDistance?: number
   texture: Texture

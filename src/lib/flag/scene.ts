@@ -5,8 +5,12 @@
  * never lands in the main bundle and is never fetched by a visitor who won't see the
  * flag (small screens, reduced motion, no WebGL). See WavingFlag.tsx.
  *
- * The scene renders with a transparent background so it composites straight over the
- * hero video.
+ * The scene renders with a transparent background so it composites straight onto the
+ * navy header bar.
+ *
+ * Everything is framed for the header's small canvas — roughly 60×72px. If this is ever
+ * moved somewhere larger, the four constants below are the dials: the frame size, the
+ * pole length, and the grid spacing all assume a flag a thumbnail wide.
  */
 
 import {
@@ -36,14 +40,42 @@ const FLAG_WIDTH = 1.5
 const FLAG_HEIGHT = 1.0
 
 /**
+ * Grid spacing. Coarser than a full-size flag would want, because this renders at about
+ * 60px wide in the header — extra rows cost real work per frame and resolve to detail
+ * below a pixel. Quality here is quadratic: halving this quadruples the cost.
+ *
+ * MUST DIVIDE BOTH FLAG_WIDTH AND FLAG_HEIGHT EXACTLY.
+ *
+ * Cloth cells are square and their count is rounded to a whole number, so a spacing that
+ * doesn't divide evenly silently resizes the flag: at height/9 the 1.5m width rounds up
+ * to 14 cells and the flag flies at 1.556:1 instead of 3:2. That defeats the entire point
+ * of drawing the texture to specification. For a 3:2 flag the divisor must be even —
+ * /10 gives 15×10, /12 gives 18×12.
+ */
+const REST_DISTANCE = FLAG_HEIGHT / 10
+
+/**
  * What the camera must always be able to see, in metres. Drives the framing.
  *
  * Wider than the flag itself on purpose: a gust throws the fly end well past its rest
  * position, and framing to the rest width clips the corner off exactly when the flag is
  * doing the interesting thing.
+ *
+ * Tall enough to keep a little sky above the finial and to let the mast run out of the
+ * bottom of the frame, so it reads as a flagpole cut off by the header bar rather than a
+ * short stick floating beside the logo.
  */
-const FRAME_WIDTH = 2.6
-const FRAME_HEIGHT = 2.9
+const FRAME_WIDTH = 1.70
+const FRAME_HEIGHT = 1.55
+
+/**
+ * Where the left edge of the frame sits relative to the mast, in metres.
+ *
+ * Small on purpose. The camera is aimed so this is ALL the clearance the mast gets on its
+ * left — any more is dead canvas between the header's edge and the flag, which is space
+ * the layout has to pay for and nothing occupies.
+ */
+const MAST_CLEARANCE = 0.05
 
 const FOV = 38
 
@@ -73,9 +105,10 @@ export function createFlagScene(canvas: HTMLCanvasElement): FlagScene | null {
     return null
   }
 
-  // Cap the pixel ratio. A 3× phone-class display would otherwise shade nine times the
-  // fragments for a difference invisible at this size.
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75))
+  // The canvas is tiny, so full 2× is affordable and worth it — the mast is only a
+  // couple of pixels wide and goes to mush at 1×. Capped at 2 all the same: a 3×
+  // display would shade 2.25× the fragments for no visible gain.
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
 
   const scene = new Scene()
   const camera = new PerspectiveCamera(FOV, 1, 0.1, 100)
@@ -96,11 +129,11 @@ export function createFlagScene(canvas: HTMLCanvasElement): FlagScene | null {
   scene.add(rim)
 
   /* -- Pole --
-     Runs well below the frame so it reads as continuing off the bottom of the section
-     rather than floating. */
+     Runs below the frame so it reads as continuing past the bottom edge rather than
+     floating. */
   const poleRadius = 0.032
   const poleTop = 0.62
-  const poleLength = 9
+  const poleLength = 2.8
 
   const poleMaterial = new MeshStandardMaterial({
     color: 0x141d2b,
@@ -126,7 +159,12 @@ export function createFlagScene(canvas: HTMLCanvasElement): FlagScene | null {
   texture.wrapT = ClampToEdgeWrapping
   texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy())
 
-  const flag = new Flag({ width: FLAG_WIDTH, height: FLAG_HEIGHT, texture })
+  const flag = new Flag({
+    width: FLAG_WIDTH,
+    height: FLAG_HEIGHT,
+    restDistance: REST_DISTANCE,
+    texture,
+  })
   // Hoist sits just off the pole's surface, a little below the finial.
   flag.object.position.set(poleRadius, poleTop - 0.14, 0)
   flag.disturb()
@@ -135,21 +173,42 @@ export function createFlagScene(canvas: HTMLCanvasElement): FlagScene | null {
   /* -- Wind --
      Blowing along +x, away from the pole, with a slight push toward the camera so folds
      catch the key light. The gust function is what stops the ripple looking like a loop. */
+  /*
+   * Steady 10 m/s with only slight gusting.
+   *
+   * The GUSTS, not the average speed, decide how wide the frame has to be — it must clear
+   * the worst gust or a corner clips at the canvas edge, and every metre of frame that
+   * only the worst gust ever reaches is dead canvas the other 99% of the time. Measured
+   * over 300 simulated seconds: heavy gusting (±16%) throws the fly end to x=1.64 and
+   * leaves the flag filling 82% of the frame on average, while ±6% holds it to 1.61 and
+   * 85%. Calmer air both fills the header better and suits a national flag.
+   */
   const wind = new Wind({
     direction: new Vector3(1, 0.06, 0.4),
-    speed: 11,
+    speed: 10,
     speedFn: (speed, time) =>
-      speed * (1 + 0.22 * Math.sin(time / 2600) + 0.1 * Math.sin(time / 900)),
+      speed * (1 + 0.06 * Math.sin(time / 2600) + 0.027 * Math.sin(time / 900)),
     directionFn: (direction, time) => {
-      direction.z += 0.18 * Math.sin(time / 3700)
-      direction.y += 0.05 * Math.sin(time / 2100)
+      direction.z += 0.05 * Math.sin(time / 3700)
+      direction.y += 0.015 * Math.sin(time / 2100)
       return direction
     },
   })
 
-  // Aimed downwind of the pole, not at it — the flag flies to the right, so centring on
-  // the mast would leave a third of the frame empty and crop the fly end.
-  const focus = new Vector3(FLAG_WIDTH * 0.55, poleTop - FLAG_HEIGHT * 0.72, 0)
+  /*
+   * Aimed so the frame's LEFT edge lands just left of the mast, rather than centred on
+   * the flag.
+   *
+   * Centring looks reasonable in isolation and is wrong in a header: the flag only ever
+   * flies downwind, to the right, so a centred frame puts a quarter of its width as empty
+   * canvas on the left where nothing can ever appear. In the bar that empty strip reads
+   * as a gap between the header edge and the flag.
+   */
+  const focus = new Vector3(
+    poleRadius - MAST_CLEARANCE + FRAME_WIDTH / 2,
+    poleTop - FLAG_HEIGHT * 0.68,
+    0,
+  )
 
   function resize(): void {
     const width = canvas.clientWidth
@@ -171,7 +230,9 @@ export function createFlagScene(canvas: HTMLCanvasElement): FlagScene | null {
     const distanceForWidth = FRAME_WIDTH / 2 / (Math.tan(halfFovY) * aspect)
     const distance = Math.max(distanceForHeight, distanceForWidth)
 
-    camera.position.set(focus.x, focus.y + 0.35, distance)
+    // Only a slight rise. A steeper angle foreshortens the mast, and at this size that
+    // reads as a leaning pole rather than as perspective.
+    camera.position.set(focus.x, focus.y + 0.12, distance)
     camera.lookAt(focus)
     camera.updateProjectionMatrix()
 

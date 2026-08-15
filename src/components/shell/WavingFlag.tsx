@@ -5,19 +5,19 @@ import { useEffect, useRef, useState } from 'react'
 import type { FlagScene } from '@/lib/flag/scene'
 
 /**
- * The waving tricolour beside the hero copy.
+ * The waving tricolour in the header, to the left of the wordmark.
  *
  * Decorative, and treated as such throughout: it is hidden from assistive technology,
  * and every path that would make it a cost rather than a flourish opts out entirely
  * rather than degrading.
  *
- *   - Below 1200px it never mounts. The hero copy panel takes the full width there, so
- *     there is no space for a mast, and small screens are exactly where a WebGL cloth
- *     simulation running beside an autoplaying video hurts most.
+ *   - Below 768px it never mounts. Roughly 150KB of three.js for a 58px decoration is a
+ *     bad trade on a phone connection, and the header bar is tightest there. Lowering
+ *     this one number is all it takes to turn phones on.
  *   - With `prefers-reduced-motion: reduce` the scene is built and settled but the loop
  *     never starts, so the visitor sees a still flag mid-wave instead of nothing.
- *   - Off screen or in a background tab, the loop stops. Scrolled past the hero, this
- *     costs nothing.
+ *   - In a background tab, or once the header has slid out of view on scroll, the loop
+ *     stops.
  *   - No WebGL, or a lost context, and it silently renders nothing.
  *
  * three.js is behind a dynamic import inside the effect, so the ~150KB never enters the
@@ -27,11 +27,11 @@ export function WavingFlag({ className }: { className?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [visible, setVisible] = useState(false)
 
-  // Gate on viewport width before anything else, so narrow screens never pay for the
-  // import. Kept in state (not just a CSS class) because a hidden canvas would still
-  // download and run the simulation.
+  // Gate on viewport width before anything else, so phones never pay for the import.
+  // Kept in state (not just a CSS class) because a hidden canvas would still download
+  // three.js and run the simulation.
   useEffect(() => {
-    const query = window.matchMedia('(min-width: 1200px)')
+    const query = window.matchMedia('(min-width: 768px)')
     const sync = () => setVisible(query.matches)
 
     sync()

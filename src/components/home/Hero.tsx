@@ -2,7 +2,6 @@
 
 import { motion } from 'framer-motion'
 import { Button } from '@/components/primitives/Button'
-import { WavingFlag } from '@/components/home/WavingFlag'
 import { site } from '@/content/site'
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.1, delayChildren: 0.2 } } }
@@ -28,11 +27,6 @@ export function Hero() {
       {/* legibility washes — text sits directly on the video like the original */}
       <div className="absolute inset-0 bg-gradient-to-t from-night/90 via-night/30 to-night/50" />
       <div className="absolute inset-0 bg-gradient-to-r from-night/80 via-night/25 to-transparent" />
-
-      {/* Waving tricolour in the open half of the frame, right of the copy panel.
-          Sits above the washes so it isn't dulled by them, below the copy so it can
-          never sit over text. Renders nothing under 1200px — see the component. */}
-      <WavingFlag className="pointer-events-none absolute inset-y-0 right-0 hidden w-[46%] max-w-[620px] lg:block" />
 
       <div className="relative mx-auto w-full max-w-container-wide px-4 pb-16 pt-28 sm:px-6 sm:pt-24">
         {/* Copy sits on a translucent navy panel rather than straight on the footage —
