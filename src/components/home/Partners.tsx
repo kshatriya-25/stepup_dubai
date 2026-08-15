@@ -18,12 +18,23 @@ export function Partners() {
           </p>
         </Reveal>
 
-        {/* Principal partners — clean white logo cards with a caption below */}
+        {/* Principal partners — clean white logo cards with a caption below.
+            A partner with a `url` renders as a link to their site; one without stays
+            an inert card, so nothing looks clickable that isn't. */}
         <div className="mt-10 grid grid-cols-2 gap-x-6 gap-y-9 sm:grid-cols-3 lg:grid-cols-4 md:mt-14">
-          {partners.map((p, i) => (
-            <Reveal key={p.name} delay={(i % 4) * 0.08}>
-              <div className="group flex flex-col items-center">
-                <div className="flex aspect-[16/10] w-full items-center justify-center rounded-xl border border-ink/[0.08] bg-surface px-6 py-5 shadow-[0_4px_16px_-6px_rgba(7,43,95,0.15)] transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-[0_14px_30px_-10px_rgba(7,43,95,0.22)]">
+          {partners.map((p, i) => {
+            const card = (
+              <>
+                <div
+                  className={[
+                    'flex aspect-[16/10] w-full items-center justify-center rounded-xl border border-ink/[0.08] bg-surface px-6 py-5',
+                    'shadow-[0_4px_16px_-6px_rgba(7,43,95,0.15)] transition-all duration-300',
+                    'group-hover:-translate-y-1 group-hover:shadow-[0_14px_30px_-10px_rgba(7,43,95,0.22)]',
+                    p.url && 'group-hover:border-accent/40',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={p.logo}
@@ -31,12 +42,39 @@ export function Partners() {
                     className="max-h-14 w-auto max-w-[80%] object-contain transition-transform duration-500 group-hover:scale-[1.03]"
                   />
                 </div>
-                <p className="mt-4 max-w-[90%] text-center text-sm leading-snug text-ink/75 sm:text-base">
+                <p className="mt-4 max-w-[90%] text-center text-sm leading-snug text-ink/75 transition-colors duration-300 group-hover:text-ink sm:text-base">
                   {p.label}
+                  {p.url && (
+                    <span
+                      aria-hidden
+                      className="ml-1 inline-block text-accent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                    >
+                      ↗
+                    </span>
+                  )}
                 </p>
-              </div>
-            </Reveal>
-          ))}
+              </>
+            )
+            return (
+              <Reveal key={p.name} delay={(i % 4) * 0.08}>
+                {p.url ? (
+                  <a
+                    href={p.url}
+                    target="_blank"
+                    // noopener stops the opened tab from reaching back through
+                    // window.opener and navigating this one somewhere else.
+                    rel="noreferrer noopener"
+                    aria-label={`${p.name} — ${p.label} (opens in a new tab)`}
+                    className="group flex flex-col items-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 focus-visible:ring-offset-foam"
+                  >
+                    {card}
+                  </a>
+                ) : (
+                  <div className="group flex flex-col items-center">{card}</div>
+                )}
+              </Reveal>
+            )
+          })}
         </div>
       </Container>
 

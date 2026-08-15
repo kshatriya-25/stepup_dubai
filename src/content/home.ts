@@ -71,12 +71,17 @@ export const speakers: Speaker[] = [
 ]
 
 // Real partner logos + their roles.
-export type Partner = { label: string; logo: string; name: string }
+// `url` is optional: a partner with one becomes a link to their site, a partner
+// without one stays a plain card. Don't invent a URL to fill the gap — a dead or
+// guessed link is worse than no link.
+export type Partner = { label: string; logo: string; name: string; url?: string }
 export const partners: Partner[] = [
-  { label: 'Event Founder & Principal Organiser', logo: '/logos/nammaoffice-v3.png', name: 'NammaOffice' },
+  { label: 'Event Founder & Principal Organiser', logo: '/logos/nammaoffice-v3.png', name: 'NammaOffice', url: 'https://nammaoffice.com/' },
   { label: 'Event Co-Founder & Strategic Partner', logo: '/logos/3ios.png', name: '3iOS' },
-  { label: 'Pitch & Media Partner', logo: '/logos/startupsingam.png', name: 'Startup Singam' },
-  { label: 'Technology Partner', logo: '/logos/tealorca.png', name: 'TealOrca' },
+  { label: 'Pitch & Media Partner', logo: '/logos/startupsingam.png', name: 'Startup Singam', url: 'https://www.startupsingam.com/' },
+  // Given as http://tealorca.in/ but the host serves TLS fine (verified: 200 over
+  // https), and an http link would hand the visitor a "Not secure" warning.
+  { label: 'Technology Partner', logo: '/logos/tealorca.png', name: 'TealOrca', url: 'https://tealorca.in/' },
 ]
 
 export type GovPartner = { name: string; logo?: string }

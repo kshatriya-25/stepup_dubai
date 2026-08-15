@@ -7,10 +7,10 @@
  *
  * THE THREE RULES OF THIS FILE — read before changing anything:
  *
- *   1. The AMOUNT IS NEVER READ FROM THE CLIENT. It comes from REGISTRATION_FEE_INR
- *      and nowhere else. A browser that POSTs `{amount: 1}` must be unable to buy a
- *      ticket for one paisa. Every function here that takes an amount takes it from
- *      the server's own config.
+ *   1. The AMOUNT IS NEVER READ FROM THE CLIENT. It is looked up from the ticket
+ *      catalogue in @/content/tickets and nowhere else. A browser that POSTs
+ *      `{amount: 1}` must be unable to buy a ₹3,999 pass for one paisa, so every
+ *      function here takes its amount from the server's own resolution of a ticket id.
  *
  *   2. MONEY IS INTEGER PAISE, never rupees-as-float. `0.1 + 0.2 !== 0.3` in IEEE-754,
  *      and Razorpay's API is paise-denominated anyway. Rupees exist here only for
