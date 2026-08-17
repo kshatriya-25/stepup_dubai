@@ -19,6 +19,13 @@
  * Everything a customer might need in a dispute is on the page: amount, payment id,
  * order id and timestamp. The payment id is what Razorpay support and the bank will
  * both ask for, so it is selectable text, not an image.
+ *
+ * {{ACCESS}} IS NOT DECORATION. It is filled from the bought ticket's own Access value
+ * in @/content/tickets — the same string the pass card on the site prints. This used to
+ * be a flat "Two days in Erode" sentence, which stopped being true the moment the
+ * Delegate Pass changed to Day 2 only: the receipt was promising a day the pass did not
+ * admit. Sourcing it from the catalogue means changing a pass's access changes what its
+ * receipt claims, in one edit, and the two cannot disagree again.
  */
 
 export const PAID_SUBJECT = '{{FIRST_NAME}}, your Tier-2 Rising seat is confirmed'
@@ -42,7 +49,10 @@ export const PAID_CONFIRMATION_HTML = `<!DOCTYPE html><html lang="en"><head><met
       We've received your payment of <strong style="color:#14315E;">{{AMOUNT}}</strong> for the <strong style="color:#14315E;">{{TICKET}}</strong> and your place at the summit is booked. Keep this email — it's your receipt.
     </p>
     <p style="margin:12px 0 0 0;font-size:15px;line-height:1.65;color:#3D4A5C;">
-      Two days in Erode where investors, government scheme officers and bank credit heads come to Tier-2, instead of the other way round. Five Growth Zones open all day, ten startups coached, three pitching live on the main stage.
+      Erode is where investors, government scheme officers and bank credit heads come to Tier-2, instead of the other way round. Five Growth Zones open all day, ten startups coached, three pitching live on the main stage.
+    </p>
+    <p style="margin:12px 0 0 0;font-size:15px;line-height:1.65;color:#3D4A5C;">
+      Your {{TICKET}} admits you on <strong style="color:#14315E;">{{ACCESS}}</strong>.
     </p>
     <p style="margin:12px 0 0 0;font-size:15px;line-height:1.65;color:#3D4A5C;">
       Your entry pass and the full agenda reach you closer to the date, at this address.
@@ -61,6 +71,7 @@ export const PAID_CONFIRMATION_HTML = `<!DOCTYPE html><html lang="en"><head><met
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #E3E7ED;">
       <tr><td colspan="2" style="padding:16px 0 6px 0;font-size:10px;font-weight:700;letter-spacing:1.6px;color:#7A8798;">PAYMENT RECEIPT</td></tr>
       <tr><td width="130" style="padding:6px 0;font-size:14px;color:#7A8798;">Ticket</td><td style="padding:6px 0;font-size:14px;color:#14315E;font-weight:700;">{{TICKET}}</td></tr>
+      <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Access</td><td style="padding:6px 0;font-size:14px;color:#14315E;font-weight:700;">{{ACCESS}}</td></tr>
       <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Amount paid</td><td style="padding:6px 0;font-size:14px;color:#14315E;font-weight:700;">{{AMOUNT}}</td></tr>
       <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Paid on</td><td style="padding:6px 0;font-size:14px;color:#3D4A5C;">{{PAID_ON}}</td></tr>
       <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Payment ID</td><td style="padding:6px 0;font-size:13px;color:#3D4A5C;font-family:Consolas,Monaco,monospace;">{{PAYMENT_ID}}</td></tr>

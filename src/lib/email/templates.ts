@@ -21,6 +21,7 @@ import {
   PARTNER_SUBJECT,
 } from './approved'
 import { PAID_CONFIRMATION_HTML, PAID_SUBJECT, TEST_MODE_BANNER } from './paid'
+import { ticketById } from '@/content/tickets'
 
 const C = {
   navy: '#072B5F',
@@ -542,10 +543,32 @@ export type PaymentInfo = {
   amountLabel: string
   /** Which pass was bought, e.g. "Founder Programme". */
   ticketName: string
+  /**
+   * Catalogue id of the pass. A plain string, not TicketId, and deliberately so: this
+   * arrives from a persisted journal row or from Razorpay's order notes, either of
+   * which may name a pass that has since been renamed or retired. Typing it to the
+   * current union would be asserting something about old data we cannot check.
+   * accessLabel() treats an unknown id the same as a missing one.
+   */
+  ticketId?: string
   paidAt: Date
   method?: string
   /** rzp_test_… keys. Stamps a warning banner so a test receipt can't pass as real. */
   testMode: boolean
+}
+
+/**
+ * What the bought pass actually admits you to — "Day 2", "Day 1 + Day 2" — read from
+ * the ticket catalogue rather than written out here, so a receipt cannot contradict the
+ * card that sold it.
+ *
+ * Falls back to the event dates when the id is missing or unknown. That is the honest
+ * answer for a recovered order: the summit runs on those dates and we are not going to
+ * invent an entitlement we cannot look up.
+ */
+export function accessLabel(pay: PaymentInfo): string {
+  const ticket = pay.ticketId ? ticketById(pay.ticketId) : null
+  return ticket?.meta.find((m) => m.label === 'Access')?.value || site.dates
 }
 
 /**
@@ -568,6 +591,7 @@ export function paidParticipantEmail(
     EVENT_LOCATION: `${site.venue}, ${site.city}`,
     AMOUNT: pay.amountLabel,
     TICKET: pay.ticketName,
+    ACCESS: accessLabel(pay),
     PAID_ON: stamp(pay.paidAt),
     PAYMENT_ID: pay.paymentId,
     ORDER_ID: pay.orderId,
@@ -583,21 +607,33 @@ export function paidParticipantEmail(
     pay.testMode ? TEST_MODE_BANNER : '',
   )
 
+  /*
+   * Spread the test-mode line in rather than emitting '' for it.
+   *
+   * This array used to end `.filter((l) => l !== '')`, which was there to drop that one
+   * entry in live mode — but it matched every OTHER '' too, and those are the blank
+   * lines separating the paragraphs, the address block and the two tables. The
+   * plain-text receipt arrived as a single unbroken wall. Nothing in the HTML part
+   * changed, so it only showed up for readers whose client prefers text/plain.
+   */
   const text = [
-    pay.testMode ? 'TEST MODE — no real money was charged. Not a valid receipt.\n' : '',
+    ...(pay.testMode ? ['TEST MODE — no real money was charged. Not a valid receipt.', ''] : []),
     `THANKS, ${firstName(r.name).toUpperCase()}. YOUR SEAT IS CONFIRMED.`,
     '',
     `We've received your payment of ${pay.amountLabel} for the ${pay.ticketName} and your`,
     "place at the summit is booked. Keep this email — it's your receipt.",
     '',
-    'Two days in Erode where investors, government scheme officers and bank credit',
-    'heads come to Tier-2, instead of the other way round.',
+    'Erode is where investors, government scheme officers and bank credit heads come',
+    'to Tier-2, instead of the other way round.',
+    '',
+    `Your ${pay.ticketName} admits you on ${accessLabel(pay)}.`,
     '',
     site.dates,
     `${site.venue}, ${site.city}`,
     '',
     'PAYMENT RECEIPT',
     `Ticket         ${pay.ticketName}`,
+    `Access         ${accessLabel(pay)}`,
     `Amount paid    ${pay.amountLabel}`,
     `Paid on        ${stamp(pay.paidAt)}`,
     `Payment ID     ${pay.paymentId}`,
@@ -618,9 +654,7 @@ export function paidParticipantEmail(
     'TIER-2 RISING STARTUP SUMMIT',
     'NammaOffice Presents · In association with Startup Singam',
     `${site.contactEmail} · ${site.contactPhone}`,
-  ]
-    .filter((l) => l !== '')
-    .join('\n')
+  ].join('\n')
 
   return {
     subject: fillTokens(PAID_SUBJECT, tokens, { escape: false }),

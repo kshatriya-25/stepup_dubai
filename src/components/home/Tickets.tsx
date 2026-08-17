@@ -27,10 +27,20 @@ import {
  * the two notch pairs are separate elements per orientation — one pair cannot be made
  * to work in both without transforms that blur on retina.
  *
+ * This is now the page's ONLY conversion point — the free registration/waitlist section
+ * that used to sit below it has been removed, and every Register CTA on the site points
+ * here. The checkout sheet asks for the same six details that form did (name, email,
+ * phone, sector, register-as, city), so nothing is collected less than before.
+ *
  * SELLING IS CURRENTLY SWITCHED OFF — see TICKET_SALES_LIVE in @/content/tickets.
  * Clicking a ticket opens a "booking opens soon" panel instead of the checkout sheet.
  * The checkout path below is complete and still type-checked; it is one boolean away
  * from being live. Nothing on this page can contact Razorpay while that flag is false.
+ *
+ * Note what that flag now costs: with the waitlist gone, leaving it false means the
+ * site has no self-serve way to sign anyone up at all — every route ends at an email
+ * link. That was an acceptable state when a live form sat underneath; it is not one to
+ * ship for long.
  *
  * When it is on, clicking a price opens a checkout sheet — it cannot go straight to
  * Razorpay, because the Sheet row and the confirmation email need sector, city and
@@ -288,8 +298,10 @@ function TicketCheckout({ ticket, onClose }: { ticket: Ticket | null; onClose: (
  *
  * It also does not dead-end. Somebody who just clicked "Book" on a ₹999 pass has told
  * us they intend to come, and the worst possible answer is a message with nowhere to
- * go. So the primary action sends them to the registration waitlist, which is live and
- * already emails them. A button that cannot sell should still capture the lead.
+ * go. The primary action used to send them to the free registration waitlist; that
+ * section has been removed, so it now opens a pre-addressed email instead. Less
+ * automatic, but it still reaches a human and it does not point at an anchor that is
+ * not on the page.
  */
 function ComingSoon({ ticket, onClose }: { ticket: Ticket; onClose: () => void }) {
   // "Book" and "Apply" are different promises: one is a seat you buy, the other a slot
@@ -346,32 +358,14 @@ function ComingSoon({ ticket, onClose }: { ticket: Ticket; onClose: () => void }
           )}
         </p>
 
-        {/*
-          The href stays for semantics and for the listener in Register.tsx that focuses
-          the Name field on any #register link — but the default jump is suppressed.
-
-          Left to itself the browser navigates on click, while React only runs the
-          scroll-lock cleanup afterwards; that cleanup restores the pre-modal position
-          and would drag the visitor straight back off the form they just asked for.
-          Closing first and scrolling once the lock is released is the only ordering
-          that lands them where they meant to go.
-        */}
+        {/* Subject line names the pass so the reply does not have to ask which one. */}
         <a
-          href="#register"
-          onClick={(e) => {
-            e.preventDefault()
-            onClose()
-            // Two frames: one for React to commit the close and run the cleanup,
-            // one for the browser to settle the restored scroll position.
-            requestAnimationFrame(() =>
-              requestAnimationFrame(() =>
-                document.getElementById('register')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
-              ),
-            )
-          }}
+          href={`mailto:${site.contactEmail}?subject=${encodeURIComponent(
+            `${isApplication ? 'Interest' : 'Waitlist'} — ${ticket.name}`,
+          )}`}
           className="mt-7 flex w-full max-w-xs items-center justify-center gap-2 bg-accent py-4 font-sans text-btn font-bold uppercase text-accent-ink transition-colors hover:bg-base hover:text-surface"
         >
-          Join the waitlist
+          {isApplication ? 'Register interest' : 'Join the waitlist'}
           <ArrowRight size={16} />
         </a>
 
@@ -496,7 +490,25 @@ function CheckoutForm({ ticket, onClose }: { ticket: Ticket; onClose: () => void
         currency: order.currency || 'INR',
         name: site.fullName,
         description: `${order.ticketName || ticket.name} · ${site.dates}`,
+        /*
+         * Name, email and phone come from our own form, so Checkout must not ask for
+         * them a second time.
+         *
+         * `prefill` alone only fills the boxes — Checkout still shows them and still
+         * lets the payer edit, which is both an extra step and a data problem: a number
+         * typed here goes onto Razorpay's payment record while OUR journal row, the
+         * Sheet and the confirmation email all keep the one from the form. Reconciling
+         * a payment to a registration by phone then fails on exactly the orders where
+         * someone corrected themselves.
+         *
+         * `readonly` locks all three to the validated values, which collapses the
+         * contact screen and makes the two records agree by construction. The server
+         * builds `prefill.contact` as +91XXXXXXXXXX (normalisePhone, spaces stripped) —
+         * Checkout ignores a contact it cannot parse, and silently falls back to
+         * asking, so that format is load-bearing.
+         */
         prefill: order.prefill,
+        readonly: { name: true, email: true, contact: true },
         notes: { ticket: ticket.id },
         theme: { color: '#F47B20' },
         retry: { enabled: true, max_count: 3 },
@@ -538,7 +550,13 @@ function CheckoutForm({ ticket, onClose }: { ticket: Ticket; onClose: () => void
 
   /**
    * Everything below runs AFTER the customer has been charged.
-   * There is no path here that shows a failure — see the note in Register.tsx.
+   *
+   * There is deliberately no path here that reports a failure, with one exception. Once
+   * Razorpay has handed us a payment id the money has moved, and the webhook records it
+   * independently of this request — so an error shown here would be describing our own
+   * bookkeeping, not their payment, and the only thing it could make them do is pay
+   * twice. The exception is a 402, which is the single post-Checkout case where the
+   * charge genuinely did not complete.
    */
   async function confirmPayment(response: RazorpayResponse) {
     setStatus('confirming')

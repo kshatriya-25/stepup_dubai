@@ -18,7 +18,7 @@
  */
 
 /**
- * THE ON SWITCH FOR SELLING. Currently OFF.
+ * THE ON SWITCH FOR SELLING. Currently ON.
  *
  * false = clicking a ticket opens a "booking opens soon" panel. No order is created,
  * Razorpay is never contacted, no money can move. The cards, prices and the entire
@@ -31,8 +31,18 @@
  * Two switches on purpose: this one is the shopfront (a code change, reviewed and in
  * git history), the env one is the till (ops, per environment). Either being off means
  * nobody can be charged, so a half-finished go-live fails closed.
+ *
+ * Turned on when the free waitlist section was removed — with that gone this is the
+ * only way anyone can sign up, so leaving it false would have left the site with no
+ * conversion path at all.
+ *
+ * WHAT THIS DOES *NOT* DECIDE: whether real money moves. That is the key pair in the
+ * server env. On `rzp_test_…` keys this flag opens a fully functional checkout that
+ * takes fake payments — Razorpay's own popup marks itself Test Mode, but our
+ * confirmation emails go out for real. Check `GET /api/payment/order` on the box you
+ * deployed to: it reports `mode: "LIVE" | "test"` without leaking the secret.
  */
-export const TICKET_SALES_LIVE = false
+export const TICKET_SALES_LIVE = true
 
 export type TicketId = 'delegate' | 'investor-pitch' | 'founder'
 

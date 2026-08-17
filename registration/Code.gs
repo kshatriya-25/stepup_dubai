@@ -30,12 +30,22 @@ var FORMS = {
       // Payment columns. Empty for waitlist rows (payment disabled) and filled once a
       // Razorpay payment is captured — see src/lib/payments/fulfil.ts. Payment ID is
       // the one to quote to Razorpay support or a bank in a dispute.
+      //
+      // 'Ticket' is the pass NAME as sold ("Delegate Pass"); 'Access' is what that pass
+      // admitted to on the day it was bought ("Day 2"). Both are stored, rather than
+      // deriving one from the other at read time, because a pass's access can change:
+      // the Delegate Pass moved from "Day 1 + Day 2" to "Day 2", and a row written
+      // before that must keep saying what its buyer was actually sold.
       ['Payment Status', 'paymentStatus'],
       ['Ticket',         'ticket'],
+      ['Access',         'access'],
       ['Amount',         'amount'],
       ['Payment ID',     'paymentId'],
       ['Order ID',       'orderId'],
-      ['Paid At',        'paidAt'],
+      // IST, as 'YYYY-MM-DD HH:mm:ss' — see sheetStamp() in src/lib/payments/fulfil.ts
+      // for why it is not a UTC ISO string. The header names the zone so nobody has to
+      // guess whether a late-night row belongs to that day or the next.
+      ['Paid At (IST)',  'paidAt'],
     ],
   },
   partner: {
@@ -92,20 +102,98 @@ function doGet() {
 }
 
 /**
- * Run this ONCE from the editor after changing COLUMNS. It rewrites row 1 on BOTH
- * tabs, creating the Partners tab if it doesn't exist yet. Existing data rows are
- * untouched — only the header is rewritten.
+ * Run this from the editor after changing COLUMNS. It writes row 1 ONLY — the range is
+ * getRange(1, 1, 1, n), so no data row can be reached by it. Adding columns to the end
+ * therefore leaves every existing row exactly where it is, with the new cells blank.
+ *
+ * SAFE BY DEFAULT. It refuses to run if the change would do anything other than append:
+ *
+ *   - renaming or reordering an existing column, which leaves the data underneath it
+ *     unmoved and now filed under the wrong heading. That is silent corruption — the
+ *     sheet still looks fine, and every row is subtly wrong.
+ *   - shortening the list, which strands populated columns under a stale header.
+ *
+ * In either case it logs the exact before/after and stops without writing. If the change
+ * really is intended, move the data yourself first, then run setupHeadersForce().
  */
 function setupHeaders() {
+  applyHeaders_(false);
+}
+
+/**
+ * setupHeaders() with the guard disabled — for a deliberate rename or reorder, AFTER you
+ * have moved the existing data to match. Take File -> Make a copy first. There is no
+ * undo for a script write beyond Sheets' own version history.
+ */
+function setupHeadersForce() {
+  applyHeaders_(true);
+}
+
+function applyHeaders_(force) {
   Object.keys(FORMS).forEach(function (key) {
     var form = FORMS[key];
     var sheet = getSheet_(form);
     var headers = form.columns.map(function (c) { return c[0]; });
+
+    // What is on the sheet right now. Read the full width, not headers.length, so a
+    // column being REMOVED is visible to the check rather than falling outside it.
+    var width = Math.max(sheet.getLastColumn(), headers.length);
+    var existing = sheet.getRange(1, 1, 1, width).getValues()[0].map(function (v) {
+      return String(v == null ? '' : v).trim();
+    });
+
+    var conflicts = [];
+    for (var i = 0; i < width; i++) {
+      var was = existing[i] || '';
+      var now = headers[i] || '';
+      // An empty existing cell is a genuinely new column: appending is always safe.
+      if (was && was !== now) {
+        conflicts.push('  col ' + columnLetter_(i + 1) + ': "' + was + '" -> "' + (now || '(removed)') + '"');
+      }
+    }
+
+    if (conflicts.length && !force) {
+      Logger.log(
+        'Tab "%s": REFUSING to rewrite headers — %s existing column(s) would change ' +
+          'meaning, and the data underneath them would NOT move:\n%s\n' +
+          'Rows on this tab: %s. Nothing has been written. If this is intended, move the ' +
+          'data to match first, then run setupHeadersForce().',
+        form.sheet,
+        conflicts.length,
+        conflicts.join('\n'),
+        Math.max(sheet.getLastRow() - 1, 0),
+      );
+      return;
+    }
+
+    var added = [];
+    for (var j = 0; j < headers.length; j++) {
+      if (!existing[j]) added.push(headers[j]);
+    }
+
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight('bold');
     sheet.setFrozenRows(1);
     // Shows up in the editor's Execution log, so you can see it actually ran.
-    Logger.log('Tab "%s" ready with %s columns: %s', form.sheet, headers.length, headers.join(' | '));
+    Logger.log(
+      'Tab "%s" ready with %s columns: %s\n  data rows untouched: %s\n  columns added: %s',
+      form.sheet,
+      headers.length,
+      headers.join(' | '),
+      Math.max(sheet.getLastRow() - 1, 0),
+      added.length ? added.join(', ') : 'none',
+    );
   });
+}
+
+/** 1 -> A, 27 -> AA. Only used to make the conflict log point at a real column. */
+function columnLetter_(n) {
+  var s = '';
+  while (n > 0) {
+    var r = (n - 1) % 26;
+    s = String.fromCharCode(65 + r) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
 }
 
 /**

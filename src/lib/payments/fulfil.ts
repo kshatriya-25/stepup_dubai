@@ -26,6 +26,7 @@ import { sendMail, organiserRecipients } from '@/lib/email/mailer'
 import {
   paidParticipantEmail,
   paidOrganiserEmail,
+  accessLabel,
   unfulfilledAlertEmail,
   type PaymentInfo,
   type Registration as EmailRegistration,
@@ -65,6 +66,36 @@ function forEmail(r: Registration): EmailRegistration {
   }
 }
 
+/**
+ * Sheet timestamps in IST, as `YYYY-MM-DD HH:mm:ss`.
+ *
+ * NOT toISOString(). That is UTC, and IST is +5:30 ahead — so a payment taken at 2am on
+ * the 12th in Erode files in the sheet under the 11th. Whoever reconciles this column
+ * against a bank statement or a day's door list would be doing timezone arithmetic in
+ * their head on every late-evening row.
+ *
+ * NOT stamp() either, which is what the emails use. "11 Oct 2026, 11:35 pm IST" reads
+ * well in a sentence but sorts alphabetically in a spreadsheet column, which files April
+ * ahead of August. This shape reads plainly AND sorts correctly as text — and text is
+ * what it will be, because writeRow_ in registration/Code.gs forces '@' on every cell
+ * to stop Sheets parsing "+91 …" as a formula.
+ */
+function sheetStamp(date: Date): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    // h23, not hour12:false — the latter renders midnight as "24" under some ICU builds.
+    hourCycle: 'h23',
+    timeZone: 'Asia/Kolkata',
+  }).formatToParts(date)
+  const v = (t: string) => parts.find((p) => p.type === t)?.value ?? ''
+  return `${v('year')}-${v('month')}-${v('day')} ${v('hour')}:${v('minute')}:${v('second')}`
+}
+
 function paymentInfo(rec: PaymentRecord, paidAt: Date): PaymentInfo {
   return {
     paymentId: rec.paymentId || '—',
@@ -72,6 +103,8 @@ function paymentInfo(rec: PaymentRecord, paidAt: Date): PaymentInfo {
     amountPaise: rec.amountPaise,
     amountLabel: formatInr(rec.amountPaise),
     ticketName: rec.registration.ticketName || 'Ticket',
+    // Lets the receipt state what the pass admits to, looked up from the catalogue.
+    ticketId: rec.registration.ticketId,
     paidAt,
     method: rec.method,
     testMode: !isLiveMode(),
@@ -275,10 +308,13 @@ async function fulfil(
         // at the top of registration/Code.gs.
         paymentStatus: 'Paid',
         ticket: pay.ticketName,
+        // What the pass admits to, from the catalogue — so the door list can be filtered
+        // to a day without cross-referencing which pass meant what at time of sale.
+        access: accessLabel(pay),
         amount: pay.amountLabel,
         paymentId: pay.paymentId,
         orderId: pay.orderId,
-        paidAt: paidAt.toISOString(),
+        paidAt: sheetStamp(paidAt),
       },
       SHEET_ATTEMPTS[i],
     )

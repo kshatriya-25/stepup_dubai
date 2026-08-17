@@ -20,7 +20,11 @@ export const site = {
   venue: 'Fortune City',
   city: 'Erode, Tamil Nadu',
   entry: 'Ticketed · details announced soon',
-  register: '#register',
+  // Every "Register" button on the site reads this — header, hero, mobile nav. It
+  // pointed at #register, the free waitlist form, which no longer exists: registering
+  // now means buying one of the three passes, so the CTA lands on the passes and the
+  // checkout sheet collects the details the waitlist used to.
+  register: '#tickets',
   // Public contact details shown on the site. Separate from the transactional sender
   // (MAIL_FROM / MAIL_REPLY_TO in .env) that the registration emails go out as.
   contactEmail: 'tier2rising@nammaoffice.com',
@@ -31,8 +35,12 @@ export const site = {
 // /api/register, and that route reads NEXT_PUBLIC_REGISTRATION_ENDPOINT server-side.
 // See REGISTRATION-SETUP.md and EMAIL-SETUP.md.
 
-// Registration toggle: '1' shows the live form, '0' (or unset) shows an "opening soon" state.
-export const registrationOpen = process.env.NEXT_PUBLIC_REGISTRATION_OPEN === '1'
+// NEXT_PUBLIC_REGISTRATION_OPEN used to be read here, to swap the free waitlist form
+// between "live" and "opening soon". That section is gone and nothing reads the var any
+// more — whether you can sign up is now purely a question of whether passes are on
+// sale, which is TICKET_SALES_LIVE in @/content/tickets plus the server's
+// REGISTRATION_PAYMENT_ENABLED. Setting it in the environment is harmless but has no
+// effect; do not add a third switch here.
 
 export const registrationRoles = [
   'Founder',
@@ -108,7 +116,7 @@ export type NavItem = { label: string; href: string; children?: { label: string;
  * one array is what stops the menu and the footer drifting apart again.
  *
  * Every href below must match a real `id` on a <section>. Current anchors:
- *   #story  #zones  #whatgoeson  #partners  #register
+ *   #story  #zones  #whatgoeson  #partners  #tickets
  */
 export const exploreLinks: { label: string; href: string }[] = [
   { label: 'Our Vision', href: '#story' },
@@ -135,8 +143,9 @@ export const nav: NavItem[] = [
 ]
 
 // `action: 'partner'` swaps the modal to the enquiry form instead of navigating.
-// TODO: 'Nominate a Startup' should point at the Startup Singam URL once we have it —
-// it currently falls back to the registration form.
+// TODO: 'Nominate a Startup' should point at the Startup Singam URL once we have it.
+// Until then it falls back to the passes — nominating means entering the Top 10
+// shortlist, which is what the Founder Programme pass buys.
 export const participateRoutes: {
   label: string
   desc: string
@@ -147,7 +156,7 @@ export const participateRoutes: {
   // there is something to buy. The ticket brief calls for exactly this — Attend must
   // land on the pricing slots, and a slot opens the payment gateway.
   { label: 'Attend', desc: 'Book a delegate or founder pass', href: '#tickets' },
-  { label: 'Nominate a Startup', desc: 'For the Top 10 shortlist', href: '#register' },
+  { label: 'Nominate a Startup', desc: 'For the Top 10 shortlist', href: '#tickets' },
   { label: 'Partner with us', desc: 'Sponsor, speak or host a desk', action: 'partner' },
 ]
 
