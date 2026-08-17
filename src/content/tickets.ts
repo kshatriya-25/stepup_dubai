@@ -69,15 +69,15 @@ export const tickets: Ticket[] = [
     eyebrow: 'Delegate · Visitor',
     name: 'Delegate Pass',
     blurb:
-      'Both days, every growth zone, the startup exhibit and the live finale. Walk up to scheme officers, investors and bank heads without an introduction.',
+      'Day 2, every growth zone, the startup exhibit and the live finale. Walk up to scheme officers, investors and bank heads without an introduction.',
     priceInr: 999,
     unit: 'per person',
     cta: 'Book',
     emphasis: 'solid',
     accent: 'accent',
     meta: [
-      { label: 'Access', value: 'Day 1 + Day 2' },
-      { label: 'Meals', value: 'Lunch × 2' },
+      { label: 'Access', value: 'Day 2' },
+      { label: 'Meals', value: 'Lunch' },
       { label: 'Kit', value: 'Delegate' },
       // NOTE: seat counts are static copy, not live inventory — nothing decrements
       // them when a ticket sells. See the warning in PAYMENTS.md before advertising a
