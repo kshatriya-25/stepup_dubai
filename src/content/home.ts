@@ -79,9 +79,11 @@ export const partners: Partner[] = [
   { label: 'Event Founder & Principal Organiser', logo: '/logos/nammaoffice-v3.png', name: 'NammaOffice', url: 'https://nammaoffice.com/' },
   { label: 'Event Co-Founder & Strategic Partner', logo: '/logos/3ios.png', name: '3iOS' },
   { label: 'Pitch & Media Partner', logo: '/logos/startupsingam.png', name: 'Startup Singam', url: 'https://www.startupsingam.com/' },
-  // Given as http://tealorca.in/ but the host serves TLS fine (verified: 200 over
-  // https), and an http link would hand the visitor a "Not secure" warning.
-  { label: 'Technology Partner', logo: '/logos/tealorca.png', name: 'TealOrca', url: 'https://tealorca.in/' },
+  // tealorca.com, not the .in the brief originally gave. Both resolve, but .in
+  // redirects to /home.php while .com serves the site at its root — verified 200 over
+  // https on both. https, not http: an http link hands the visitor a "Not secure"
+  // warning on the way to our own technology partner.
+  { label: 'Technology Partner', logo: '/logos/tealorca.png', name: 'TealOrca', url: 'https://tealorca.com/' },
 ]
 
 export type GovPartner = { name: string; logo?: string }
