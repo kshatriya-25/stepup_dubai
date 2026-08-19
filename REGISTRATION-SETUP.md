@@ -53,7 +53,10 @@ Then rebuild and restart: `npm run build && pm2 restart tier2rising` (see `HOSTI
 ## Test it
 1. Check what's wired: `curl -s https://tier2rising.com/api/register` — it should
    report `"sheet":"configured"` and `"mail":"configured"`.
-2. Open the live site, scroll to **Register for ticket updates**, submit a test entry.
+2. Open the live site, go to **Tear off your entry**, and buy a pass. (There is no
+   longer a free registration form — it was removed when every Register CTA was
+   repointed at the passes, so a purchase is now the only path that writes a row.
+   Use Razorpay **test** keys for this.)
 3. A new row should appear in the Sheet within a second or two, and both emails should
    arrive.
 4. You can also open the `/exec` URL directly in a browser — it returns

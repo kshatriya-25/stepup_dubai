@@ -48,9 +48,27 @@ import {
   type Registration,
 } from './journal'
 
-/** Sheet write attempts, with the per-attempt timeout that goes with each. */
-const SHEET_ATTEMPTS = [8_000, 8_000, 12_000]
-const BACKOFF_MS = [400, 1_200]
+/**
+ * Sheet write attempts, with the per-attempt timeout that goes with each.
+ *
+ * These were [8_000, 8_000, 12_000] and that was below the floor. Measured against a
+ * live deployment, a bare doGet() — which writes nothing — takes 5.7s to 9.5s, because
+ * every /exec call 302-redirects to googleusercontent.com and cold starts are slower
+ * again. A doPost that takes the script lock and writes a row is slower still, so an
+ * 8s budget was timing out on calls that had already succeeded.
+ *
+ * The result was the worst of both worlds: the row landed, we did not hear back, we
+ * retried, and the retry landed too. One staging purchase produced three identical
+ * paid rows AND a "paid but NOT recorded" alert.
+ *
+ * Two changes, together. findDuplicateRow_ in registration/Code.gs makes a retry a
+ * no-op, so a repeat can no longer duplicate. And these budgets are now longer than
+ * the operation actually takes, so the common case is heard first time rather than
+ * retried blind. Fewer attempts, each long enough to be worth making: the customer is
+ * watching a spinner, and the webhook is an independent backstop if all of them miss.
+ */
+const SHEET_ATTEMPTS = [20_000, 25_000]
+const BACKOFF_MS = [800]
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 

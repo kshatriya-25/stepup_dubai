@@ -219,3 +219,92 @@ properly.
 Both take production down while they persist, because Apache is one process serving
 both sites. That is the price of the shared box, and the reason `configtest` comes
 before every reload in this document.
+
+---
+
+## Giving staging its own Google Sheet
+
+Do this once, on the new Sheet. Until it is done, staging writes into the
+production Registrations tab and your test rows sit among real attendees.
+
+### 1. Attach the script to the new Sheet
+
+The Apps Script is **container-bound** — it lives inside a specific spreadsheet, not
+in a shared library. A new Sheet therefore needs its own copy; there is nothing to
+"point at" the existing one.
+
+1. Open the new Sheet → **Extensions → Apps Script**.
+2. Delete the starter `myFunction` stub, paste the entire contents of
+   [`registration/Code.gs`](../registration/Code.gs), **Save**.
+3. Function dropdown → **`setupHeaders`** → **Run**.
+   - First run raises *"Google hasn't verified this app"*. That is expected for a
+     personal script: **Advanced → Go to (project name) (unsafe)** → Allow. You are
+     granting your own script access to your own spreadsheet.
+   - Check the **Execution log**. It should report both tabs, `Registrations` with
+     14 columns and `Partners` with 5.
+
+Running `setupHeaders` before the first submission is what gets you the full column
+set and a frozen header row. Skip it and the tab is still created on first write,
+but only with whatever that write happened to contain.
+
+### 2. Deploy as a Web App
+
+**Deploy → New deployment** — a *new* one, unlike the production script where you
+edit the existing deployment. This is a different spreadsheet, so it needs its own
+deployment and its own `/exec` URL.
+
+- Gear icon → **Web app**
+- **Description:** `Tier-2 staging registrations`
+- **Execute as:** **Me**
+- **Who has access:** **Anyone**
+
+**"Anyone", not "Anyone with a Google account".** This is the single most common way
+this goes wrong. With the account variant Google answers the POST with an HTML
+sign-in page instead of running the script, and the app reports:
+
+```
+Unexpected Apps Script response: <!DOCTYPE html>...
+```
+
+which reads like a bug in the site and is not one.
+
+Copy the **Web app URL**. It ends in `/exec`.
+
+### 3. Point staging at it
+
+In `/var/www/tier2expo/staging/tier2/.env`:
+
+```
+NEXT_PUBLIC_REGISTRATION_ENDPOINT=https://script.google.com/macros/s/<STAGING_ID>/exec
+```
+
+Then **rebuild** — a restart alone is not enough:
+
+```bash
+cd /var/www/tier2expo/staging/tier2
+npm run build
+pm2 restart tier2rising-staging --update-env
+```
+
+The `NEXT_PUBLIC_` prefix means Next inlines this value into the compiled output at
+build time, including the server bundle. `pm2 restart` re-reads `.env` but the old
+URL is already baked into `.next/`, so staging would keep writing to the production
+Sheet and nothing would look wrong.
+
+### 4. Verify it is actually the new Sheet
+
+```bash
+curl -s https://staging.tier2rising.com/api/register
+curl -s https://tier2rising.com/api/register
+```
+
+Both should report `"sheet":"configured"`. Then compare the endpoint each one is
+using — if the two `/exec` URLs are the same, step 3's rebuild did not take.
+
+Opening the staging `/exec` URL in a browser returns
+`{"ok":true,"service":"tier2-rising-registrations","forms":["registration","partner"]}`,
+which confirms the deployment itself is live and public.
+
+Last, buy a pass on staging with Razorpay test keys and confirm the row lands in the
+**new** Sheet with `Ticket`, `Access` and `Paid At (IST)` filled — and that nothing
+new appears in the production Sheet.

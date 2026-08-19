@@ -81,13 +81,44 @@ function doPost(e) {
   }
 
   var lock = LockService.getScriptLock();
-  lock.tryLock(30000);
+  // Check the RESULT. tryLock() returns false on timeout, and the old code ignored
+  // that and carried on unlocked — so two overlapping requests could both pass the
+  // duplicate check below and both append. Refusing is correct: the caller retries,
+  // and a retry is now free (see findDuplicateRow_).
+  if (!lock.tryLock(30000)) {
+    return json_({ ok: false, error: 'Busy — another write is in progress. Retry.' });
+  }
+
   try {
     var form = FORMS[p.type] || FORMS[DEFAULT_FORM];
     var sheet = getSheet_(form);
     var row = form.columns.map(function (c) {
       return c[1] === null ? new Date() : (p[c[1]] || '');
     });
+
+    /*
+     * IDEMPOTENCY. Do not remove.
+     *
+     * The caller retries a sheet write it believes failed, and "believes failed"
+     * includes "timed out waiting for the response". Apps Script is slow — a /exec
+     * round trip is 6-10s on a good day, because every call 302-redirects to
+     * googleusercontent.com and cold starts are slower still — so a client timeout
+     * lands squarely in the window where the row HAS been written and the caller has
+     * simply not heard back yet. It then retries, and writes the row again.
+     *
+     * That is exactly what happened on the first staging purchase: three attempts,
+     * three identical paid rows, and a "paid but NOT recorded" alert for a
+     * registration that was recorded three times.
+     *
+     * The order id is unique per purchase and already in the payload, so a repeat is
+     * recognisable. Returning ok:true for one makes the retry a no-op instead of a
+     * duplicate — and the caller cannot tell the difference, which is the point.
+     */
+    var duplicate = findDuplicateRow_(sheet, form, row);
+    if (duplicate) {
+      return json_({ ok: true, duplicate: true, row: duplicate });
+    }
+
     writeRow_(sheet, form, row);
     return json_({ ok: true });
   } catch (err) {
@@ -95,6 +126,36 @@ function doPost(e) {
   } finally {
     lock.releaseLock();
   }
+}
+
+/**
+ * Row number of an existing row with this payload's Order ID, or 0 for none.
+ *
+ * Only applies to forms that HAVE an orderId column and to payloads that carry one:
+ * a partner enquiry has no order, and neither does a free registration, so those are
+ * never deduplicated and two genuine submissions from one person both land.
+ *
+ * Called while the script lock is held, so a concurrent retry cannot slip between the
+ * check and the write.
+ */
+function findDuplicateRow_(sheet, form, row) {
+  var idx = -1;
+  for (var i = 0; i < form.columns.length; i++) {
+    if (form.columns[i][1] === 'orderId') { idx = i; break; }
+  }
+  if (idx < 0) return 0;
+
+  var orderId = String(row[idx] || '').trim();
+  if (!orderId) return 0;
+
+  var last = sheet.getLastRow();
+  if (last < 2) return 0; // headers only
+
+  var values = sheet.getRange(2, idx + 1, last - 1, 1).getValues();
+  for (var r = 0; r < values.length; r++) {
+    if (String(values[r][0]).trim() === orderId) return r + 2;
+  }
+  return 0;
 }
 
 function doGet() {
