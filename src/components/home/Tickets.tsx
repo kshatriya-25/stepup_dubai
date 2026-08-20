@@ -32,20 +32,25 @@ import {
  * here. The checkout sheet asks for the same six details that form did (name, email,
  * phone, sector, register-as, city), so nothing is collected less than before.
  *
- * SELLING IS CURRENTLY SWITCHED OFF — see TICKET_SALES_LIVE in @/content/tickets.
- * Clicking a ticket opens a "booking opens soon" panel instead of the checkout sheet.
- * The checkout path below is complete and still type-checked; it is one boolean away
- * from being live. Nothing on this page can contact Razorpay while that flag is false.
+ * TWO SWITCHES DECIDE WHAT A CARD DOES, and they are not the same switch:
  *
- * Note what that flag now costs: with the waitlist gone, leaving it false means the
- * site has no self-serve way to sign anyone up at all — every route ends at an email
- * link. That was an acceptable state when a live form sat underneath; it is not one to
- * ship for long.
+ *   TICKET_SALES_LIVE (@/content/tickets, code)  — the shopfront.
+ *   REGISTRATION_PAYMENT_ENABLED (server env)    — the till.
  *
- * When it is on, clicking a price opens a checkout sheet — it cannot go straight to
- * Razorpay, because the Sheet row and the confirmation email need sector, city and
- * "register as", none of which Razorpay Checkout collects. So it is details →
- * Checkout, in one modal.
+ * Shopfront shut     -> "booking opens soon" panel. Razorpay is never contacted.
+ * Shopfront open,
+ *   till closed      -> the WAITLIST form. Same six fields, no money, and the row is
+ *                       written to the sheet with Payment Status "Waitlist".
+ * Both open          -> the real checkout sheet.
+ *
+ * The middle state is the one that has to work. Turning the env var off used to leave
+ * the cards advertising "Book" and opening a payment form that then failed with
+ * "Payment is not enabled." — a dead end presented as a shop. Closing the till changes
+ * what we ask for; it does not stop us asking.
+ *
+ * Checkout cannot go straight to Razorpay in any case, because the sheet row and the
+ * confirmation email need sector, city and "register as", none of which Razorpay
+ * Checkout collects. So it is details -> Checkout, in one modal.
  */
 
 const ACCENT_RULE: Record<Ticket['accent'], string> = {
@@ -56,6 +61,33 @@ const ACCENT_RULE: Record<Ticket['accent'], string> = {
 
 export function Tickets() {
   const [selected, setSelected] = useState<Ticket | null>(null)
+
+  /*
+   * Is the till actually open?
+   *
+   * REGISTRATION_PAYMENT_ENABLED is a SERVER-only env var, and this page is statically
+   * prerendered, so the HTML cannot know the answer at build time — and giving it a
+   * NEXT_PUBLIC_ twin would create a second source of truth that needs a rebuild to
+   * change and can silently disagree with the real one.
+   *
+   * So we ask. GET /api/payment/order is the existing health check and already reports
+   * `enabled`. One request when the section mounts, long before anyone clicks a card.
+   *
+   * null = not answered yet. Treated as "open", which keeps the previous behaviour if
+   * the probe is slow or fails; the submit path below covers that case properly anyway.
+   */
+  const [payEnabled, setPayEnabled] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    fetch('/api/payment/order', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d: { enabled?: boolean }) => alive && setPayEnabled(d?.enabled === true))
+      .catch(() => alive && setPayEnabled(null))
+    return () => {
+      alive = false
+    }
+  }, [])
 
   return (
     <section id="tickets" className="relative overflow-hidden bg-base text-surface">
@@ -89,7 +121,7 @@ export function Tickets() {
         <div className="mt-10 flex flex-col gap-5 md:mt-12">
           {tickets.map((t, i) => (
             <Reveal key={t.id} delay={i * 0.08}>
-              <TicketCard ticket={t} onSelect={() => setSelected(t)} />
+              <TicketCard ticket={t} payEnabled={payEnabled} onSelect={() => setSelected(t)} />
             </Reveal>
           ))}
         </div>
@@ -97,12 +129,25 @@ export function Tickets() {
         <p className="mt-6 text-sm text-surface/55">{ticketsNote}</p>
       </Container>
 
-      <TicketCheckout ticket={selected} onClose={() => setSelected(null)} />
+      <TicketCheckout ticket={selected} payEnabled={payEnabled} onClose={() => setSelected(null)} />
     </section>
   )
 }
 
-function TicketCard({ ticket, onSelect }: { ticket: Ticket; onSelect: () => void }) {
+function TicketCard({
+  ticket,
+  payEnabled,
+  onSelect,
+}: {
+  ticket: Ticket
+  payEnabled: boolean | null
+  onSelect: () => void
+}) {
+  // A button that says "Book" and then cannot take a booking is worse than a button
+  // that says what it will actually do. Only swap on a definite false — while the
+  // probe is unanswered (null) the original label stands.
+  const waitlisting = TICKET_SALES_LIVE && payEnabled === false
+  const label = waitlisting ? 'Join waitlist' : ticket.cta
   return (
     <article className="relative flex flex-col bg-surface text-ink sm:flex-row">
       {/* Body */}
@@ -172,7 +217,7 @@ function TicketCard({ ticket, onSelect }: { ticket: Ticket; onSelect: () => void
                 : 'border border-base text-base hover:bg-base hover:text-surface',
             )}
           >
-            {ticket.cta}
+            {label}
           </button>
         </div>
       </div>
@@ -225,7 +270,15 @@ function loadCheckout(): Promise<void> {
   return checkoutPromise
 }
 
-function TicketCheckout({ ticket, onClose }: { ticket: Ticket | null; onClose: () => void }) {
+function TicketCheckout({
+  ticket,
+  payEnabled,
+  onClose,
+}: {
+  ticket: Ticket | null
+  payEnabled: boolean | null
+  onClose: () => void
+}) {
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
 
@@ -277,10 +330,26 @@ function TicketCheckout({ ticket, onClose }: { ticket: Ticket | null; onClose: (
             exit={{ y: 24, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
           >
-            {TICKET_SALES_LIVE ? (
-              <CheckoutForm ticket={ticket} onClose={onClose} />
-            ) : (
+            {/*
+              Three states, two switches.
+
+              TICKET_SALES_LIVE false  -> the shopfront is shut. ComingSoon.
+              payment disabled         -> the shopfront is open but the till is closed.
+                                          Collect the same details and record a WAITLIST
+                                          row instead of taking money.
+              otherwise                -> the real checkout.
+
+              The middle case is the one that used to be broken: turning
+              REGISTRATION_PAYMENT_ENABLED off left the cards still saying "Book" and
+              still opening a payment form, which then failed with "Payment is not
+              enabled." A closed till should change what we ASK FOR, not break the ask.
+            */}
+            {!TICKET_SALES_LIVE ? (
               <ComingSoon ticket={ticket} onClose={onClose} />
+            ) : payEnabled === false ? (
+              <WaitlistForm ticket={ticket} onClose={onClose} />
+            ) : (
+              <CheckoutForm ticket={ticket} onClose={onClose} />
             )}
           </motion.div>
         </motion.div>
@@ -386,6 +455,236 @@ function ComingSoon({ ticket, onClose }: { ticket: Ticket; onClose: () => void }
         </p>
       </div>
     </div>
+  )
+}
+
+/**
+ * The waitlist form — shown when the shopfront is open but the till is not.
+ *
+ * Deliberately the SAME six fields as checkout, in the same order. Somebody who came
+ * to buy a pass and found they cannot yet should not be asked for less; the whole
+ * value of catching them here is that when passes do go on sale we already know who
+ * they are, which pass they wanted, and how to reach them.
+ *
+ * It posts to /api/register, which records the row with Payment Status "Waitlist" and
+ * sends the client-approved waitlist email — the one that says ticketing is not open
+ * yet. That is the correct thing to say to this person, and it is why the paid receipt
+ * is a separate template (see the header of src/lib/email/paid.ts).
+ *
+ * No price is shown on the button. There is nothing to pay.
+ */
+function WaitlistForm({ ticket, onClose }: { ticket: Ticket; onClose: () => void }) {
+  const [status, setStatus] = useState<'idle' | 'sending' | 'done' | 'error'>('idle')
+  const [errorMsg, setErrorMsg] = useState('')
+  const [sector, setSector] = useState('')
+  const [registerAs, setRegisterAs] = useState('')
+  const [city, setCity] = useState('')
+  const [phone, setPhone] = useState('')
+  const [sectorError, setSectorError] = useState(false)
+  const [registerAsError, setRegisterAsError] = useState(false)
+  const [cityError, setCityError] = useState(false)
+  const [phoneError, setPhoneError] = useState(false)
+  const busy = useRef(false)
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (busy.current) return
+    const fields = Object.fromEntries(new FormData(e.currentTarget))
+
+    // Comboboxes are custom controls, so native required-validation cannot see them.
+    const missingSector = !sector
+    const missingRegisterAs = !registerAs
+    const missingCity = !city
+    const badPhone = !/^[6-9]\d{9}$/.test(phone)
+    setSectorError(missingSector)
+    setRegisterAsError(missingRegisterAs)
+    setCityError(missingCity)
+    setPhoneError(badPhone)
+    if (missingSector || missingRegisterAs || missingCity || badPhone) return
+
+    busy.current = true
+    setStatus('sending')
+    setErrorMsg('')
+    try {
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        // The id, not the name or the price — the server resolves the pass from its
+        // own catalogue, so nothing the browser sends can invent a ticket.
+        body: JSON.stringify({ ...fields, ticketId: ticket.id }),
+      })
+      const data = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null
+      if (!res.ok || !data?.ok) {
+        setErrorMsg(data?.error || '')
+        setStatus('error')
+        busy.current = false
+        return
+      }
+      setStatus('done')
+    } catch {
+      setErrorMsg('')
+      setStatus('error')
+    } finally {
+      busy.current = false
+    }
+  }
+
+  if (status === 'done') {
+    return (
+      <div className="flex flex-col items-center px-6 py-12 text-center sm:px-10">
+        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-accent">
+          <Check size={30} strokeWidth={3} className="text-accent-ink" />
+        </span>
+        <h3 className="mt-6 font-sans text-2xl font-bold uppercase text-ink">You&apos;re on the list.</h3>
+        <p className="mt-2 max-w-sm text-muted">
+          We have your interest in the <strong className="font-semibold text-ink">{ticket.name}</strong>. A
+          confirmation is on its way, and we&apos;ll reach you first the moment passes go on sale — see you in{' '}
+          {site.city.split(',')[0]}.
+        </p>
+        <button onClick={onClose} className="mt-6 font-sans text-btn font-bold uppercase text-accent hover:underline">
+          Close
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col">
+      {/* Same navy header as checkout, minus the price — nothing is being charged. */}
+      <div className="flex items-start justify-between gap-4 bg-base px-6 py-5 text-surface sm:px-8">
+        <div>
+          <div className="font-sans text-[10px] font-bold uppercase tracking-[0.16em] text-accent">
+            {ticket.eyebrow}
+          </div>
+          <div className="mt-1 font-sans text-xl font-bold uppercase">{ticket.name}</div>
+        </div>
+        <button
+          type="button"
+          aria-label="Close"
+          onClick={onClose}
+          className="-mr-1 -mt-1 shrink-0 text-surface/70 transition-colors hover:text-surface"
+        >
+          <X size={22} />
+        </button>
+      </div>
+
+      <div className="flex flex-col gap-4 px-6 py-6 text-ink sm:px-8 sm:py-7">
+        <p className="border-l-2 border-accent bg-foam px-4 py-3 text-sm leading-relaxed text-muted">
+          Booking isn&apos;t open just yet. Leave your details and we&apos;ll come to you first when passes for the{' '}
+          <strong className="font-semibold text-ink">{ticket.name}</strong> go on sale.
+        </p>
+
+        <Field label="Name">
+          <input name="name" type="text" required placeholder="Your full name" className={input} />
+        </Field>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Email">
+            <input name="email" type="email" required placeholder="you@email.com" className={input} />
+          </Field>
+          <Field label="Phone no">
+            <div
+              className={cn(
+                'flex items-center border bg-foam transition-colors focus-within:bg-surface',
+                phoneError ? 'border-accent' : 'border-ink/15 focus-within:border-accent',
+              )}
+            >
+              <span className="select-none border-r border-ink/10 px-3 py-3 text-sm text-muted">+91</span>
+              <input
+                type="tel"
+                inputMode="numeric"
+                autoComplete="tel-national"
+                maxLength={10}
+                aria-label="Phone number, 10 digits"
+                placeholder="9876543210"
+                value={phone}
+                onChange={(e) => {
+                  setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))
+                  setPhoneError(false)
+                }}
+                className="w-full bg-transparent px-3 py-3 text-sm text-ink outline-none placeholder:text-muted/70"
+              />
+            </div>
+            <input type="hidden" name="phone" value={phone ? `+91 ${phone.slice(0, 5)} ${phone.slice(5)}` : ''} />
+            {phoneError && <span className="text-xs font-medium text-accent">Enter a 10-digit mobile number.</span>}
+          </Field>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Sector">
+            <Combobox
+              label="Sector"
+              placeholder="Please select"
+              searchPlaceholder="Search sectors…"
+              value={sector}
+              onChange={(v) => {
+                setSector(v)
+                setSectorError(false)
+              }}
+              options={registrationSectors}
+              invalid={sectorError}
+            />
+            <input type="hidden" name="sector" value={sector} />
+            {sectorError && <span className="text-xs font-medium text-accent">Please pick a sector.</span>}
+          </Field>
+
+          <Field label="Register as">
+            <Combobox
+              label="Register as"
+              placeholder="Please select"
+              value={registerAs}
+              onChange={(v) => {
+                setRegisterAs(v)
+                setRegisterAsError(false)
+              }}
+              options={registerAsOptions}
+              invalid={registerAsError}
+            />
+            <input type="hidden" name="registerAs" value={registerAs} />
+            {registerAsError && (
+              <span className="text-xs font-medium text-accent">Please pick how you&apos;re registering.</span>
+            )}
+          </Field>
+        </div>
+
+        <Field label="City (Tamil Nadu)">
+          <Combobox
+            label="City (Tamil Nadu)"
+            placeholder="Select your city"
+            searchPlaceholder="Search Tamil Nadu cities…"
+            value={city}
+            onChange={(v) => {
+              setCity(v)
+              setCityError(false)
+            }}
+            options={tamilNaduCities}
+            invalid={cityError}
+          />
+          <input type="hidden" name="city" value={city} />
+          {cityError && <span className="text-xs font-medium text-accent">Please pick your city.</span>}
+        </Field>
+
+        <label className="mt-1 flex items-start gap-3 text-sm text-muted">
+          <input type="checkbox" name="updates" defaultChecked className="mt-0.5 h-4 w-4 shrink-0 accent-accent" />
+          <span>Keep me posted about the agenda and speaker announcements.</span>
+        </label>
+
+        <button
+          type="submit"
+          disabled={status === 'sending'}
+          className="mt-1 flex items-center justify-center gap-2 bg-accent py-4 font-sans text-btn font-bold uppercase text-accent-ink transition-colors hover:bg-base hover:text-surface disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {status === 'sending' && <Loader2 size={16} className="animate-spin" />}
+          {status === 'sending' ? 'Adding you…' : 'Join the waitlist'}
+        </button>
+
+        {status === 'error' && (
+          <p className="text-sm font-medium text-accent">
+            {errorMsg || 'Something went wrong'} — please try again, or email {site.contactEmail}.
+          </p>
+        )}
+      </div>
+    </form>
   )
 }
 

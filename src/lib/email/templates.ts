@@ -21,7 +21,7 @@ import {
   PARTNER_SUBJECT,
 } from './approved'
 import { PAID_CONFIRMATION_HTML, PAID_SUBJECT, TEST_MODE_BANNER } from './paid'
-import { ticketById } from '@/content/tickets'
+import { ticketAccess } from '@/content/tickets'
 
 const C = {
   navy: '#072B5F',
@@ -567,8 +567,7 @@ export type PaymentInfo = {
  * invent an entitlement we cannot look up.
  */
 export function accessLabel(pay: PaymentInfo): string {
-  const ticket = pay.ticketId ? ticketById(pay.ticketId) : null
-  return ticket?.meta.find((m) => m.label === 'Access')?.value || site.dates
+  return ticketAccess(pay.ticketId) || site.dates
 }
 
 /**

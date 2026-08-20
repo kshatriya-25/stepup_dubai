@@ -135,6 +135,18 @@ export const tickets: Ticket[] = [
 
 export const ticketsNote = 'All prices inclusive of GST · Pitch slots are subject to selection'
 
+/**
+ * What a pass admits to — its 'Access' meta value, e.g. "Day 2".
+ *
+ * One lookup, three readers: the receipt email, the paid sheet row and the waitlist
+ * sheet row. Returns null for an unknown id so each caller picks its own fallback
+ * rather than inheriting a wrong-but-plausible default from here.
+ */
+export function ticketAccess(id: string | undefined | null): string | null {
+  const t = ticketById(id)
+  return t?.meta.find((m) => m.label === 'Access')?.value ?? null
+}
+
 /** Look a ticket up by id. Returns undefined for anything not in the table. */
 export function ticketById(id: string | undefined | null): Ticket | undefined {
   return tickets.find((t) => t.id === id)

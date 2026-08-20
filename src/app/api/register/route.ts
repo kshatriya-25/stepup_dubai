@@ -18,6 +18,7 @@
 import { NextResponse } from 'next/server'
 import { sendMail, organiserRecipients, mailConfigured } from '@/lib/email/mailer'
 import { participantEmail, organiserEmail, type Registration } from '@/lib/email/templates'
+import { ticketById, ticketAccess } from '@/content/tickets'
 import {
   SHEET_ENDPOINT,
   EMAIL_RE,
@@ -81,8 +82,27 @@ export async function POST(req: Request) {
     )
   }
 
+  /*
+   * Which pass they were looking at when they joined the list.
+   *
+   * Optional, and validated against the catalogue rather than trusted: a request that
+   * names no ticket, or an unknown one, is still a perfectly good registration and is
+   * recorded without one. The id never reaches the sheet — only the name and access
+   * the server resolved from it — so a junk value cannot write a junk column.
+   *
+   * 'Waitlist' in the Payment Status column is the point of this. Left blank, these
+   * rows are indistinguishable from a paid row whose payment columns failed to write,
+   * and the two need very different follow-up.
+   */
+  const ticket = ticketById(clean(raw.ticketId, 40))
+
   // 1. Record it. Everything else is secondary to not losing the lead.
-  const recorded = await appendToSheet('registration', reg as unknown as Record<string, string>)
+  const recorded = await appendToSheet('registration', {
+    ...(reg as unknown as Record<string, string>),
+    paymentStatus: 'Waitlist',
+    ticket: ticket ? ticket.name : '',
+    access: ticket ? ticketAccess(ticket.id) || '' : '',
+  })
   if (!recorded.ok) {
     console.error('[register] sheet append failed:', recorded.error)
     return NextResponse.json(
