@@ -161,8 +161,20 @@ export function SiteNav() {
               height={386}
               className="h-9 w-auto md:h-12"
             />
-            <span className="hidden items-center gap-1 border-l border-surface/25 pl-3 text-[11px] uppercase text-surface/70 lg:flex">
-              <MapPin size={12} className="text-accent" /> {site.venue}
+            {/* Two-line venue chip. The second line borrows its size, weight and
+                colour from the "Your Co-Working Destination" strapline further along
+                the bar (see the lockup below) so the header has one subordinate-label
+                style rather than two that nearly match.
+
+                `pl-4` on the second line is 12px of MapPin plus the 4px gap-1, which
+                sets it flush under "Fortune City" rather than under the pin. */}
+            <span className="hidden flex-col justify-center gap-[3px] border-l border-surface/25 pl-3 lg:flex">
+              <span className="flex items-center gap-1 text-[11px] uppercase leading-none text-surface/70">
+                <MapPin size={12} className="text-accent" /> {site.venue}
+              </span>
+              <span className="whitespace-nowrap pl-4 text-[7px] font-semibold uppercase leading-none tracking-[0.085em] text-surface/60 xl:text-[8px] xl:tracking-[0.1em]">
+                {site.venueArea}
+              </span>
             </span>
           </a>
           {/*

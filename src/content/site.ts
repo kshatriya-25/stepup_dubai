@@ -18,6 +18,9 @@ export const site = {
   datesShort: 'Sat & Sun',
   startISO: '2026-10-10T09:00:00+05:30',
   venue: 'Fortune City',
+  // Shown as a second line under the venue chip in the header. Fortune City alone is
+  // ambiguous to anyone outside Erode; this is the locality that makes it findable.
+  venueArea: '(Tex Valley, Erode)',
   city: 'Erode, Tamil Nadu',
   entry: 'Ticketed · details announced soon',
   // Every "Register" button on the site reads this — header, hero, mobile nav. It

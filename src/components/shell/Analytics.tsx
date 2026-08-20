@@ -1,4 +1,5 @@
 import Script from 'next/script'
+import { isProductionSite } from '@/lib/site-env'
 
 /** GA4 property supplied by the Namma Office team. */
 const GA_ID = 'G-W2PYR2R89G'
@@ -11,11 +12,21 @@ const GA_ID = 'G-W2PYR2R89G'
  * That is Google's own recommendation for the gtag snippet and is equivalent to the
  * `async` attribute in the copy-paste version.
  *
- * Production only — `npm run dev` would otherwise report every local page view into
- * the live property and quietly skew the event's numbers.
+ * THE REAL SITE ONLY. Two separate gates, because they catch different things:
+ *
+ *   NODE_ENV        stops `npm run dev` reporting local page views.
+ *   isProductionSite stops STAGING reporting. Staging is built and served exactly like
+ *                   production, so NODE_ENV is 'production' there too — on its own that
+ *                   check let every staging click land in the client's live GA4
+ *                   property, indistinguishable from real traffic afterwards.
+ *
+ * Nothing is loaded when either gate is closed: no gtag script, no cookie, no request
+ * to googletagmanager.com. This returns null rather than configuring gtag with
+ * consent denied, so there is nothing to misconfigure later.
  */
 export function Analytics() {
   if (process.env.NODE_ENV !== 'production') return null
+  if (!isProductionSite) return null
 
   return (
     <>
