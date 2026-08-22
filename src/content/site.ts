@@ -119,10 +119,10 @@ export type NavItem = { label: string; href: string; children?: { label: string;
  * one array is what stops the menu and the footer drifting apart again.
  *
  * Every href below must match a real `id` on a <section>. Current anchors:
- *   #story  #zones  #whatgoeson  #partners  #tickets
+ *   #vision  #story  #zones  #whatgoeson  #partners  #tickets
  */
 export const exploreLinks: { label: string; href: string }[] = [
-  { label: 'Our Vision', href: '#story' },
+  { label: 'Our Vision', href: '#vision' },
   { label: 'Growth Zones', href: '#zones' },
   { label: 'Key Initiatives', href: '#whatgoeson' },
   { label: 'Tickets', href: '#tickets' },

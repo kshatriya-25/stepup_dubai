@@ -120,3 +120,38 @@ export const statements = [
   { text: 'Two days. Every door open.', author: '10 & 11 October · Erode' },
   { text: 'Tier-2 is rising.', author: 'Coimbatore · Erode · Salem · Tiruppur · Madurai · Trichy' },
 ]
+
+/**
+ * The Vision / Mission section, between the countdown and the story.
+ *
+ * Copy is supplied verbatim by the client. Note "programs" — the rest of the site uses
+ * British spelling ("Founder Programme"), so this one word is inconsistent on purpose
+ * rather than by oversight: it is their wording, and changing supplied copy silently is
+ * how a review turns into an argument about what was approved.
+ */
+export type VisionPillar = {
+  /** Orange pill above the statement. */
+  tag: string
+  /** The statement itself — the largest type in the section. */
+  statement: string
+  /** Small caps label on the card below. */
+  cardLabel: string
+  cardBody: string
+}
+
+export const visionPillars: VisionPillar[] = [
+  {
+    tag: 'Vision',
+    statement: 'Tier-2 cities as strong startup growth hubs.',
+    cardLabel: 'What it is',
+    cardBody:
+      'An ongoing initiative connecting Tier-2 founders with the funding, mentorship, and networks they need to grow — built through year-round programs, not a one-off event.',
+  },
+  {
+    tag: 'Mission',
+    statement: 'Connect founders to investors, banks, mentors & enablers.',
+    cardLabel: 'Why now',
+    cardBody:
+      'Tier-2 cities have talent, ideas and a strong business culture — but startups here still lack equal access to funding, mentors, government schemes, bank support and investor networks.',
+  },
+]
