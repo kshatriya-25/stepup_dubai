@@ -20,6 +20,11 @@
  * order id and timestamp. The payment id is what Razorpay support and the bank will
  * both ask for, so it is selectable text, not an image.
  *
+ * THE "SECTOR" ROW IS GONE. Sector is now asked only on the Investor Pitch Pass, so on
+ * three of the four passes that row rendered as a label with nothing beside it. It moved
+ * into {{EXTRA_ROWS}}, which is filled only with the rows that this pass actually has —
+ * organisation, startup, workshop, team size. A receipt should not have blanks in it.
+ *
  * {{ACCESS}} IS NOT DECORATION. It is filled from the bought ticket's own Access value
  * in @/content/tickets — the same string the pass card on the site prints. This used to
  * be a flat "Two days in Erode" sentence, which stopped being true the moment the
@@ -49,10 +54,10 @@ export const PAID_CONFIRMATION_HTML = `<!DOCTYPE html><html lang="en"><head><met
       We've received your payment of <strong style="color:#14315E;">{{AMOUNT}}</strong> for the <strong style="color:#14315E;">{{TICKET}}</strong> and your place at the summit is booked. Keep this email — it's your receipt.
     </p>
     <p style="margin:12px 0 0 0;font-size:15px;line-height:1.65;color:#3D4A5C;">
-      Erode is where investors, government scheme officers and bank credit heads come to Tier-2, instead of the other way round. Five Growth Zones open all day, ten startups coached, three pitching live on the main stage.
+      Erode is where investors, government scheme officers and bank credit heads come to Tier-2, instead of the other way round. 25 stalls, speaker sessions in the open hall, and a founder track that ends in a closed-room investor pitch.
     </p>
     <p style="margin:12px 0 0 0;font-size:15px;line-height:1.65;color:#3D4A5C;">
-      Your {{TICKET}} admits you on <strong style="color:#14315E;">{{ACCESS}}</strong>.
+      Your {{TICKET}} opens <strong style="color:#14315E;">{{ACCESS}}</strong>.
     </p>
     <p style="margin:12px 0 0 0;font-size:15px;line-height:1.65;color:#3D4A5C;">
       Your entry pass and the full agenda reach you closer to the date, at this address.
@@ -85,9 +90,9 @@ export const PAID_CONFIRMATION_HTML = `<!DOCTYPE html><html lang="en"><head><met
       <tr><td width="130" style="padding:6px 0;font-size:14px;color:#7A8798;">Name</td><td style="padding:6px 0;font-size:14px;color:#3D4A5C;">{{NAME}}</td></tr>
       <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Email</td><td style="padding:6px 0;font-size:14px;color:#3D4A5C;">{{EMAIL}}</td></tr>
       <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Phone</td><td style="padding:6px 0;font-size:14px;color:#3D4A5C;">{{PHONE}}</td></tr>
-      <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Sector</td><td style="padding:6px 0;font-size:14px;color:#3D4A5C;">{{SECTOR}}</td></tr>
-      <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Registered as</td><td style="padding:6px 0;font-size:14px;color:#3D4A5C;">{{REGISTERED_AS}}</td></tr>
+      <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Attending as</td><td style="padding:6px 0;font-size:14px;color:#3D4A5C;">{{REGISTERED_AS}}</td></tr>
       <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">City</td><td style="padding:6px 0;font-size:14px;color:#3D4A5C;">{{CITY}}</td></tr>
+{{EXTRA_ROWS}}
     </table>
   </td></tr>
 

@@ -47,19 +47,62 @@ export type PaymentStatus =
   /** Razorpay reported the payment attempt failed. No money moved. Terminal, harmless. */
   | 'failed'
 
+/**
+ * Everything the forms collect, as persisted.
+ *
+ * The first block is asked of everyone. The rest depends on the pass and on the
+ * category the attendee picked, so those fields are OPTIONAL — and optional in the
+ * type, not merely empty-string, because this shape is also read back from journal
+ * rows written before the August 2026 pass restructure. A required field would make
+ * every one of those rows a type lie.
+ *
+ * `sector` and `registerAs` are kept from the old shape rather than replaced. They
+ * still hold their old meaning — registerAs now carries the category's human label —
+ * so the sheet columns they map to stay put, which matters because rows are appended
+ * positionally. See registration/Code.gs.
+ */
 export type Registration = {
   name: string
   email: string
   phone: string
-  sector: string
-  registerAs: string
   city: string
   updates: string
-  /** Which pass was bought — 'delegate' | 'investor-pitch' | 'founder'. */
+  /** Which pass — see TicketId in @/content/tickets. */
   ticketId: string
   /** Human label, stored alongside the id so a receipt reads correctly even if the
-   *  catalogue is later renamed or a ticket is retired. */
+   *  catalogue is later renamed or a pass is retired. */
   ticketName: string
+
+  /** Human label of the category, e.g. "TBI Member". Was the old free-text field. */
+  registerAs: string
+  /** Raw category id — 'founder' | 'college' | 'private' | 'tbi' | 'public'. */
+  category?: string
+  /** Industry. Asked only on the investor pitch pass now. */
+  sector: string
+
+  /** Organisation block. Absent entirely for the 'public' category. */
+  orgName?: string
+  idNumber?: string
+  designation?: string
+
+  /** Workshop pass. */
+  workshop?: string
+  wantNetworking?: string
+  meetingType?: string
+  meetingNote?: string
+
+  /** Investor pitch pass. */
+  startupName?: string
+  stage?: string
+  pitchOneLine?: string
+  pitchDetail?: string
+  traction?: string
+  /** Chargeable extras, as a count — this is what the amount was priced from. */
+  extraMembers?: string
+  /** "Name (Role); Name (Role)" — for the organiser, not for pricing. */
+  extraMemberList?: string
+
+  consent?: string
 }
 
 export type PaymentRecord = {

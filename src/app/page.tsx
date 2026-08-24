@@ -8,6 +8,7 @@ import { WhatGoesOn } from '@/components/home/WhatGoesOn'
 import { Partners } from '@/components/home/Partners'
 import { Statements } from '@/components/home/Statements'
 import { Tickets } from '@/components/home/Tickets'
+import { paymentEnabled } from '@/lib/payments/razorpay'
 
 /**
  * Tickets is the last section and the page's only conversion point. By the time the
@@ -22,10 +23,26 @@ import { Tickets } from '@/components/home/Tickets'
  * for. One form, attached to the thing being sold. `site.register` now resolves to
  * #tickets, so the header, hero and mobile nav all land here.
  *
- * No payment config is read here any more. Prices live in @/content/tickets, which the
- * ticket section and the order endpoint both import — see that file for why the price
- * is not an env var.
+ * Prices live in @/content/tickets, which the pass section and the order endpoint both
+ * import — see that file for why the price is not an env var.
+ *
+ * WHY THIS PAGE IS `force-dynamic`
+ * The pass cards have to say what clicking them will do. "Book now" when the till is
+ * closed is a promise the next page cannot keep, so the card label depends on
+ * REGISTRATION_PAYMENT_ENABLED — a server-only env var.
+ *
+ * Prerendering would freeze that value into the HTML at build time, so closing the till
+ * would need a full rebuild rather than a restart, and the homepage would disagree with
+ * the checkout page it links to until someone remembered. Rendering per request keeps one
+ * source of truth for the whole site.
+ *
+ * The cost is small and worth naming: no prerendered HTML for the homepage. Every heavy
+ * asset — images, the hero video, all of /_next/static — is served straight off disk by
+ * Apache and never touches Node (see deploy/), so what is actually rendered per request
+ * is one page of markup.
  */
+export const dynamic = 'force-dynamic'
+
 export default function Home() {
   return (
     <>
@@ -38,7 +55,7 @@ export default function Home() {
       <WhatGoesOn />
       <Partners />
       <Statements />
-      <Tickets />
+      <Tickets paymentEnabled={paymentEnabled} />
     </>
   )
 }

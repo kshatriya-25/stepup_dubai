@@ -32,10 +32,11 @@ var FORMS = {
       // the one to quote to Razorpay support or a bank in a dispute.
       //
       // 'Ticket' is the pass NAME as sold ("Delegate Pass"); 'Access' is what that pass
-      // admitted to on the day it was bought ("Day 2"). Both are stored, rather than
-      // deriving one from the other at read time, because a pass's access can change:
-      // the Delegate Pass moved from "Day 1 + Day 2" to "Day 2", and a row written
-      // before that must keep saying what its buyer was actually sold.
+      // opened at the time it was bought ("Stall zone · Main hall · Delegate kit ·
+      // Lunch"). Both are stored, rather than deriving one from the other at read time,
+      // because what a pass includes changes — the whole ladder was restructured in
+      // August 2026 — and a row written before a change must keep saying what its buyer
+      // was actually sold.
       ['Payment Status', 'paymentStatus'],
       ['Ticket',         'ticket'],
       ['Access',         'access'],
@@ -46,6 +47,33 @@ var FORMS = {
       // for why it is not a UTC ISO string. The header names the zone so nobody has to
       // guess whether a late-night row belongs to that day or the next.
       ['Paid At (IST)',  'paidAt'],
+      //
+      // ── August 2026: four passes, per-pass questions ────────────────────────────
+      // Appended, never inserted. 'Sector' above stays where it is even though it is now
+      // asked only on the Investor Pitch Pass, and 'Register As' stays and now carries
+      // the category's human label ("TBI Member"). Moving either would silently shift
+      // every existing row's data one column out of step with its header.
+      //
+      // Most of these are blank on most rows, and that is correct: a Delegate Pass has no
+      // startup and a 'public' attendee has no organisation. A blank cell here means the
+      // question was never asked, not that an answer was lost.
+      ['Organisation',   'orgName'],
+      ['ID / Reg No',    'idNumber'],
+      ['Designation',    'designation'],
+      ['Workshop',       'workshop'],
+      ['Networking',     'networking'],
+      ['Meeting Type',   'meetingType'],
+      ['Meeting Agenda', 'meetingNote'],
+      ['Startup',        'startupName'],
+      ['Stage',          'stage'],
+      ['One-line Pitch', 'pitchOneLine'],
+      ['Problem & Solution', 'pitchDetail'],
+      ['Traction',       'traction'],
+      // Chargeable extras only — the founder the pass already covers is not counted here.
+      ['Extra Members',  'extraMembers'],
+      ['Team Members',   'extraMemberList'],
+      ['Consent',        'consent'],
+      ['Updates Opt-in', 'updates'],
     ],
   },
   partner: {

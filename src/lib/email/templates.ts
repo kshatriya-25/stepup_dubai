@@ -21,7 +21,16 @@ import {
   PARTNER_SUBJECT,
 } from './approved'
 import { PAID_CONFIRMATION_HTML, PAID_SUBJECT, TEST_MODE_BANNER } from './paid'
-import { ticketAccess } from '@/content/tickets'
+import {
+  ticketAccess,
+  ticketById,
+  categories,
+  workshopOptions,
+  meetingTypeOptions,
+  stageOptions,
+  type Ticket,
+  type CategoryId,
+} from '@/content/tickets'
 
 const C = {
   navy: '#072B5F',
@@ -38,14 +47,46 @@ const C = {
 
 const FONT = "'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,'Helvetica Neue',Arial,sans-serif"
 
+/**
+ * What the emails are allowed to see.
+ *
+ * Deliberately NOT the journal's Registration type. That one is a persistence record and
+ * carries `updates`, `consent`, `ticketId` and other bookkeeping an email has no business
+ * rendering; this one is the view. fulfil.ts maps between them in forEmail(), which is
+ * the single place to look when a field reaches the sheet but not the receipt.
+ *
+ * Everything below `city` is optional because it depends on the pass and the category —
+ * a Delegate Pass has no startup, a 'public' attendee has no organisation. passDetailRows
+ * renders only what is present rather than printing empty labels.
+ */
 export type Registration = {
   name: string
   email: string
   phone: string
-  sector: string
-  /** Company | Government | Public | Student */
-  registerAs: string
   city: string
+  /** Human label of the category, e.g. "TBI Member". */
+  registerAs: string
+  /** Raw category id, used to pick the right word for the organisation label. */
+  category?: string
+  /** Industry — asked only on the Investor Pitch Pass. */
+  sector: string
+
+  orgName?: string
+  idNumber?: string
+  designation?: string
+
+  workshop?: string
+  wantNetworking?: string
+  meetingType?: string
+  meetingNote?: string
+
+  startupName?: string
+  stage?: string
+  pitchOneLine?: string
+  pitchDetail?: string
+  traction?: string
+  extraMembers?: string
+  extraMemberList?: string
 }
 
 /** HTML-escape every interpolated value. Registrations are untrusted input. */
@@ -213,21 +254,117 @@ function button(label: string, href: string): string {
               </table>`
 }
 
+
+/* ------------------------------------------------------------------ *
+ * Pass-specific detail rows
+ * ------------------------------------------------------------------ */
+
+/**
+ * The rows a given registration actually has, in the inline style both the approved
+ * waitlist template and the paid receipt use for their details tables.
+ *
+ * Built rather than hard-coded because the four passes ask four different sets of
+ * questions. Hard-coding every possible row would put a label with nothing beside it in
+ * most emails — "Startup —" on a Delegate Pass receipt is worse than no row at all,
+ * because it reads as data we lost rather than a question we never asked.
+ *
+ * Returns trusted markup, so it is substituted BEFORE fillTokens rather than through it
+ * (fillTokens escapes, which would print the tags as text). Every value inside is passed
+ * through esc() here instead.
+ */
+function passDetailRows(r: Registration, ticket?: Ticket | null): string {
+  const rows: [string, string][] = []
+
+  if (ticket) rows.push(['Pass', ticket.name])
+  if (r.orgName) rows.push([orgLabelFor(r), r.orgName])
+  if (r.idNumber) rows.push(['ID / registration', r.idNumber])
+  if (r.designation) rows.push(['Designation', r.designation])
+  if (r.startupName) rows.push(['Startup', r.startupName])
+  if (r.stage) rows.push(['Stage', labelOf(r.stage, stageOptions)])
+  if (r.sector) rows.push(['Sector', r.sector])
+  if (r.workshop) rows.push(['Workshop', labelOf(r.workshop, workshopOptions)])
+  if (r.wantNetworking) {
+    rows.push([
+      'Power networking',
+      r.meetingType ? `Yes — ${labelOf(r.meetingType, meetingTypeOptions)}` : 'Yes',
+    ])
+  }
+  // Team size, not "extra members": the number people care about is how many are coming,
+  // and that is the extras plus the founder the pass already covers.
+  const extras = Number.parseInt(r.extraMembers || '0', 10)
+  if (Number.isFinite(extras) && extras > 0) {
+    rows.push(['Team', `${extras + 1} people${r.extraMemberList ? ` — ${r.extraMemberList}` : ''}`])
+  }
+
+  return rows
+    .map(
+      ([label, value]) =>
+        `      <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">${esc(label)}</td>` +
+        `<td style="padding:6px 0;font-size:14px;color:#3D4A5C;">${esc(value)}</td></tr>`,
+    )
+    .join('\n')
+}
+
+/** Same rows, as aligned plain text for the text/plain part. */
+function passDetailText(r: Registration, ticket?: Ticket | null): string[] {
+  const out: string[] = []
+  const add = (label: string, value: string) => out.push(`${label.padEnd(15)}${value}`)
+  if (ticket) add('Pass', ticket.name)
+  if (r.orgName) add(orgLabelFor(r), r.orgName)
+  if (r.idNumber) add('ID / reg', r.idNumber)
+  if (r.designation) add('Designation', r.designation)
+  if (r.startupName) add('Startup', r.startupName)
+  if (r.stage) add('Stage', labelOf(r.stage, stageOptions))
+  if (r.sector) add('Sector', r.sector)
+  if (r.workshop) add('Workshop', labelOf(r.workshop, workshopOptions))
+  if (r.wantNetworking) {
+    add('Networking', r.meetingType ? `Yes — ${labelOf(r.meetingType, meetingTypeOptions)}` : 'Yes')
+  }
+  const extras = Number.parseInt(r.extraMembers || '0', 10)
+  if (Number.isFinite(extras) && extras > 0) add('Team', `${extras + 1} people`)
+  return out
+}
+
+/** 'workshop-2' -> 'Workshop B — …'. Falls back to the raw value for old rows. */
+function labelOf(value: string, options: readonly { value: string; label: string }[]): string {
+  return options.find((o) => o.value === value)?.label || value
+}
+
+/**
+ * What to call the organisation, given the category.
+ *
+ * A TBI member's organisation is a TBI; a founder's is a startup. Reusing one generic
+ * "Organisation" label for both loses the distinction the form went to the trouble of
+ * making. Falls back to the generic word when the category is missing — old rows.
+ */
+function orgLabelFor(r: Registration): string {
+  const cfg = r.category && r.category in categories ? categories[r.category as CategoryId] : null
+  return cfg?.orgLabel || 'Organisation'
+}
+
 /* ------------------------------------------------------------------ *
  * Participant confirmation
  * ------------------------------------------------------------------ */
 
-export function participantEmail(r: Registration): { subject: string; html: string; text: string } {
+export function participantEmail(
+  r: Registration,
+  ticket?: Ticket | null,
+): { subject: string; html: string; text: string } {
+  const rows = passDetailRows(r, ticket)
   const tokens = {
     FIRST_NAME: firstName(r.name),
     NAME: r.name,
     EMAIL: r.email,
     PHONE: r.phone,
-    SECTOR: r.sector,
+    // The "Sector" row in the approved markup became "Pass": sector is now asked only on
+    // the Investor Pitch Pass, whereas which pass they joined the list for is the one
+    // thing every reader of this email wants confirmed back to them.
+    PASS: ticket?.name || r.registerAs,
     REGISTERED_AS: r.registerAs,
     CITY: r.city,
     EVENT_DATES: site.dates,
     EVENT_LOCATION: `${site.venue}, ${site.city}`,
+    EXTRA_ROWS: rows,
   }
 
   const text = [
@@ -249,9 +386,9 @@ export function participantEmail(r: Registration): { subject: string; html: stri
     `Name           ${r.name}`,
     `Email          ${r.email}`,
     `Phone          ${r.phone}`,
-    `Sector         ${r.sector}`,
-    `Registered as  ${r.registerAs}`,
+    `Attending as   ${r.registerAs}`,
     `City           ${r.city}`,
+    ...passDetailText(r, ticket),
     '',
     'See you in Erode.',
     'Team Tier-2 Rising · NammaOffice',
@@ -262,30 +399,88 @@ export function participantEmail(r: Registration): { subject: string; html: stri
     'info@tier2rising.com · +91 90921 09213',
   ].join('\n')
 
+  // EXTRA_ROWS is markup we built, not user input, so it goes in before fillTokens —
+  // which escapes, and would print the <tr> tags as visible text. Every value inside it
+  // was passed through esc() by passDetailRows.
+  const html = REGISTRANT_CONFIRMATION_HTML.replace('{{EXTRA_ROWS}}', rows)
   return {
     subject: fillTokens(REGISTRANT_SUBJECT, tokens, { escape: false }),
     text,
-    html: fillTokens(REGISTRANT_CONFIRMATION_HTML, tokens),
+    html: fillTokens(html, tokens),
   }
+}
+
+
+/**
+ * Every pass-specific answer, as organiser detail rows.
+ *
+ * Fuller than the attendee-facing passDetailRows: this is the copy a human works from.
+ * The pitch narrative in particular is the whole point of the Investor Pitch Pass form —
+ * the selection panel reads it here, and truncating it to fit a layout would mean
+ * opening the sheet to do the actual job.
+ *
+ * The last row is marked `last` so the table closes cleanly whatever the pass, rather
+ * than a hard-coded field having to be the final one.
+ */
+function organiserExtraRows(r: Registration): string {
+  const rows: [string, string][] = []
+  if (r.orgName) rows.push([orgLabelFor(r), r.orgName])
+  if (r.idNumber) rows.push(['ID / registration', r.idNumber])
+  if (r.designation) rows.push(['Designation', r.designation])
+  if (r.workshop) rows.push(['Workshop', labelOf(r.workshop, workshopOptions)])
+  if (r.wantNetworking) {
+    rows.push(['Power networking', r.meetingType ? labelOf(r.meetingType, meetingTypeOptions) : 'Yes'])
+  }
+  if (r.meetingNote) rows.push(['Meeting agenda', r.meetingNote])
+  if (r.startupName) rows.push(['Startup', r.startupName])
+  if (r.stage) rows.push(['Stage', labelOf(r.stage, stageOptions)])
+  if (r.sector) rows.push(['Sector', r.sector])
+  if (r.pitchOneLine) rows.push(['One-line pitch', r.pitchOneLine])
+  if (r.pitchDetail) rows.push(['Problem & solution', r.pitchDetail])
+  if (r.traction) rows.push(['Traction', r.traction])
+  const extras = Number.parseInt(r.extraMembers || '0', 10)
+  if (Number.isFinite(extras) && extras > 0) {
+    rows.push(['Team', `${extras + 1} people${r.extraMemberList ? ` — ${r.extraMemberList}` : ''}`])
+  }
+  if (!rows.length) return ''
+  return rows.map(([l, v], i) => detailRow(l, v, { last: i === rows.length - 1 })).join('\n')
 }
 
 /* ------------------------------------------------------------------ *
  * Organiser notification
  * ------------------------------------------------------------------ */
 
-export function organiserEmail(r: Registration, at = new Date()): {
+export function organiserEmail(
+  r: Registration,
+  at = new Date(),
+  ticket?: Ticket | null,
+): {
   subject: string
   html: string
   text: string
 } {
-  const subject = `New registration — ${r.name} · ${r.sector} · ${r.city}`
+  /*
+   * "Waitlist entry", not "registration".
+   *
+   * /api/register is now ONLY the waitlist path — a free pass, or a paid pass while
+   * REGISTRATION_PAYMENT_ENABLED is off. Anything actually paid for is fulfilled through
+   * payments/fulfil.ts and sends paidOrganiserEmail instead. Calling both "New
+   * registration" made the two indistinguishable in an inbox, which matters because one
+   * needs following up when passes open and the other is already money in the account.
+   *
+   * The pass is in the subject because that is how these get triaged: an Investor Pitch
+   * application needs a panel, a Free Pass needs a batch allocation.
+   */
+  const subject = `Waitlist — ${ticket?.name || 'pass'} — ${r.name} · ${r.startupName || r.registerAs} · ${r.city}`
   const when = stamp(at)
 
   const body = `
           <!-- Hero -->
           <tr>
             <td style="background-color:${C.white};padding:40px 36px 0 36px;font-family:${FONT};">
-              <div style="font-size:11px;font-weight:700;letter-spacing:0.16em;color:${C.orange};text-transform:uppercase;">New registration</div>
+              <div style="font-size:11px;font-weight:700;letter-spacing:0.16em;color:${C.orange};text-transform:uppercase;">New waitlist entry${
+                ticket ? ` &middot; ${esc(ticket.name)}` : ''
+              }</div>
               <h1 style="margin:12px 0 0 0;font-size:28px;line-height:1.15;font-weight:700;letter-spacing:-0.01em;color:${
                 C.navy
               };">${esc(r.name)}</h1>
@@ -302,9 +497,9 @@ export function organiserEmail(r: Registration, at = new Date()): {
 ${detailRow('Name', r.name)}
 ${detailRow('Email', r.email, { href: `mailto:${r.email}` })}
 ${detailRow('Phone', r.phone, { href: `tel:${r.phone.replace(/[^\d+]/g, '')}` })}
-${detailRow('Sector', r.sector)}
-${detailRow('Registered as', r.registerAs)}
-${detailRow('City', r.city, { last: true })}
+${detailRow('Attending as', r.registerAs)}
+${detailRow('City', r.city)}
+${organiserExtraRows(r)}
               </table>
             </td>
           </tr>
@@ -333,8 +528,8 @@ ${button('Reply to ' + firstName(r.name), `mailto:${r.email}?subject=${encodeURI
                 </tr>
               </table>
               <p style="margin:22px 0 0 0;font-family:${FONT};font-size:13px;line-height:1.6;color:${C.muted};">
-                A confirmation has already gone out to ${esc(r.email)}. This entry is also appended to the
-                registrations sheet.
+                A waitlist confirmation has already gone out to ${esc(r.email)}. The row is in the registrations
+                sheet with Payment Status <strong>Waitlist</strong> &mdash; nothing has been charged.
               </p>
             </td>
           </tr>
@@ -349,9 +544,9 @@ ${button('Reply to ' + firstName(r.name), `mailto:${r.email}?subject=${encodeURI
     `Name           ${r.name}`,
     `Email          ${r.email}`,
     `Phone          ${r.phone}`,
-    `Sector         ${r.sector}`,
-    `Registered as  ${r.registerAs}`,
+    `Attending as   ${r.registerAs}`,
     `City           ${r.city}`,
+    ...passDetailText(r, ticket),
     '',
     `A confirmation has already gone out to ${r.email}.`,
     'This entry is also appended to the registrations sheet.',
@@ -364,9 +559,9 @@ ${button('Reply to ' + firstName(r.name), `mailto:${r.email}?subject=${encodeURI
     subject,
     text,
     html: shell({
-      preheader: `${r.name} · ${r.sector} · ${r.city} · ${r.email}`,
+      preheader: `${r.name} · ${r.startupName || r.registerAs} · ${r.city} · ${r.email}`,
       body,
-      footerNote: 'Automated notification from the registration form on the summit website.',
+      footerNote: 'Automated notification from the pass waitlist on the summit website.',
     }),
   }
 }
@@ -583,7 +778,6 @@ export function paidParticipantEmail(
     NAME: r.name,
     EMAIL: r.email,
     PHONE: r.phone,
-    SECTOR: r.sector,
     REGISTERED_AS: r.registerAs,
     CITY: r.city,
     EVENT_DATES: site.dates,
@@ -601,10 +795,12 @@ export function paidParticipantEmail(
 
   // The banner is trusted markup, so it is substituted before fillTokens rather than
   // through it — fillTokens escapes, which would print the tags as text.
+  // Both of these are trusted markup, so they are substituted BEFORE fillTokens rather
+  // than through it — fillTokens escapes, which would print the tags as text.
   const withBanner = PAID_CONFIRMATION_HTML.replace(
     '{{TEST_BANNER}}',
     pay.testMode ? TEST_MODE_BANNER : '',
-  )
+  ).replace('{{EXTRA_ROWS}}', passDetailRows(r, null))
 
   /*
    * Spread the test-mode line in rather than emitting '' for it.
@@ -642,9 +838,10 @@ export function paidParticipantEmail(
     `Name           ${r.name}`,
     `Email          ${r.email}`,
     `Phone          ${r.phone}`,
-    `Sector         ${r.sector}`,
-    `Registered as  ${r.registerAs}`,
+    `Attending as   ${r.registerAs}`,
     `City           ${r.city}`,
+    // The pass name is already in the receipt block above, so it is not repeated here.
+    ...passDetailText(r, null),
     '',
     'See you in Erode.',
     'Team Tier-2 Rising · NammaOffice',
@@ -697,9 +894,9 @@ ${detailRow('Method', pay.method || '—')}
 ${detailRow('Name', r.name)}
 ${detailRow('Email', r.email, { href: `mailto:${r.email}` })}
 ${detailRow('Phone', r.phone, { href: `tel:${r.phone.replace(/[^\d+]/g, '')}` })}
-${detailRow('Sector', r.sector)}
-${detailRow('Registered as', r.registerAs)}
-${detailRow('City', r.city, { last: true })}
+${detailRow('Attending as', r.registerAs)}
+${detailRow('City', r.city)}
+${organiserExtraRows(r)}
               </table>
             </td>
           </tr>
@@ -731,9 +928,9 @@ ${button('Reply to ' + firstName(r.name), `mailto:${r.email}?subject=${encodeURI
     `Name           ${r.name}`,
     `Email          ${r.email}`,
     `Phone          ${r.phone}`,
-    `Sector         ${r.sector}`,
-    `Registered as  ${r.registerAs}`,
+    `Attending as   ${r.registerAs}`,
     `City           ${r.city}`,
+    ...passDetailText(r, null),
     '',
     `The receipt has gone to ${r.email}.`,
     '',
@@ -777,9 +974,11 @@ export function unfulfilledAlertEmail(
     ['Name', r.name],
     ['Email', r.email],
     ['Phone', r.phone],
-    ['Sector', r.sector],
-    ['Registered as', r.registerAs],
+    ['Attending as', r.registerAs],
     ['City', r.city],
+    // Startup name is what makes an Investor Pitch payment identifiable when someone has
+    // to reconcile this by hand against the sheet.
+    ...(r.startupName ? ([['Startup', r.startupName]] as [string, string][]) : []),
     ['Failure', reason],
   ]
 

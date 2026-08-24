@@ -18,9 +18,10 @@
 
 import { NextResponse } from 'next/server'
 import { createHash } from 'node:crypto'
-import { EMAIL_RE, clean, normalisePhone, rateLimited, clientIp } from '@/lib/submission'
+import { rateLimited, clientIp } from '@/lib/submission'
+import { parseSubmission } from '@/lib/registration-input'
 import { paymentConfig, createOrder, formatInr, isLiveMode } from '@/lib/payments/razorpay'
-import { ticketById, ticketPaise, tickets, formatTicketPrice } from '@/content/tickets'
+import { ticketPaise, tickets, formatTicketPrice, isFreePass } from '@/content/tickets'
 import {
   createRecord,
   getRecord,
@@ -77,46 +78,36 @@ export async function POST(req: Request) {
   }
 
   /*
-   * Resolve the ticket BEFORE anything else touches money.
+   * Resolve and validate BEFORE anything else touches money.
    *
-   * An unrecognised id is rejected rather than falling back to a default price — a
-   * silent default is how a typo turns into a ₹999 charge for a ₹3,999 programme.
+   * Same parser as /api/register, so this endpoint cannot accept a submission the
+   * waitlist would reject or vice versa — see @/lib/registration-input. It resolves the
+   * pass from the catalogue by id, so an unrecognised id is refused rather than
+   * defaulting to something cheap, and it caps the chargeable extra-member count.
    */
-  const ticket = ticketById(clean(raw.ticketId, 40))
-  if (!ticket) {
-    return NextResponse.json({ ok: false, error: 'Unknown ticket type.' }, { status: 400 })
+  const parsed = parseSubmission(raw)
+  if (!parsed.ok) {
+    return NextResponse.json({ ok: false, error: parsed.error }, { status: 400 })
   }
-  const amountPaise = ticketPaise(ticket)
+  const { ticket, reg, extraMembers } = parsed
 
-  // Same validation as /api/register — a ticket buyer is a registration first.
-  const reg: Registration = {
-    name: clean(raw.name, 120),
-    email: clean(raw.email, 160).toLowerCase(),
-    phone: clean(raw.phone, 40),
-    sector: clean(raw.sector, 80),
-    registerAs: clean(raw.registerAs, 40),
-    city: clean(raw.city, 80),
-    updates: raw.updates ? 'yes' : 'no',
-    ticketId: ticket.id,
-    ticketName: ticket.name,
-  }
-
-  const required: (keyof Registration)[] = ['name', 'email', 'phone', 'sector', 'registerAs', 'city']
-  const missing = required.filter((k) => !reg[k])
-  if (missing.length) {
-    return NextResponse.json({ ok: false, error: `Missing: ${missing.join(', ')}.` }, { status: 400 })
-  }
-  if (!EMAIL_RE.test(reg.email)) {
-    return NextResponse.json({ ok: false, error: 'That email address looks wrong.' }, { status: 400 })
-  }
-  const phone = normalisePhone(reg.phone)
-  if (!phone) {
+  /*
+   * The Free Pass has no price, so there is no order to create.
+   *
+   * Refuse rather than create a zero-amount order: Razorpay rejects those anyway, and a
+   * zero-rupee "payment" in the journal would be a paid registration that nobody paid
+   * for. The client never routes a free pass here — this is the guard for a direct POST.
+   */
+  if (isFreePass(ticket)) {
     return NextResponse.json(
-      { ok: false, error: 'Enter a valid 10-digit Indian mobile number.' },
+      { ok: false, error: 'This pass is free — no payment is needed. Register instead.' },
       { status: 400 },
     )
   }
-  reg.phone = phone
+
+  // Priced from the catalogue plus the validated extras count. The browser sent a pass
+  // id and a number of people; it never sent an amount.
+  const amountPaise = ticketPaise(ticket, extraMembers)
 
   if (rateLimited(clientIp(req))) {
     return NextResponse.json(
@@ -173,13 +164,27 @@ export async function POST(req: Request) {
     // Carries the full registration into Razorpay's own storage — the backstop that
     // makes every paid registration recoverable even if this server's disk is lost.
     // The ticket is included so a recovered order can be fulfilled with the right pass.
+    /*
+     * Carries the registration into Razorpay's own storage — the backstop that makes
+     * every paid registration recoverable even if this server's disk is lost.
+     *
+     * Razorpay caps notes at 15 keys, so this is the recoverable MINIMUM rather than
+     * everything the form collected: enough to contact the payer, know what they bought,
+     * and rebuild a sheet row. The pitch narrative lives in the journal and the sheet,
+     * and losing it would cost a follow-up email, not a seat.
+     */
     notes: {
       name: reg.name,
       email: reg.email,
       phone: reg.phone,
-      sector: reg.sector,
-      registerAs: reg.registerAs,
       city: reg.city,
+      category: reg.category || '',
+      registerAs: reg.registerAs,
+      orgName: reg.orgName || '',
+      idNumber: reg.idNumber || '',
+      startupName: reg.startupName || '',
+      workshop: reg.workshop || '',
+      extraMembers: reg.extraMembers || '0',
       updates: reg.updates,
       ticketId: reg.ticketId,
       ticketName: reg.ticketName,

@@ -25,8 +25,8 @@ export const site = {
   entry: 'Ticketed · details announced soon',
   // Every "Register" button on the site reads this — header, hero, mobile nav. It
   // pointed at #register, the free waitlist form, which no longer exists: registering
-  // now means buying one of the three passes, so the CTA lands on the passes and the
-  // checkout sheet collects the details the waitlist used to.
+  // now means picking one of the four passes, so the CTA lands on the pass ladder and
+  // the form there collects the details the waitlist used to.
   register: '#tickets',
   // Public contact details shown on the site. Separate from the transactional sender
   // (MAIL_FROM / MAIL_REPLY_TO in .env) that the registration emails go out as.
@@ -45,50 +45,19 @@ export const site = {
 // REGISTRATION_PAYMENT_ENABLED. Setting it in the environment is harmless but has no
 // effect; do not add a third switch here.
 
-export const registrationRoles = [
-  'Founder',
-  'Investor',
-  'Government / Bank',
-  'Ecosystem / Mentor',
-  'Media',
-  'Other',
-] as const
-
-// "Register as" — who the attendee is coming as. Sits after Sector in the form.
-export const registerAsOptions = ['Company', 'Government', 'Public', 'Student'] as const
-
-export const registrationSectors = [
-  'Agriculture',
-  'Automobile',
-  'Arts and Crafts',
-  'Automobile components',
-  'Aviation',
-  'Biotechnology',
-  'Chemical',
-  'Construction',
-  'Defence manufacturing',
-  'Education',
-  'Electrical machinery',
-  'Electronic systems',
-  'Food Processing',
-  'Health',
-  'IT and BPM',
-  'Leather',
-  'Media and entertainment',
-  'Mining',
-  'Oil and gas',
-  'Pharmaceuticals',
-  'Ports and shipping',
-  'Railways',
-  'Renewable energy',
-  'Roads and highways',
-  'Space',
-  'Textiles and garments',
-  'Thermal power',
-  'Tourism and hospitality',
-  'Wellness',
-  'Other',
-] as const
+/*
+ * registrationRoles, registerAsOptions and registrationSectors lived here and are gone.
+ *
+ * The August 2026 pass restructure replaced all three. "Register as" became `categories`
+ * in @/content/tickets — a five-way choice that also decides which organisation fields
+ * the form asks for, so it could not stay a bare string list. The 30-entry industry
+ * dropdown became a free-text "Sector / industry" asked only on the Investor Pitch Pass,
+ * because it was the only pass that ever used the answer.
+ *
+ * Deleted rather than left in place: an exported option list that nothing renders is a
+ * trap, because the next person to need one finds it, uses it, and reintroduces a
+ * vocabulary the rest of the system stopped speaking.
+ */
 
 // Tamil Nadu cities / towns (searchable). 'Other' as a fallback.
 export const tamilNaduCities = [
@@ -147,8 +116,8 @@ export const nav: NavItem[] = [
 
 // `action: 'partner'` swaps the modal to the enquiry form instead of navigating.
 // TODO: 'Nominate a Startup' should point at the Startup Singam URL once we have it.
-// Until then it falls back to the passes — nominating means entering the Top 10
-// shortlist, which is what the Founder Programme pass buys.
+// Until then it falls back to the passes — nominating means entering the pitch track,
+// which is what the Investor Pitch Pass buys.
 export const participateRoutes: {
   label: string
   desc: string
@@ -158,7 +127,7 @@ export const participateRoutes: {
   // Goes to the passes, not the waitlist form: "Attend" means buy a ticket now that
   // there is something to buy. The ticket brief calls for exactly this — Attend must
   // land on the pricing slots, and a slot opens the payment gateway.
-  { label: 'Attend', desc: 'Book a delegate or founder pass', href: '#tickets' },
+  { label: 'Attend', desc: 'Free, delegate, workshop or pitch pass', href: '#tickets' },
   { label: 'Nominate a Startup', desc: 'For the Top 10 shortlist', href: '#tickets' },
   { label: 'Partner with us', desc: 'Sponsor, speak or host a desk', action: 'partner' },
 ]

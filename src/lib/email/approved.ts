@@ -74,9 +74,10 @@ export const REGISTRANT_CONFIRMATION_HTML = `<!DOCTYPE html><html lang="en"><hea
       <tr><td width="130" style="padding:6px 0;font-size:14px;color:#7A8798;">Name</td><td style="padding:6px 0;font-size:14px;color:#3D4A5C;">{{NAME}}</td></tr>
       <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Email</td><td style="padding:6px 0;font-size:14px;color:#3D4A5C;">{{EMAIL}}</td></tr>
       <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Phone</td><td style="padding:6px 0;font-size:14px;color:#3D4A5C;">{{PHONE}}</td></tr>
-      <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Sector</td><td style="padding:6px 0;font-size:14px;color:#3D4A5C;">{{SECTOR}}</td></tr>
+      <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Pass</td><td style="padding:6px 0;font-size:14px;color:#14315E;font-weight:700;">{{PASS}}</td></tr>
       <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Registered as</td><td style="padding:6px 0;font-size:14px;color:#3D4A5C;">{{REGISTERED_AS}}</td></tr>
       <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">City</td><td style="padding:6px 0;font-size:14px;color:#3D4A5C;">{{CITY}}</td></tr>
+{{EXTRA_ROWS}}
     </table>
   </td></tr>
 

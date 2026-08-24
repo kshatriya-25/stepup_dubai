@@ -22,6 +22,7 @@
 
 import 'server-only'
 import { appendToSheet } from '@/lib/submission'
+import { sheetRow } from '@/lib/registration-input'
 import { sendMail, organiserRecipients } from '@/lib/email/mailer'
 import {
   paidParticipantEmail,
@@ -74,13 +75,32 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 /** Journal registration → email registration (the email templates have no `updates`). */
 function forEmail(r: Registration): EmailRegistration {
+  // Explicit field-by-field rather than a spread: the journal record also holds
+  // `updates`, `consent` and `ticketId`, and an email has no business rendering any of
+  // them. Listing them out means a new bookkeeping field cannot leak into a customer's
+  // receipt just by being added upstream.
   return {
     name: r.name,
     email: r.email,
     phone: r.phone,
-    sector: r.sector,
-    registerAs: r.registerAs,
     city: r.city,
+    registerAs: r.registerAs,
+    category: r.category,
+    sector: r.sector,
+    orgName: r.orgName,
+    idNumber: r.idNumber,
+    designation: r.designation,
+    workshop: r.workshop,
+    wantNetworking: r.wantNetworking,
+    meetingType: r.meetingType,
+    meetingNote: r.meetingNote,
+    startupName: r.startupName,
+    stage: r.stage,
+    pitchOneLine: r.pitchOneLine,
+    pitchDetail: r.pitchDetail,
+    traction: r.traction,
+    extraMembers: r.extraMembers,
+    extraMemberList: r.extraMemberList,
   }
 }
 
@@ -135,11 +155,20 @@ function registrationFromNotes(notes: Record<string, string>): Registration | nu
     name: notes.name || '',
     email: notes.email || '',
     phone: notes.phone || '',
-    sector: notes.sector || '',
-    registerAs: notes.registerAs || '',
     city: notes.city || '',
     updates: notes.updates || 'no',
     ticketId: notes.ticketId || '',
+    // Only the keys the order actually carries — Razorpay caps notes at 15, so the
+    // pitch narrative is not among them. See the notes payload in the order route for
+    // why this is the recoverable minimum rather than the whole form.
+    category: notes.category || '',
+    registerAs: notes.registerAs || '',
+    sector: notes.sector || '',
+    orgName: notes.orgName || '',
+    idNumber: notes.idNumber || '',
+    startupName: notes.startupName || '',
+    workshop: notes.workshop || '',
+    extraMembers: notes.extraMembers || '0',
     // Falls back to a readable placeholder rather than an empty cell: a receipt saying
     // "Ticket —" is confusing, but a blank column in the sheet is worse to audit.
     ticketName: notes.ticketName || notes.ticketId || 'Ticket',
@@ -315,25 +344,15 @@ async function fulfil(
   for (let i = 0; i < SHEET_ATTEMPTS.length; i++) {
     const res = await appendToSheet(
       'registration',
-      {
-        name: reg.name,
-        email: reg.email,
-        phone: reg.phone,
-        sector: reg.sector,
-        registerAs: reg.registerAs,
-        city: reg.city,
-        // Payment columns, appended at the END of the sheet — see the ordering rule
-        // at the top of registration/Code.gs.
+      // Same mapper the waitlist path uses, so a paid row and a waitlist row differ only
+      // in the columns that are genuinely about payment — see @/lib/registration-input.
+      sheetRow(reg, {
         paymentStatus: 'Paid',
-        ticket: pay.ticketName,
-        // What the pass admits to, from the catalogue — so the door list can be filtered
-        // to a day without cross-referencing which pass meant what at time of sale.
-        access: accessLabel(pay),
         amount: pay.amountLabel,
         paymentId: pay.paymentId,
         orderId: pay.orderId,
         paidAt: sheetStamp(paidAt),
-      },
+      }),
       SHEET_ATTEMPTS[i],
     )
     if (res.ok) {

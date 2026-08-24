@@ -7,7 +7,20 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { cn } from '@/lib/cn'
 
 /**
+ * An option with a stored value distinct from its visible label — 'workshop-2' shown as
+ * "Workshop B". A bare string is shorthand for both being the same, which is what the
+ * city list wants.
+ */
+export type ComboOption = { value: string; label: string }
+
+/**
  * Searchable select. Desktop: dropdown anchored to the trigger. Mobile: bottom sheet.
+ *
+ * USE THIS INSTEAD OF `<select>`, EVERYWHERE. A native select renders as an operating
+ * system menu — dark grey with a blue highlight on macOS, something else again on Windows
+ * — which cannot be styled, ignores the brand palette entirely, and looked like a
+ * different application had opened on top of the form. It is the one control that leaks
+ * the OS through a design system, and there is no CSS fix for it.
  *
  * BOTH PANELS ARE PORTALLED TO document.body, and that is not optional. The register
  * section is `relative overflow-hidden` (it clips a decorative blur), and the form card
@@ -28,7 +41,8 @@ export function Combobox({
 }: {
   value: string
   onChange: (v: string) => void
-  options: readonly string[]
+  /** Plain strings, or {value,label} pairs when the stored value differs from the text. */
+  options: readonly string[] | readonly ComboOption[]
   label?: string
   placeholder?: string
   searchPlaceholder?: string
@@ -36,7 +50,12 @@ export function Combobox({
   /** Defaults to on only past 8 options — a search box over four choices is noise. */
   searchable?: boolean
 }) {
-  const canSearch = searchable ?? options.length > 8
+  // Normalise both accepted shapes once, so everything below deals with pairs only.
+  const items = useMemo<ComboOption[]>(
+    () => options.map((o) => (typeof o === 'string' ? { value: o, label: o } : o)),
+    [options],
+  )
+  const canSearch = searchable ?? items.length > 8
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
@@ -64,13 +83,17 @@ export function Combobox({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return q ? options.filter((o) => o.toLowerCase().includes(q)) : options
-  }, [query, options])
+    // Search the LABEL. Nobody types 'workshop-2' looking for "Workshop B".
+    return q ? items.filter((o) => o.label.toLowerCase().includes(q)) : items
+  }, [query, items])
+
+  /** The visible text for the current value, or '' when nothing is chosen yet. */
+  const selectedLabel = useMemo(() => items.find((o) => o.value === value)?.label ?? '', [items, value])
 
   // Keep the highlight on the current value when reopening; reset it while searching.
   useEffect(() => {
     if (!open) return
-    const i = filtered.indexOf(value)
+    const i = filtered.findIndex((o) => o.value === value)
     setActive(i >= 0 ? i : 0)
   }, [open, value, filtered])
   useEffect(() => setActive(0), [query])
@@ -179,8 +202,8 @@ export function Combobox({
     return () => el.removeEventListener(OPEN_EVENT, onOpen)
   }, [measure])
 
-  function pick(opt: string) {
-    onChange(opt)
+  function pick(opt: ComboOption) {
+    onChange(opt.value)
     setQuery('')
     advance()
   }
@@ -239,9 +262,9 @@ export function Combobox({
       )}
       {filtered.map((opt, i) => (
         <li
-          key={opt}
+          key={opt.value}
           role="option"
-          aria-selected={value === opt}
+          aria-selected={value === opt.value}
           onMouseEnter={() => setActive(i)}
           onClick={() => pick(opt)}
           className={cn(
@@ -249,11 +272,11 @@ export function Combobox({
             // 44px min touch target on mobile — the old py-3.5 rows were fiddly to hit.
             big ? 'min-h-[48px] py-3 text-base' : 'py-2.5 text-sm',
             i === active && 'bg-foam',
-            value === opt && 'font-semibold text-accent-ink',
+            value === opt.value && 'font-semibold text-accent-ink',
           )}
         >
-          <span className="pr-3">{opt}</span>
-          {value === opt && <Check size={16} className="shrink-0 text-accent" />}
+          <span className="pr-3">{opt.label}</span>
+          {value === opt.value && <Check size={16} className="shrink-0 text-accent" />}
         </li>
       ))}
     </ul>
@@ -299,7 +322,7 @@ export function Combobox({
           <span className="h-1.5 w-10 rounded-full bg-ink/15" />
         </div>
         <div className="flex items-center justify-between px-5 py-3">
-          <span className="font-sans text-sm font-bold uppercase tracking-[0.12em] text-ink">{label}</span>
+          <span className="font-sans text-sm font-semibold text-ink">{label}</span>
           <button type="button" aria-label="Close" onClick={() => setOpen(false)} className="-mr-1 p-1 text-muted">
             <X size={20} />
           </button>
@@ -344,12 +367,14 @@ export function Combobox({
           if (open) onKey(e)
         }}
         className={cn(
-          'flex w-full items-center justify-between border bg-foam px-4 py-3 text-left text-sm outline-none transition-colors focus:bg-surface',
+          // px-3.5 py-2.5 to match `input` in PassCheckout — a trigger that is 4px
+          // taller than the text field next to it reads as a misalignment, not a style.
+          'flex w-full items-center justify-between border bg-foam px-3.5 py-2.5 text-left text-sm outline-none transition-colors focus:bg-surface',
           invalid ? 'border-accent' : 'border-ink/15 focus:border-accent',
-          value ? 'text-ink' : 'text-muted/70',
+          selectedLabel ? 'text-ink' : 'text-muted/70',
         )}
       >
-        <span className="truncate">{value || placeholder}</span>
+        <span className="truncate">{selectedLabel || placeholder}</span>
         <ChevronDown size={16} className={cn('shrink-0 text-muted transition-transform', open && 'rotate-180')} />
       </button>
 
