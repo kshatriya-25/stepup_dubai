@@ -1,5 +1,5 @@
 // Tier-2 Rising content — human-story copy from the v1 build. Navy/Orange brand.
-// Canonical facts: one day (Sun 11 Oct 2026), Fortune City Erode, ticketed.
+// Canonical facts: one day (Sat 10 Oct 2026), Fortune City Erode, ticketed.
 
 export const site = {
   name: 'Tier-2 Rising',
@@ -11,11 +11,14 @@ export const site = {
   theme: 'When investors, government grants and bank funding come to Tier-2 — not the other way around',
   tagline: 'Where Tier-2 startups become funding-ready',
   taglineLong:
-    'The weekend investors, government grants and bank funding come to Tier-2 — instead of Tier-2 going looking for them. A flagship event under the Tier-2 Rising campaign by NammaOffice.',
+    'The day investors, government grants and bank funding come to Tier-2 — instead of Tier-2 going looking for them. A flagship event under the Tier-2 Rising campaign by NammaOffice.',
   headline: 'TIER-2 RISING',
   subhead: 'Startup Summit',
-  dates: '10 & 11 October 2026',
-  datesShort: 'Sat & Sun',
+  // ONE DAY, Saturday 10 October 2026. It was a two-day event until August 2026 and
+  // the copy said so in a dozen places; every one of them now reads from here.
+  // `dates` is the only string the site prints, so shortening it is a one-line change.
+  dates: '10 October 2026',
+  datesShort: 'Saturday',
   startISO: '2026-10-10T09:00:00+05:30',
   venue: 'Fortune City',
   // Shown as a second line under the venue chip in the header. Fortune City alone is

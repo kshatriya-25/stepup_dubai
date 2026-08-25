@@ -27,9 +27,10 @@
  *
  * {{ACCESS}} IS NOT DECORATION. It is filled from the bought ticket's own Access value
  * in @/content/tickets — the same string the pass card on the site prints. This used to
- * be a flat "Two days in Erode" sentence, which stopped being true the moment the
- * Delegate Pass changed to Day 2 only: the receipt was promising a day the pass did not
- * admit. Sourcing it from the catalogue means changing a pass's access changes what its
+ * be a flat "Two days in Erode" sentence, which stopped being true twice over — first
+ * when the Delegate Pass changed to Day 2 only, then when the summit itself became a
+ * single day. Both times the receipt was promising something the pass did not admit.
+ * Sourcing it from the catalogue means changing a pass's access changes what its
  * receipt claims, in one edit, and the two cannot disagree again.
  */
 

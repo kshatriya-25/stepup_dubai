@@ -81,7 +81,7 @@ export function Tickets({ paymentEnabled }: { paymentEnabled: boolean }) {
           <div className="flex items-center gap-3">
             <span className="h-[2px] w-8 bg-accent" />
             <span className="font-sans text-[11px] font-bold uppercase tracking-[0.18em] text-accent">
-              Admit one · {site.city.split(',')[0]} · 10–11 Oct
+              Admit one · {site.city.split(',')[0]} · 10 Oct
             </span>
           </div>
           <h2 className="mt-4 font-sans text-4xl font-bold uppercase leading-[1.02] tracking-[-0.01em] md:text-6xl">

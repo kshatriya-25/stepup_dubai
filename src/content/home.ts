@@ -3,14 +3,14 @@
 export const story = {
   title: 'Why We Built the Room',
   body:
-    'There are founders in Tier 2 cities as good as anyone in Chennai or Bangalore — working just as hard, with an idea just as good. What they don’t have is easy access to a room full of investors, the thing a metro founder barely thinks about. The talent was never the problem. The access was. We’re closing that gap over a single weekend.',
+    'There are founders in Tier 2 cities as good as anyone in Chennai or Bangalore — working just as hard, with an idea just as good. What they don’t have is easy access to a room full of investors, the thing a metro founder barely thinks about. The talent was never the problem. The access was. We’re closing that gap in a single day.',
 }
 
 export const scores = [
   { n: '10', label: 'startups coached to funding-readiness' },
   { n: '3', label: 'pitch live on the main stage' },
   { n: '5', label: 'initiatives unveiled to keep it going' },
-  { n: '2', label: 'days · every door open' },
+  { n: '1', label: 'day · every door open' },
 ]
 
 export type Zone = { title: string; sub: string; accent: 'accent' | 'purple' | 'cyan' | 'gold' | 'green' }
@@ -117,7 +117,7 @@ export const govPartners: GovGroup[] = [
 export const statements = [
   { text: 'Great businesses should not be limited by geography.', author: 'The Tier-2 Rising belief' },
   { text: 'The talent was never the problem. The access was.', author: 'Why we built the room' },
-  { text: 'Two days. Every door open.', author: '10 & 11 October · Erode' },
+  { text: 'One day. Every door open.', author: '10 October · Erode' },
   { text: 'Tier-2 is rising.', author: 'Coimbatore · Erode · Salem · Tiruppur · Madurai · Trichy' },
 ]
 

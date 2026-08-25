@@ -9,7 +9,7 @@ export function WhatGoesOn() {
     <section id="whatgoeson" className="bg-surface">
       <Container className="py-16 md:py-24">
         <Reveal>
-          <Eyebrow className="text-accent">Two Days · Every Door Open</Eyebrow>
+          <Eyebrow className="text-accent">One Day · Every Door Open</Eyebrow>
           <SectionHeading className="mt-4 text-ink">What Happens</SectionHeading>
         </Reveal>
 

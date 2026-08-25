@@ -15,8 +15,10 @@
  * ONE deliberate exception: the event date and location are {{EVENT_DATES}} /
  * {{EVENT_LOCATION}}, fed from site.ts. The approved artwork said "Sunday, 11 October
  * 2026" while the website said "10 & 11 October 2026" — a registrant would have been
- * told two different things. Driving both from one source means that cannot recur.
- * The body prose was corrected from "A single day in Erode" for the same reason.
+ * told two different things. Driving both from one source means that cannot recur, and
+ * it is why the August 2026 cut to a single day (Sat 10 Oct) reached this email for
+ * free. The body prose is hard-coded and did NOT: "Two days in Erode" had to be edited
+ * by hand. If the format changes again, re-read that paragraph.
  *
  * Tokens are {{UPPER_SNAKE}} and are filled by fillTokens() in templates.ts, which
  * HTML-escapes every value. Add a token here and you must supply it there.
@@ -50,7 +52,7 @@ export const REGISTRANT_CONFIRMATION_HTML = `<!DOCTYPE html><html lang="en"><hea
       You'll be notified the moment the early-bird link opens. Waitlist entries get first access, along with the pricing and the agenda.
     </p>
     <p style="margin:12px 0 0 0;font-size:15px;line-height:1.65;color:#3D4A5C;">
-      Two days in Erode where investors, government scheme officers and bank credit heads come to Tier-2, instead of the other way round. Five Growth Zones open all day, ten startups coached, three pitching live on the main stage.
+      One day in Erode where investors, government scheme officers and bank credit heads come to Tier-2, instead of the other way round. Five Growth Zones open all day, ten startups coached, three pitching live on the main stage.
     </p>
   </td></tr>
 

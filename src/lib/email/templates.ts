@@ -764,13 +764,13 @@ export type PaymentInfo = {
 }
 
 /**
- * What the bought pass actually admits you to — "Day 2", "Day 1 + Day 2" — read from
- * the ticket catalogue rather than written out here, so a receipt cannot contradict the
- * card that sold it.
+ * What the bought pass actually admits you to — "Stall zone · Main hall", "Full founder
+ * track · Pitch bootcamp · Investor connect" — read from the ticket catalogue rather than
+ * written out here, so a receipt cannot contradict the card that sold it.
  *
- * Falls back to the event dates when the id is missing or unknown. That is the honest
- * answer for a recovered order: the summit runs on those dates and we are not going to
- * invent an entitlement we cannot look up.
+ * Falls back to the event date when the id is missing or unknown. That is the honest
+ * answer for a recovered order: the summit runs that day and we are not going to invent
+ * an entitlement we cannot look up.
  */
 export function accessLabel(pay: PaymentInfo): string {
   return ticketAccess(pay.ticketId) || site.dates
