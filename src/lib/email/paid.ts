@@ -118,11 +118,51 @@ export const PAID_CONFIRMATION_HTML = `<!DOCTYPE html><html lang="en"><head><met
 </table></td></tr></table></body></html>`
 
 /**
- * Shown only when the keys are `rzp_test_…`. Without it a test-mode receipt is
- * indistinguishable from a real one, which is how a staging email ends up forwarded to
- * an accountant. Never rendered in live mode.
+ * WHY A RECEIPT MIGHT NOT BE A REAL ONE. null means it is.
+ *
+ * Two different things, and they must not be described with the same sentence:
+ *
+ *   'test-keys'  — `rzp_test_…`. No money existed at any point.
+ *   'test-price' — LIVE keys against a staging build running TICKET_PRICE_OVERRIDE_INR
+ *                  (see @/lib/pricing). The money is entirely real; the amount is not
+ *                  what the pass costs, and the pass is not valid.
+ *
+ * The second case is the dangerous one and is why this stopped being a boolean. A ₹2
+ * capture on live keys produces a receipt that is genuine in every mechanical respect —
+ * real payment id, real settlement, reconcilable in the Razorpay dashboard. Calling that
+ * "TEST MODE — no real money was charged" would be a false statement about someone's
+ * bank account, and leaving it unmarked would let a staging booking be presented at the
+ * registration desk.
  */
-export const TEST_MODE_BANNER = `  <tr><td style="background:#FFF4E5;border-bottom:1px solid #F0D9B5;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:0.4px;color:#8A5A00;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
-    TEST MODE — no real money was charged. This is not a valid receipt.
+export type ReceiptCaveat = 'test-keys' | 'test-price' | null
+
+const CAVEAT_LINE: Record<'test-keys' | 'test-price', string> = {
+  'test-keys': 'TEST MODE — no real money was charged. This is not a valid receipt.',
+  'test-price':
+    'STAGING TEST — booked at a reduced test price. Real money was charged and will be refunded. This is not a valid pass.',
+}
+
+/** One-word mode, for the organiser's eyebrow line and the unfulfilled-payment alert. */
+export const CAVEAT_LABEL: Record<'test-keys' | 'test-price', string> = {
+  'test-keys': 'test mode',
+  'test-price': 'staging test price',
+}
+
+/** Plain text of the caveat, or '' when the receipt is real. */
+export function caveatLine(caveat: ReceiptCaveat): string {
+  return caveat ? CAVEAT_LINE[caveat] : ''
+}
+
+/**
+ * The HTML strip that goes above the receipt. Amber for a test key, red for a live-key
+ * test price — the second one has taken somebody's money and needs to look like it.
+ */
+export function caveatBanner(caveat: ReceiptCaveat): string {
+  if (!caveat) return ''
+  const [bg, border, fg] =
+    caveat === 'test-keys' ? ['#FFF4E5', '#F0D9B5', '#8A5A00'] : ['#FFF0F0', '#F0C4C4', '#A11B1B']
+  return `  <tr><td style="background:${bg};border-bottom:1px solid ${border};padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:0.4px;color:${fg};font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+    ${CAVEAT_LINE[caveat]}
   </td></tr>
 `
+}

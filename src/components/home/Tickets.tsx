@@ -2,10 +2,11 @@ import Link from 'next/link'
 import { Check, ArrowRight, Clock } from 'lucide-react'
 import { Container } from '@/components/primitives/Container'
 import { Reveal } from '@/components/primitives/Reveal'
+import { TestPriceBanner } from '@/components/primitives/TestPriceBanner'
 import { cn } from '@/lib/cn'
 import { site } from '@/content/site'
+import { pricedTickets, priceOverrideInr } from '@/lib/pricing'
 import {
-  tickets,
   ticketsNote,
   TICKET_SALES_LIVE,
   passesIntro,
@@ -104,10 +105,15 @@ export function Tickets({ paymentEnabled }: { paymentEnabled: boolean }) {
               </span>
             </p>
           )}
+
+          {/* Above the cards, not below them: the prices are the thing it is qualifying. */}
+          {priceOverrideInr !== null && (
+            <TestPriceBanner priceInr={priceOverrideInr} className="mt-6 max-w-2xl" />
+          )}
         </Reveal>
 
         <div className="mt-10 flex flex-col gap-5 md:mt-12">
-          {tickets.map((t, i) => (
+          {pricedTickets.map((t, i) => (
             <Reveal key={t.id} delay={i * 0.08}>
               <TicketCard ticket={t} paymentEnabled={paymentEnabled} />
             </Reveal>

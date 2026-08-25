@@ -40,6 +40,7 @@ import {
   isLiveMode,
   type RazorpayPayment,
 } from './razorpay'
+import { testPricing } from '@/lib/pricing'
 import {
   getRecord,
   updateRecord,
@@ -145,7 +146,13 @@ function paymentInfo(rec: PaymentRecord, paidAt: Date): PaymentInfo {
     ticketId: rec.registration.ticketId,
     paidAt,
     method: rec.method,
-    testMode: !isLiveMode(),
+    /*
+     * Test KEYS win over a test PRICE, and the order matters. On `rzp_test_…` no money
+     * existed regardless of what the catalogue said, so "no real money was charged" is
+     * the true statement; a staging box running both would otherwise claim a refund is
+     * owed on a payment that never happened.
+     */
+    caveat: !isLiveMode() ? 'test-keys' : testPricing ? 'test-price' : null,
   }
 }
 

@@ -15,8 +15,8 @@
 
 import 'server-only'
 import { EMAIL_RE, clean, normalisePhone } from '@/lib/submission'
+import { pricedTicketById } from '@/lib/pricing'
 import {
-  ticketById,
   ticketAccess,
   categories,
   workshopOptions,
@@ -44,8 +44,12 @@ export function parseSubmission(raw: Record<string, unknown>): ParseResult {
    * An unrecognised id is rejected rather than falling back to a default — a silent
    * default is how a typo turns into a ₹299 charge for a ₹2,999 programme, and how a
    * junk id ends up written into the sheet's Ticket column.
+   *
+   * Resolved through @/lib/pricing, not ticketById, so the `ticket` this returns carries
+   * the price THIS DEPLOYMENT charges. /api/payment/order prices straight off it, which
+   * is what keeps staging's test price from needing a second lookup that could disagree.
    */
-  const ticket = ticketById(clean(raw.ticketId, 40))
+  const ticket = pricedTicketById(clean(raw.ticketId, 40))
   if (!ticket) return { ok: false, error: 'Unknown pass type.' }
 
   const name = clean(raw.name, 120)

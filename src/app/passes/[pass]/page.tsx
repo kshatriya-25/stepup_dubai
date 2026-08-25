@@ -5,8 +5,10 @@ import { ChevronLeft, Clock, ArrowRight } from 'lucide-react'
 import { Container } from '@/components/primitives/Container'
 import { PassFlow } from '@/components/passes/PassFlow'
 import { PassSummary } from '@/components/passes/PassSummary'
+import { TestPriceBanner } from '@/components/primitives/TestPriceBanner'
 import { site } from '@/content/site'
 import { paymentEnabled } from '@/lib/payments/razorpay'
+import { pricedTicketById, priceOverrideInr } from '@/lib/pricing'
 import { ticketById, isFreePass, TICKET_SALES_LIVE, type Ticket } from '@/content/tickets'
 
 /**
@@ -63,7 +65,10 @@ export async function generateMetadata({
 }
 
 export default function PassPage({ params }: { params: { pass: string } }) {
-  const ticket = ticketById(params.pass)
+  // Priced, not raw: everything below — the summary, the running total in the form, and
+  // the amount /api/payment/order will charge — comes off this one object. generateMetadata
+  // above keeps the plain lookup because a <title> has no price in it.
+  const ticket = pricedTicketById(params.pass)
   if (!ticket) notFound()
 
   // The free pass has no price, so no combination of switches can make it a purchase.
@@ -89,6 +94,13 @@ export default function PassPage({ params }: { params: { pass: string } }) {
             <h1 className="mt-1.5 font-sans text-3xl font-bold tracking-[-0.02em] text-ink md:text-4xl">
               {ticket.name}
             </h1>
+
+            {/* Before the form, not beside the total — someone about to enter a card
+                number should have read it already. Free passes never show it: nothing
+                is being charged, so there is no price to qualify. */}
+            {priceOverrideInr !== null && !isFreePass(ticket) && (
+              <TestPriceBanner priceInr={priceOverrideInr} className="mt-5" />
+            )}
           </div>
 
           {/*

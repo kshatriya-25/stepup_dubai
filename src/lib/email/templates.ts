@@ -20,7 +20,14 @@ import {
   PARTNER_CONFIRMATION_HTML,
   PARTNER_SUBJECT,
 } from './approved'
-import { PAID_CONFIRMATION_HTML, PAID_SUBJECT, TEST_MODE_BANNER } from './paid'
+import {
+  PAID_CONFIRMATION_HTML,
+  PAID_SUBJECT,
+  caveatBanner,
+  caveatLine,
+  CAVEAT_LABEL,
+  type ReceiptCaveat,
+} from './paid'
 import {
   ticketAccess,
   ticketById,
@@ -748,8 +755,12 @@ export type PaymentInfo = {
   ticketId?: string
   paidAt: Date
   method?: string
-  /** rzp_test_… keys. Stamps a warning banner so a test receipt can't pass as real. */
-  testMode: boolean
+  /**
+   * Why this receipt is not a real one — null when it is. Stamps a warning banner so a
+   * staging booking cannot pass as a genuine pass. See ReceiptCaveat in ./paid for why
+   * this is a three-state field rather than the boolean `testMode` it replaced.
+   */
+  caveat: ReceiptCaveat
 }
 
 /**
@@ -799,7 +810,7 @@ export function paidParticipantEmail(
   // than through it — fillTokens escapes, which would print the tags as text.
   const withBanner = PAID_CONFIRMATION_HTML.replace(
     '{{TEST_BANNER}}',
-    pay.testMode ? TEST_MODE_BANNER : '',
+    caveatBanner(pay.caveat),
   ).replace('{{EXTRA_ROWS}}', passDetailRows(r, null))
 
   /*
@@ -812,7 +823,7 @@ export function paidParticipantEmail(
    * changed, so it only showed up for readers whose client prefers text/plain.
    */
   const text = [
-    ...(pay.testMode ? ['TEST MODE — no real money was charged. Not a valid receipt.', ''] : []),
+    ...(pay.caveat ? [caveatLine(pay.caveat), ''] : []),
     `THANKS, ${firstName(r.name).toUpperCase()}. YOUR SEAT IS CONFIRMED.`,
     '',
     `We've received your payment of ${pay.amountLabel} for the ${pay.ticketName} and your`,
@@ -872,7 +883,7 @@ export function paidOrganiserEmail(
           <tr>
             <td style="background-color:${C.white};padding:40px 36px 0 36px;font-family:${FONT};">
               <div style="font-size:11px;font-weight:700;letter-spacing:0.16em;color:${C.orange};text-transform:uppercase;">Paid registration${
-                pay.testMode ? ' · test mode' : ''
+                pay.caveat ? ` · ${CAVEAT_LABEL[pay.caveat]}` : ''
               }</div>
               <h1 style="margin:12px 0 0 0;font-size:28px;line-height:1.15;font-weight:700;letter-spacing:-0.01em;color:${
                 C.navy
@@ -915,7 +926,7 @@ ${button('Reply to ' + firstName(r.name), `mailto:${r.email}?subject=${encodeURI
 `
 
   const text = [
-    `PAID REGISTRATION${pay.testMode ? ' (TEST MODE)' : ''}`,
+    `PAID REGISTRATION${pay.caveat ? ` (${CAVEAT_LABEL[pay.caveat].toUpperCase()})` : ''}`,
     '',
     r.name,
     `Paid ${when}`,
@@ -958,6 +969,12 @@ ${button('Reply to ' + firstName(r.name), `mailto:${r.email}?subject=${encodeURI
  * it is, the exact ids to search, and the two fields needed to re-enter the row by
  * hand. No branding, no CTA — this is an operational page, not marketing.
  */
+function alertMode(caveat: ReceiptCaveat): string {
+  if (caveat === 'test-keys') return 'TEST — no money moved'
+  if (caveat === 'test-price') return 'LIVE keys, STAGING TEST PRICE — refund, do not seat'
+  return 'LIVE'
+}
+
 export function unfulfilledAlertEmail(
   r: Registration,
   pay: PaymentInfo,
@@ -970,7 +987,10 @@ export function unfulfilledAlertEmail(
     ['Payment ID', pay.paymentId],
     ['Order ID', pay.orderId],
     ['Paid at', stamp(pay.paidAt)],
-    ['Mode', pay.testMode ? 'TEST' : 'LIVE'],
+    // Spells the caveat out rather than printing TEST/LIVE: whoever picks this alert up
+    // is about to re-enter a row by hand, and "LIVE" on a ₹2 staging booking would have
+    // them chasing a real seat for a payment that was never a purchase.
+    ['Mode', alertMode(pay.caveat)],
     ['Name', r.name],
     ['Email', r.email],
     ['Phone', r.phone],

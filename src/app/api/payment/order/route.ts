@@ -21,7 +21,8 @@ import { createHash } from 'node:crypto'
 import { rateLimited, clientIp } from '@/lib/submission'
 import { parseSubmission } from '@/lib/registration-input'
 import { paymentConfig, createOrder, formatInr, isLiveMode } from '@/lib/payments/razorpay'
-import { ticketPaise, tickets, formatTicketPrice, isFreePass } from '@/content/tickets'
+import { ticketPaise, formatTicketPrice, isFreePass } from '@/content/tickets'
+import { pricedTickets, priceOverrideInr } from '@/lib/pricing'
 import {
   createRecord,
   getRecord,
@@ -236,7 +237,14 @@ export async function GET() {
     service: 'tier2-rising-payments',
     enabled: cfg.ok && cfg.enabled,
     mode: isLiveMode() ? 'LIVE' : 'test',
-    tickets: tickets.map((t) => ({ id: t.id, name: t.name, price: formatTicketPrice(t) })),
+    /*
+     * The prices below are what this box will actually charge, override included — the
+     * point of a health check is to answer "what is this deployment going to do", and a
+     * catalogue price it is not charging would be a lie of omission. `testPricing` names
+     * the override explicitly so nobody has to infer it from the figures.
+     */
+    testPricing: priceOverrideInr === null ? false : `₹${priceOverrideInr} per pass`,
+    tickets: pricedTickets.map((t) => ({ id: t.id, name: t.name, price: formatTicketPrice(t) })),
     journal: { writable: journal.healthy, path: journal.path, error: journal.error },
     error: cfg.ok ? undefined : cfg.error,
   })

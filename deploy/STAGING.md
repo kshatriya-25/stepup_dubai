@@ -90,11 +90,17 @@ Change these seven, at minimum:
 # --- identity -------------------------------------------------------------
 NEXT_PUBLIC_SITE_URL=https://staging.tier2rising.com
 
-# --- payments: TEST KEYS ONLY, NEVER rzp_live_ ----------------------------
+# --- payments: TEST KEYS by default ---------------------------------------
 # A live key here means a real card is charged by whoever is clicking around
-# staging to check a font size.
+# staging to check a font size. See "Smoke-testing the live keys" below for the
+# one case where a live key on staging is correct — it is never the default.
 RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxx
 RAZORPAY_KEY_SECRET=xxxxxxxxxxxxxxxx
+
+# --- the till ------------------------------------------------------------
+# 1 = the pass pages charge. Anything else = the same forms in waitlist mode,
+# nothing charged, sheet rows written with Payment Status "Waitlist".
+REGISTRATION_PAYMENT_ENABLED=1
 
 # --- the payment journal MUST NOT be shared -------------------------------
 # Two Node processes appending to one file is how the crash-safe record stops
@@ -128,6 +134,67 @@ check — the app refuses to take money it cannot record.
 production webhook at staging: Razorpay would deliver real payment events to the
 staging process, which would then fulfil them against the staging journal and the
 staging sheet, and the real registration would never be recorded.
+
+---
+
+## Step 4b — Smoke-testing the LIVE keys
+
+Test keys are not the same system. `rzp_test_…` never touches a real UPI app, a
+real bank OTP page, a real settlement or Razorpay's production webhook fleet, so a
+green run on test keys tells you the *code* works and nothing about whether the
+*account* does. Before the first real customer, the live keys have to carry one
+real payment.
+
+Staging is where that happens, at a couple of rupees:
+
+```bash
+# In /var/www/tier2expo/staging/tier2/.env
+RAZORPAY_KEY_ID=rzp_live_xxxxxxxxxxxx
+RAZORPAY_KEY_SECRET=xxxxxxxxxxxxxxxx
+
+# Rewrites every paid pass to this many rupees. 1–100 only.
+TICKET_PRICE_OVERRIDE_INR=2
+```
+
+`TICKET_PRICE_OVERRIDE_INR` is read by `src/lib/pricing.ts`, and the guards there
+are the reason it is safe to have in a file that gets copied around:
+
+* **It is ignored on production.** `isProductionSite` comes from the origin
+  hard-coded in `src/lib/site-env.ts`, not from a flag. Paste this whole `.env`
+  onto the production box and the override is dropped, with an error in the pm2
+  log saying so. Real prices stand.
+* **It only accepts 1–100 rupees.** A test price is a test price; a typo is
+  refused rather than charged.
+* **It says so everywhere.** A yellow-on-black strip appears above the pass
+  ladder and above the checkout form, and the receipt and the organiser email
+  carry a red *"STAGING TEST — booked at a reduced test price. Real money was
+  charged and will be refunded. This is not a valid pass."* banner. That wording
+  is deliberate: on live keys the ₹2 **is** real money, so the ordinary
+  `TEST MODE — no real money was charged` line would be a false statement about
+  someone's bank account.
+
+Two things this run needs that a test-key run does not:
+
+1. **A staging webhook.** Register a second webhook in the Razorpay dashboard
+   pointing at `https://staging.tier2rising.com/api/payment/webhook`, with its own
+   secret in the staging `RAZORPAY_WEBHOOK_SECRET`. Without it the close-the-tab
+   recovery path is the one thing you never exercised.
+2. **Refund what you charge.** Razorpay dashboard → Transactions → Payments →
+   Refund. ₹2 is not the point; an unrefunded live payment sits in the settlement
+   report as a sale that has no attendee behind it.
+
+When the smoke test passes, **remove `TICKET_PRICE_OVERRIDE_INR` and put the test
+keys back** — then rebuild. Staging left on live keys is a live gateway that
+nobody is watching.
+
+Confirm which prices a box is actually charging at any time:
+
+```bash
+curl -s https://staging.tier2rising.com/api/payment/order | python3 -m json.tool
+```
+
+`mode` reports `LIVE` or `test`; `testPricing` reports `false` or `"₹2 per pass"`;
+`tickets[]` lists the amounts that endpoint will really charge.
 
 ---
 
