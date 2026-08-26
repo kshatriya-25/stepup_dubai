@@ -1,5 +1,5 @@
 /**
- * POST /api/partner — "Partner with us" enquiries from the Participate modal.
+ * POST /api/partner — "Partner with us" enquiries from the header dialog.
  *
  * Mirrors /api/register exactly: record first, then mail both sides, and never let a
  * mail failure lose the enquiry. A sponsor lead is worth more than a confirmation

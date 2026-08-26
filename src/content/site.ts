@@ -117,23 +117,23 @@ export const nav: NavItem[] = [
   { label: 'Partners', href: '#partners' },
 ]
 
-// `action: 'partner'` swaps the modal to the enquiry form instead of navigating.
-// TODO: 'Nominate a Startup' should point at the Startup Singam URL once we have it.
-// Until then it falls back to the passes — nominating means entering the pitch track,
-// which is what the Investor Pitch Pass buys.
-export const participateRoutes: {
-  label: string
-  desc: string
-  href?: string
-  action?: 'partner'
-}[] = [
-  // Goes to the passes, not the waitlist form: "Attend" means buy a ticket now that
-  // there is something to buy. The ticket brief calls for exactly this — Attend must
-  // land on the pricing slots, and a slot opens the payment gateway.
-  { label: 'Attend', desc: 'Free, delegate, workshop or pitch pass', href: '#tickets' },
-  { label: 'Nominate a Startup', desc: 'For the Top 10 shortlist', href: '#tickets' },
-  { label: 'Partner with us', desc: 'Sponsor, speak or host a desk', action: 'partner' },
-]
+/*
+ * participateRoutes is GONE, and must not come back.
+ *
+ * It fed a "Participate" dialog in the header that offered three ways in. Two of them —
+ * "Attend" and "Nominate a Startup" — both resolved to '#tickets': Attend duplicated the
+ * REGISTER button sitting next to it, and Nominate had nowhere real to go because the
+ * Startup Singam URL was never supplied. Only "Partner with us" led anywhere the reader
+ * could not already reach, so the menu was a click of ceremony in front of one form.
+ *
+ * The header button now says "Partner with us" and opens that form directly. Deleted
+ * rather than left exported and unused, for the reason given above about the sectors
+ * list: an option table nothing renders is found by the next person, used, and the
+ * decoys come back.
+ *
+ * If Nominate a Startup ever gets its real URL, it belongs in `nav` or `exploreLinks`
+ * as a link — not behind a dialog.
+ */
 
 // The footer renders these as icons, so `label` is the accessible name rather than
 // visible text — screen readers and hover tooltips both read it.

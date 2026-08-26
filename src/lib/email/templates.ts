@@ -574,7 +574,7 @@ ${button('Reply to ' + firstName(r.name), `mailto:${r.email}?subject=${encodeURI
 }
 
 /* ------------------------------------------------------------------ *
- * Partner enquiries — "Partner with us" in the Participate modal
+ * Partner enquiries — the "Partner with us" dialog in the header
  *
  * Same chrome as the registration mail on purpose: one visual system, one place to
  * change the branding. Only the copy differs, because a prospective sponsor asking
@@ -725,7 +725,7 @@ ${button('Reply to ' + firstName(p.name), `mailto:${p.email}?subject=${encodeURI
     html: shell({
       preheader: `${p.businessName} · ${p.name} · ${p.email}`,
       body,
-      footerNote: 'Automated notification from the Participate form on the summit website.',
+      footerNote: 'Automated notification from the Partner with us form on the summit website.',
     }),
   }
 }

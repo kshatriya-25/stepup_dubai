@@ -173,8 +173,20 @@ export type Ticket = {
   unit: string
   /** Per-head price for additional people from the same startup. Pitch pass only. */
   extraMemberInr?: number
-  /** Button label. */
-  cta: string
+  /*
+   * THERE IS NO `cta` FIELD, and there must not be one.
+   *
+   * There was: every pass carried `cta: 'Join Waitlist'` and nothing ever read it. The
+   * button label cannot be a per-pass constant, because it has to say what clicking will
+   * actually DO — "Book now" when the till is open, "Join the waitlist" when it is shut,
+   * "Register for free" for a pass that never reaches Razorpay at all. Two of those three
+   * depend on server state this file cannot see.
+   *
+   * A dead field named `cta` is worse than no field: the obvious place to go when asked
+   * to change a button label is the one labelled `cta`, and editing it changes nothing.
+   * The label is computed in home/Tickets.tsx and passes/PassCheckout.tsx, from the same
+   * three inputs, and those two must agree.
+   */
   /** Filled orange button vs outlined navy. See the note on the type below. */
   emphasis: 'solid' | 'outline'
   /** Colour of the rule above the eyebrow. Maps to a token in tailwind.config.ts. */
@@ -203,7 +215,6 @@ export const tickets: Ticket[] = [
       'Walk the stall zone and sit in on the open-hall speaker sessions. Limited count — released in batches until they run out.',
     priceInr: 0,
     unit: 'Limited Count',
-    cta: 'Join Waitlist',
     emphasis: 'solid',
     accent: 'cyan',
     badge: 'Limited Seats',
@@ -213,6 +224,11 @@ export const tickets: Ticket[] = [
       { label: 'Main Hall', detail: 'Speaker sessions, open hall' },
     ],
     excludes: 'Delegate kit · Lunch coupon · Power Networking Corner · Workshop session · Investor pitch track',
+    // The desk verifies every free pass against an ID before letting anyone in — that is
+    // what makes a limited, incubator-allocated batch defensible when it runs out. Said
+    // here rather than only in the confirmation email so nobody registers, travels to
+    // Erode and finds out at the door.
+    note: 'A valid ID card is mandatory for entry for Free Pass holders and must be shown at the entrance.',
     form: {
       // NOT the full set, and deliberately so: the free pass is allocated through
       // incubation centres, so there is no 'public' or unaffiliated 'founder' route to
@@ -229,7 +245,6 @@ export const tickets: Ticket[] = [
       'Everything in the free pass, plus the delegate kit and a regular lunch coupon. Walk up to scheme officers, investors and bank heads without an introduction.',
     priceInr: 299,
     unit: 'Per Person',
-    cta: 'Join Waitlist',
     emphasis: 'solid',
     accent: 'accent',
     badge: 'Open',
@@ -251,7 +266,6 @@ export const tickets: Ticket[] = [
       'One focused working session in the hall, plus the Power Networking Corner — pre-booked peer, partner and investor appointments. Power networking lunch included.',
     priceInr: 999,
     unit: 'Per Person',
-    cta: 'Join Waitlist',
     emphasis: 'solid',
     accent: 'green',
     badge: 'Pre-booked',
@@ -276,7 +290,6 @@ export const tickets: Ticket[] = [
     priceInr: 2999,
     unit: 'For One Member (Founder)',
     extraMemberInr: 999,
-    cta: 'Join Waitlist',
     emphasis: 'solid',
     accent: 'gold',
     badge: 'By Selection',

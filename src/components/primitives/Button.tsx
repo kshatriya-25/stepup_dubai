@@ -9,7 +9,7 @@ const base =
 const variants: Record<Variant, string> = {
   // primary CTA — accent block, dark ink, inverts to base on hover (like STEP green→black)
   solid: 'bg-accent text-accent-ink hover:bg-base hover:text-surface',
-  // nav participate — transparent, accent text
+  // nav secondary (Partner with us) — transparent, accent text
   ghost: 'bg-transparent text-accent hover:text-surface',
   // get-in-touch style — dark bg, accent text
   dark: 'bg-base text-accent hover:bg-accent hover:text-accent-ink',

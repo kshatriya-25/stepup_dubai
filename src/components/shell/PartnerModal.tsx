@@ -2,33 +2,53 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { X, ArrowRight, ArrowLeft, Check } from 'lucide-react'
-import { participateRoutes, site } from '@/content/site'
+import { X, Check } from 'lucide-react'
+import { site } from '@/content/site'
 import { cn } from '@/lib/cn'
+
+/**
+ * "Partner with us" — the sponsor / speaker / desk enquiry.
+ *
+ * THIS USED TO BE A "PARTICIPATE" MENU and the extra step was doing nothing. Opening it
+ * offered three choices, and two of them were links to #tickets: "Attend" went to the
+ * pass ladder, which the REGISTER button beside it already does, and "Nominate a Startup"
+ * went to the same place because the Startup Singam URL still does not exist. So a header
+ * button opened a dialog whose only real destination was the third option — one click of
+ * ceremony in front of one form, and two decoys that led back where the reader came from.
+ *
+ * Now the button says what it does and the click lands on the form. The menu view, its
+ * back arrow, and `participateRoutes` in @/content/site are all deleted rather than left
+ * unused: a route table nothing renders is how the decoys would quietly return.
+ *
+ * A DIALOG IS STILL RIGHT HERE, which is why this did not become a page like the pass
+ * checkout did. Four fields, no payment, no multi-step state worth a URL, and it is
+ * reachable from every page in the site — sending someone to /partner and back would
+ * lose their place on a page they were part-way through reading.
+ */
 
 const Ctx = createContext<{ open: () => void; close: () => void } | null>(null)
 
-export function useParticipate() {
+export function usePartner() {
   const ctx = useContext(Ctx)
-  if (!ctx) throw new Error('useParticipate must be used within ParticipateProvider')
+  if (!ctx) throw new Error('usePartner must be used within PartnerProvider')
   return ctx
 }
 
-/** menu = the three options; form = partner enquiry; done = thank-you. */
-type View = 'menu' | 'form' | 'done'
+/** form = the enquiry; done = thank-you. There is no third state any more. */
+type View = 'form' | 'done'
 
-export function ParticipateProvider({ children }: { children: ReactNode }) {
+export function PartnerProvider({ children }: { children: ReactNode }) {
   const [isOpen, setOpen] = useState(false)
-  const [view, setView] = useState<View>('menu')
+  const [view, setView] = useState<View>('form')
 
-  // Always reopen on the menu — a visitor who closed mid-enquiry should not come
-  // back to a half-filled form with no idea how they got there.
   function close() {
     setOpen(false)
   }
+  // Back to a blank form on reopen. Someone who closed after sending should not find the
+  // thank-you screen waiting for them the next time they click the button.
   useEffect(() => {
     if (!isOpen) {
-      const t = setTimeout(() => setView('menu'), 250) // after the exit animation
+      const t = setTimeout(() => setView('form'), 250) // after the exit animation
       return () => clearTimeout(t)
     }
   }, [isOpen])
@@ -54,59 +74,13 @@ export function ParticipateProvider({ children }: { children: ReactNode }) {
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             >
               <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  {view === 'form' && (
-                    <button
-                      type="button"
-                      aria-label="Back to options"
-                      onClick={() => setView('menu')}
-                      className="text-accent-ink transition-opacity hover:opacity-70"
-                    >
-                      <ArrowLeft size={26} />
-                    </button>
-                  )}
-                  <h2 className="font-sans text-3xl font-bold uppercase text-accent-ink sm:text-4xl">
-                    {view === 'menu' ? 'Participate' : 'Partner with us'}
-                  </h2>
-                </div>
+                <h2 className="font-sans text-3xl font-bold uppercase text-accent-ink sm:text-4xl">
+                  Partner with us
+                </h2>
                 <button aria-label="Close" onClick={close} className="shrink-0 text-accent-ink">
                   <X size={28} />
                 </button>
               </div>
-
-              {view === 'menu' && (
-                <div className="mt-8 grid gap-3 sm:grid-cols-2">
-                  {participateRoutes.map((r) =>
-                    r.action === 'partner' ? (
-                      <button
-                        key={r.label}
-                        type="button"
-                        onClick={() => setView('form')}
-                        className="group flex items-center justify-between border border-base/20 bg-base px-5 py-5 text-left text-surface transition-colors hover:bg-base-2"
-                      >
-                        <span>
-                          <span className="block font-sans text-lg font-bold uppercase">{r.label}</span>
-                          <span className="block text-sm text-surface/70">{r.desc}</span>
-                        </span>
-                        <ArrowRight size={20} className="shrink-0 transition-transform group-hover:translate-x-1" />
-                      </button>
-                    ) : (
-                      <a
-                        key={r.label}
-                        href={r.href}
-                        onClick={close}
-                        className="group flex items-center justify-between border border-base/20 bg-base px-5 py-5 text-surface transition-colors hover:bg-base-2"
-                      >
-                        <span>
-                          <span className="block font-sans text-lg font-bold uppercase">{r.label}</span>
-                          <span className="block text-sm text-surface/70">{r.desc}</span>
-                        </span>
-                        <ArrowRight size={20} className="shrink-0 transition-transform group-hover:translate-x-1" />
-                      </a>
-                    ),
-                  )}
-                </div>
-              )}
 
               {view === 'form' && <PartnerForm onDone={() => setView('done')} />}
 

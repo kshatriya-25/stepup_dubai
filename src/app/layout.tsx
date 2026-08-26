@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { Alexandria } from 'next/font/google'
 import './globals.css'
 import { site } from '@/content/site'
-import { ParticipateProvider } from '@/components/shell/ParticipateModal'
+import { PartnerProvider } from '@/components/shell/PartnerModal'
 import { SiteNav } from '@/components/shell/SiteNav'
 import { SiteFooter } from '@/components/shell/SiteFooter'
 import { Analytics } from '@/components/shell/Analytics'
@@ -28,11 +28,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={alexandria.variable}>
       <body className="font-sans">
-        <ParticipateProvider>
+        <PartnerProvider>
           <SiteNav />
           <main id="top">{children}</main>
           <SiteFooter />
-        </ParticipateProvider>
+        </PartnerProvider>
         <Analytics />
       </body>
     </html>

@@ -1132,7 +1132,9 @@ export function PassCheckout({
               : onLast
                 ? paying
                   ? `Pay ${amountLabel}`
-                  : 'Join the waitlist'
+                  : isFreePass(ticket)
+                    ? 'Register for free'
+                    : 'Join the waitlist'
                 : 'Continue'}
           {!onLast && !submitting && <ChevronRight size={16} />}
         </button>

@@ -6,12 +6,12 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { cn } from '@/lib/cn'
 import { useScrollDirection } from '@/lib/hooks'
 import { nav, site } from '@/content/site'
-import { useParticipate } from './ParticipateModal'
+import { usePartner } from './PartnerModal'
 
 export function SiteNav() {
   const { hidden } = useScrollDirection()
   const [open, setOpen] = useState(false)
-  const { open: openParticipate } = useParticipate()
+  const { open: openPartner } = usePartner()
 
   /*
    * The About dropdown is STATE, not a CSS :hover trick.
@@ -336,8 +336,13 @@ export function SiteNav() {
 
         {/* Right CTAs */}
         <div className="hidden items-center gap-3 md:flex">
-          <button onClick={openParticipate} className="text-btn font-bold uppercase text-accent hover:text-surface">
-            Participate
+          {/* whitespace-nowrap: "Partner with us" is half again as long as the
+              "Participate" it replaced, and wrapping it would push the header taller. */}
+          <button
+            onClick={openPartner}
+            className="whitespace-nowrap text-btn font-bold uppercase text-accent hover:text-surface"
+          >
+            Partner with us
           </button>
           <a
             href={site.register}
@@ -393,11 +398,11 @@ export function SiteNav() {
                 <button
                   onClick={() => {
                     setOpen(false)
-                    openParticipate()
+                    openPartner()
                   }}
                   className="flex-1 border border-accent py-3 text-btn font-bold uppercase text-accent"
                 >
-                  Participate
+                  Partner
                 </button>
                 <a
                   href={site.register}

@@ -136,11 +136,17 @@ function TicketCard({ ticket, paymentEnabled }: { ticket: Ticket; paymentEnabled
    * render "Book now", the probe could answer late, and the word could change under the
    * reader's cursor.
    *
-   * A free pass is never a purchase, so it is always a waitlist request whatever the till
-   * is doing — the batches are what it is waiting on, not the payment gateway.
+   * A free pass never reaches Razorpay, so the till has no bearing on it — but it does not
+   * say "waitlist" either. "Register for free" is what it reads, on the client's
+   * instruction, because "join the waitlist" made a pass that costs nothing sound like
+   * something being rationed before you have even asked for it.
+   *
+   * KEEP THIS IN STEP WITH PassCheckout's submit button. The same three inputs decide both
+   * labels, and a card that promises "Register for free" leading to a button that says
+   * "Join the waitlist" is the reader's first sign that nobody checked.
    */
-  const waitlisting = isFreePass(ticket) || !TICKET_SALES_LIVE || !paymentEnabled
-  const label = waitlisting ? 'Join the waitlist' : 'Book now'
+  const free = isFreePass(ticket)
+  const label = free ? 'Register for free' : !TICKET_SALES_LIVE || !paymentEnabled ? 'Join the waitlist' : 'Book now'
 
   return (
     <article className="relative flex flex-col bg-surface text-ink sm:flex-row">
