@@ -4,13 +4,17 @@ import { isProductionSite } from '@/lib/site-env'
 /** GA4 property supplied by the Namma Office team. */
 const GA_ID = 'G-W2PYR2R89G'
 
+/** Microsoft Clarity project — session recordings and heatmaps. */
+const CLARITY_ID = 'xx7unn8vdp'
+
 /**
- * Google Analytics 4.
+ * Google Analytics 4 and Microsoft Clarity.
  *
  * Uses next/script rather than raw <script> tags in <head>: `afterInteractive`
- * loads gtag once the page is interactive, so analytics never blocks first paint.
+ * loads each tag once the page is interactive, so analytics never blocks first paint.
  * That is Google's own recommendation for the gtag snippet and is equivalent to the
- * `async` attribute in the copy-paste version.
+ * `async` attribute in the copy-paste versions — Clarity's snippet already sets
+ * `t.async = 1` itself, so it wants the same treatment.
  *
  * THE REAL SITE ONLY. Two separate gates, because they catch different things:
  *
@@ -20,9 +24,13 @@ const GA_ID = 'G-W2PYR2R89G'
  *                   check let every staging click land in the client's live GA4
  *                   property, indistinguishable from real traffic afterwards.
  *
- * Nothing is loaded when either gate is closed: no gtag script, no cookie, no request
- * to googletagmanager.com. This returns null rather than configuring gtag with
- * consent denied, so there is nothing to misconfigure later.
+ * Both gates cover BOTH vendors. Clarity records sessions, so a staging leak there is
+ * worse than a skewed pageview count: it would file replays of internal QA clicking
+ * through half-built pages into the client's real recording library.
+ *
+ * Nothing is loaded when either gate is closed: no gtag script, no Clarity script, no
+ * cookie, no request to googletagmanager.com or clarity.ms. This returns null rather
+ * than loading the tags in a disabled state, so there is nothing to misconfigure later.
  */
 export function Analytics() {
   if (process.env.NODE_ENV !== 'production') return null
@@ -37,6 +45,16 @@ export function Analytics() {
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());
           gtag('config', '${GA_ID}');
+        `}
+      </Script>
+
+      <Script id="clarity-init" strategy="afterInteractive">
+        {`
+          (function(c,l,a,r,i,t,y){
+            c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+            t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+            y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+          })(window, document, "clarity", "script", "${CLARITY_ID}");
         `}
       </Script>
     </>

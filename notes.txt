@@ -1,0 +1,3 @@
+git grep -i clarity $(git rev-list --all); echo "exit=$?"
+
+git log --follow --oneline -- src/components/shell/Analytics.tsx
