@@ -29,6 +29,7 @@ import { participantEmail, organiserEmail } from '@/lib/email/templates'
 import { parseSubmission, sheetRow } from '@/lib/registration-input'
 import { SHEET_ENDPOINT, rateLimited, clientIp, appendToSheet } from '@/lib/submission'
 import { recordLead, markSynced, markFailed, leadsHealth, leadStats } from '@/lib/leads'
+import { isFreePass, FREE_PASS_STATUS } from '@/content/tickets'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -88,11 +89,22 @@ export async function POST(req: Request) {
   /*
    * 2. The Sheet — a projection, and best-effort.
    *
-   * 'Waitlist' in the Payment Status column is the point of writing it at all: left
-   * blank, these rows are indistinguishable from a paid row whose payment columns failed
-   * to write, and the two need very different follow-up.
+   * The Payment Status column is the point of writing it at all: left blank, these rows
+   * are indistinguishable from a paid row whose payment columns failed to write, and the
+   * two need very different follow-up.
+   *
+   * TWO VALUES, NOT ONE. This route handles both no-money cases and they are not the
+   * same job. A free pass is a confirmed attendee who will walk up to the desk; a paid
+   * pass submitted while the till was closed is somebody we owe a "passes are open"
+   * email to. FREE_PASS_STATUS is shared with the organiser alert, which tells a human
+   * exactly this string to search the sheet for.
+   *
+   * Rows written before this shipped were left as they were — see the note on
+   * FREE_PASS_STATUS. The column is therefore not uniform, and the door list keys off
+   * Ticket rather than status so it does not have to be.
    */
-  const recorded = await appendToSheet('registration', sheetRow(reg, { paymentStatus: 'Waitlist' }))
+  const paymentStatus = isFreePass(ticket) ? FREE_PASS_STATUS : 'Waitlist'
+  const recorded = await appendToSheet('registration', sheetRow(reg, { paymentStatus }))
   if (recorded.ok) {
     markSynced(leadId)
   } else {

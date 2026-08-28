@@ -336,6 +336,32 @@ export const stageOptions = [
 /** Cap on chargeable extra team members, so one form cannot invoice for a coachload. */
 export const MAX_EXTRA_MEMBERS = 5
 
+/**
+ * What the sheet's Payment Status column says for a free-pass registration.
+ *
+ * NOT "Waitlist", which is what it used to say and what a PAID pass still says when the
+ * till is closed. Those are two different things now: a waitlist row is somebody we owe
+ * a "passes are open" email to, a free-pass row is a confirmed attendee who will walk up
+ * to the desk.
+ *
+ * FROM HERE ON ONLY — the rows already in the sheet were deliberately not rewritten. Free
+ * passes registered before August 2026 still say "Waitlist", because that is all the
+ * column meant when they were written, and a bulk edit months later would restate history
+ * with nothing in Sheets to explain it. So this string identifies NEW registrations, not
+ * every free-pass holder, and nothing may assume otherwise.
+ *
+ * Anything that needs "is this person coming?" should therefore read the TICKET column,
+ * where a free pass is a free pass whatever era it was registered in — that is what the
+ * door list in docs/SHEET-VIEWS.md keys on, and why it needs no backfill to stay right.
+ *
+ * Defined here rather than at either use site because THREE things have to agree: the
+ * cell written by /api/register, the sentence in the organiser alert that tells a human
+ * what to search the sheet for, and the eyebrow on the registrant's own confirmation.
+ * The en dash is the client's, from the approved artwork — do not "fix" it to a hyphen
+ * or a saved filter will stop matching.
+ */
+export const FREE_PASS_STATUS = 'Registered – Free Pass Entry'
+
 export const ticketsNote = 'All prices inclusive of GST · Pitch slots are subject to selection'
 
 export const passesIntro =

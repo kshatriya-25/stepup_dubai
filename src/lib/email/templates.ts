@@ -19,6 +19,10 @@ import {
   REGISTRANT_SUBJECT,
   PARTNER_CONFIRMATION_HTML,
   PARTNER_SUBJECT,
+  FREE_PASS_CONFIRMATION_HTML,
+  FREE_PASS_SUBJECT,
+  FREE_PASS_ALERT_HTML,
+  FREE_PASS_ALERT_SUBJECT,
 } from './approved'
 import {
   PAID_CONFIRMATION_HTML,
@@ -31,6 +35,8 @@ import {
 import {
   ticketAccess,
   ticketById,
+  isFreePass,
+  FREE_PASS_STATUS,
   categories,
   workshopOptions,
   meetingTypeOptions,
@@ -349,6 +355,38 @@ function orgLabelFor(r: Registration): string {
   return cfg?.orgLabel || 'Organisation'
 }
 
+/** Blank cells look like a rendering fault in a fixed table. An em dash looks answered. */
+function orDash(value: string | undefined): string {
+  return (value || '').trim() || '—'
+}
+
+/**
+ * The tokens both free-pass templates share.
+ *
+ * One object, because the confirmation and the alert print the same registration and a
+ * reader who compares them should not find two different spellings of the same city.
+ */
+function freePassTokens(r: Registration, ticket?: Ticket | null): Record<string, string> {
+  return {
+    FIRST_NAME: firstName(r.name),
+    NAME: r.name,
+    EMAIL: r.email,
+    PHONE: r.phone,
+    PHONE_HREF: r.phone.replace(/[^\d+]/g, ''),
+    PASS: ticket?.name || 'Free Pass',
+    REGISTERED_AS: r.registerAs,
+    CITY: r.city,
+    ORG_LABEL: orgLabelFor(r),
+    ORG_NAME: orDash(r.orgName),
+    ID_NUMBER: orDash(r.idNumber),
+    DESIGNATION: orDash(r.designation),
+    STATUS: FREE_PASS_STATUS,
+    EVENT_DATES: site.dates,
+    EVENT_DATES_SHORT: site.dates.replace('October', 'Oct').toUpperCase(),
+    EVENT_LOCATION: `${site.venue}, ${site.city}`,
+  }
+}
+
 /* ------------------------------------------------------------------ *
  * Participant confirmation
  * ------------------------------------------------------------------ */
@@ -357,6 +395,19 @@ export function participantEmail(
   r: Registration,
   ticket?: Ticket | null,
 ): { subject: string; html: string; text: string } {
+  /*
+   * A FREE PASS IS NOT A WAITLIST ENTRY, and since August 2026 it does not get told it
+   * is one. The template below this branch says "ticketing isn't live yet — the payment
+   * link is being set up now", which is the right thing to say to somebody who wanted a
+   * Delegate Pass while the till was shut, and quite wrong for somebody whose pass costs
+   * nothing and is confirmed the moment they submit.
+   *
+   * Branching here rather than at the call site so /api/register stays one path: the
+   * route sends "the participant email", and which artwork that is belongs to the
+   * templates.
+   */
+  if (ticket && isFreePass(ticket)) return freePassParticipantEmail(r, ticket)
+
   const rows = passDetailRows(r, ticket)
   const tokens = {
     FIRST_NAME: firstName(r.name),
@@ -478,6 +529,8 @@ export function organiserEmail(
    * The pass is in the subject because that is how these get triaged: an Investor Pitch
    * application needs a panel, a Free Pass needs a batch allocation.
    */
+  if (ticket && isFreePass(ticket)) return freePassOrganiserEmail(r, ticket, at)
+
   const subject = `Waitlist — ${ticket?.name || 'pass'} — ${r.name} · ${r.startupName || r.registerAs} · ${r.city}`
   const when = stamp(at)
 
@@ -570,6 +623,116 @@ ${button('Reply to ' + firstName(r.name), `mailto:${r.email}?subject=${encodeURI
       body,
       footerNote: 'Automated notification from the pass waitlist on the summit website.',
     }),
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Free pass — confirmation + internal alert
+ *
+ * Separate artwork from the waitlist pair above, supplied by the client in August 2026.
+ * Both are FIXED tables rather than {{EXTRA_ROWS}} builds, and that is fine here where
+ * it would not be for the paid receipt: a free pass never asks a workshop question or a
+ * startup question, and its three categories all carry an organisation and an ID. The
+ * field list therefore cannot vary, so there is nothing to assemble.
+ * ------------------------------------------------------------------ */
+
+/** Label column for the plain-text detail blocks. 17 fits the longest label we print. */
+function textRow(label: string, value: string): string {
+  return `${label.padEnd(17)} ${value}`
+}
+
+function freePassParticipantEmail(
+  r: Registration,
+  ticket: Ticket,
+): { subject: string; html: string; text: string } {
+  const tokens = freePassTokens(r, ticket)
+  const text = [
+    `THANKS, ${firstName(r.name).toUpperCase()}. YOU'RE REGISTERED.`,
+    '',
+    'Your details have been successfully registered, and your Free Pass is confirmed.',
+    '',
+    'We will share the detailed agenda and check-in information closer to the event',
+    'date. Please keep your valid ID card and registration details handy, as it will',
+    'be required for verification at the registration desk. Please note that seating',
+    'for the sessions will be available on a first-come, first-served basis.',
+    '',
+    'FREE PASS ACCESS: Your pass provides access to the Stall Area and Main Hall only.',
+    'Access to other designated areas or sessions may require a separate pass.',
+    '',
+    'One impactful day in Erode, where investors, government scheme officers, and bank',
+    'credit heads come to Tier-2, bringing opportunities closer to entrepreneurs.',
+    '',
+    '5 Growth Zones open throughout the day, 10 startups coached, and 3 startups',
+    'pitching live on the main stage — all designed to connect, empower, and accelerate',
+    'the next generation of businesses.',
+    '',
+    site.dates,
+    `${site.venue}, ${site.city}`,
+    '',
+    'Explore the summit: https://tier2rising.com/',
+    '',
+    'YOUR DETAILS',
+    textRow('Name', r.name),
+    textRow('Email', r.email),
+    textRow('Phone', r.phone),
+    textRow('Pass', tokens.PASS),
+    textRow('Registered as', r.registerAs),
+    textRow('City', r.city),
+    textRow(orgLabelFor(r), tokens.ORG_NAME),
+    textRow('ID / registration', tokens.ID_NUMBER),
+    '',
+    'See you in Erode.',
+    'Team Tier-2 Rising · NammaOffice',
+    '',
+    '—',
+    'TIER-2 RISING STARTUP SUMMIT',
+    'NammaOffice Presents · In association with Startup Singam',
+    'info@tier2rising.com · +91 90921 09213',
+  ].join('\n')
+
+  return {
+    subject: fillTokens(FREE_PASS_SUBJECT, tokens, { escape: false }),
+    text,
+    html: fillTokens(FREE_PASS_CONFIRMATION_HTML, tokens),
+  }
+}
+
+function freePassOrganiserEmail(
+  r: Registration,
+  ticket: Ticket,
+  at: Date,
+): { subject: string; html: string; text: string } {
+  const tokens = freePassTokens(r, ticket)
+  const when = stamp(at)
+  const text = [
+    'NEW REGISTRATION — FREE PASS',
+    '',
+    r.name,
+    `Submitted ${when}`,
+    '',
+    textRow('Name', r.name),
+    textRow('Email', r.email),
+    textRow('Phone', r.phone),
+    textRow('Attending as', r.registerAs),
+    textRow('City', r.city),
+    textRow(orgLabelFor(r), tokens.ORG_NAME),
+    textRow('ID / registration', tokens.ID_NUMBER),
+    textRow('Designation', tokens.DESIGNATION),
+    '',
+    `A registration confirmation has already gone out to ${r.email}.`,
+    `The row is in the registrations sheet with Status ${FREE_PASS_STATUS} —`,
+    'the free pass carries no charge.',
+    '',
+    '—',
+    `${site.fullName}`,
+  ].join('\n')
+
+  return {
+    // escape:false — a mail header is not HTML, and esc() would print &#39; for the
+    // apostrophe in an organisation name.
+    subject: fillTokens(FREE_PASS_ALERT_SUBJECT, { ...tokens, SUBMITTED_AT: when }, { escape: false }),
+    text,
+    html: fillTokens(FREE_PASS_ALERT_HTML, { ...tokens, SUBMITTED_AT: when }),
   }
 }
 
