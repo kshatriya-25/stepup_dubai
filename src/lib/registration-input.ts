@@ -19,6 +19,9 @@ import { pricedTicketById } from '@/lib/pricing'
 import {
   ticketAccess,
   categories,
+  asksStartup,
+  idTypeOptions,
+  interestOptions,
   workshopOptions,
   meetingTypeOptions,
   stageOptions,
@@ -68,10 +71,10 @@ export function parseSubmission(raw: Record<string, unknown>): ParseResult {
   /*
    * Category, checked against THIS PASS's own list.
    *
-   * Not against the full set: the free pass is allocated through incubation centres, so
-   * 'public' and unaffiliated 'founder' are not offered on it. Validating against the
-   * global list would let a direct POST claim a free pass with no verifiable ID, which
-   * is the one thing the limited batch depends on.
+   * Every pass happens to offer every category right now, so this check passes anything
+   * valid — but it is the mechanism, not a formality. The free pass withheld 'public'
+   * until August 2026, and the next pass that needs restricting will rely on exactly this
+   * line to stop a direct POST claiming a category the form never offered.
    */
   const category = clean(raw.category, 20) as CategoryId
   if (!ticket.form.categories.includes(category)) {
@@ -79,17 +82,41 @@ export function parseSubmission(raw: Record<string, unknown>): ParseResult {
   }
   const cfg = categories[category]
 
-  // The organisation block exists only for categories that have one, and its
-  // required-ness comes from the category rather than the pass.
+  /*
+   * The organisation block exists only for categories that have one, and every rule in it
+   * comes from the CATEGORY rather than the pass.
+   *
+   * Note orgRequired is checked, not showOrg. 'public' shows the organisation field and
+   * does not insist on it — see the comment on that category. Reading showOrg here, as
+   * this did before public gained the block, would have rejected every student and every
+   * unaffiliated attendee with "Organisation / company name is required."
+   */
   let orgName = ''
   let idNumber = ''
   let designation = ''
+  let idType = ''
   if (cfg.showOrg) {
     orgName = clean(raw.orgName, 160)
     idNumber = clean(raw.idNumber, 80)
     designation = clean(raw.designation, 120)
-    if (!orgName) return { ok: false, error: `${cfg.orgLabel} is required.` }
+    if (cfg.orgRequired && !orgName) return { ok: false, error: `${cfg.orgLabel} is required.` }
     if (cfg.idRequired && !idNumber) return { ok: false, error: `${cfg.idLabel} is required.` }
+  }
+
+  // Which government ID they will bring. Required wherever it is asked at all — an ID
+  // number with no idea what it is a number OF is useless to the desk.
+  if (cfg.idType) {
+    idType = clean(raw.idType, 20)
+    if (!oneOf(idType, idTypeOptions)) return { ok: false, error: 'Please choose an ID type.' }
+  }
+
+  // Why they are coming. Public only, and required there.
+  let interest = ''
+  if (cfg.interest) {
+    interest = clean(raw.interest, 30)
+    if (!oneOf(interest, interestOptions)) {
+      return { ok: false, error: 'Please tell us your interest in Tier-2 Rising.' }
+    }
   }
 
   // Workshop pass. A session must be chosen, and it must be one that exists.
@@ -119,7 +146,13 @@ export function parseSubmission(raw: Record<string, unknown>): ParseResult {
   let traction = ''
   let extraMembers = 0
   let extraMemberList = ''
-  if (ticket.form.startup) {
+  /*
+   * asksStartup, not ticket.form.startup: a member of the public on the Investor Pitch
+   * Pass answers the public block instead. Checking the flag alone would reject them with
+   * "Startup / idea name is required" for a company they were never claiming to have —
+   * and, worse, would price extra team members for a person attending alone.
+   */
+  if (asksStartup(ticket, category)) {
     startupName = clean(raw.startupName, 160)
     stage = clean(raw.stage, 20)
     sector = clean(raw.sector, 120)
@@ -160,6 +193,8 @@ export function parseSubmission(raw: Record<string, unknown>): ParseResult {
     orgName,
     idNumber,
     designation,
+    idType,
+    interest,
     workshop,
     wantNetworking,
     meetingType,
@@ -215,6 +250,10 @@ export function sheetRow(
     orgName: reg.orgName || '',
     idNumber: reg.idNumber || '',
     designation: reg.designation || '',
+    // Human labels, not slugs — nobody reconciling a door list wants to map 'dl' back
+    // to 'Driving Licence' by hand.
+    idType: reg.idType ? labelFor(reg.idType, idTypeOptions) : '',
+    interest: reg.interest ? labelFor(reg.interest, interestOptions) : '',
     // Workshop — the human label, not the slug. Nobody reconciling a session list wants
     // to map 'workshop-2' back to a name by hand.
     workshop: reg.workshop ? labelFor(reg.workshop, workshopOptions) : '',

@@ -69,15 +69,33 @@ export type CategoryConfig = {
   hint: string
   /** Emoji marker, as supplied in the client's forms. */
   icon: string
-  /** False for 'public' — no organisation block at all. */
+  /** Whether to show the organisation block at all. */
   showOrg: boolean
   /** Label + placeholder for the organisation name field. */
   orgLabel: string
   orgPlaceholder: string
+  /**
+   * Whether the organisation NAME is mandatory. Separate from showOrg because 'public'
+   * now asks for one without requiring it: a working professional attending on their own
+   * behalf has an employer worth capturing and a student has none, so demanding it would
+   * turn optional context into a wall.
+   */
+  orgRequired: boolean
   /** Label + placeholder for the ID field, and whether it is mandatory. */
   idLabel: string
   idPlaceholder: string
   idRequired: boolean
+  /**
+   * Ask WHICH government ID they will bring, from idTypeOptions. 'public' only.
+   *
+   * Everyone else quotes an institutional number — a DPIIT registration, an incubation
+   * centre ID, a TBI number — which the desk can check against the issuing body. A member
+   * of the public has no such record, so the card in their wallet is the only thing that
+   * ties the person at the door to the row in the sheet.
+   */
+  idType?: boolean
+  /** Ask "your interest in Tier-2 Rising", from interestOptions. 'public' only. */
+  interest?: boolean
   /** Hint under the designation field. */
   roleHint: string
 }
@@ -90,6 +108,7 @@ export const categories: Record<CategoryId, CategoryConfig> = {
     showOrg: true,
     orgLabel: 'Startup name',
     orgPlaceholder: 'e.g. Your startup name',
+    orgRequired: true,
     idLabel: 'DPIIT / registration number',
     idPlaceholder: 'e.g. DPIIT12345 (if applicable)',
     // A founder may genuinely not have a registration number yet — an idea-stage
@@ -105,6 +124,7 @@ export const categories: Record<CategoryId, CategoryConfig> = {
     showOrg: true,
     orgLabel: 'College Incubation Center name',
     orgPlaceholder: 'e.g. PSG-STEP Incubation Center',
+    orgRequired: true,
     idLabel: 'Incubation Center ID',
     idPlaceholder: 'e.g. CIC-00219',
     idRequired: true,
@@ -117,6 +137,7 @@ export const categories: Record<CategoryId, CategoryConfig> = {
     showOrg: true,
     orgLabel: 'Incubation cell / company name',
     orgPlaceholder: 'e.g. XYZ Incubation Cell',
+    orgRequired: true,
     idLabel: 'Registration / employee ID',
     idPlaceholder: 'e.g. INC-00219',
     idRequired: true,
@@ -129,22 +150,36 @@ export const categories: Record<CategoryId, CategoryConfig> = {
     showOrg: true,
     orgLabel: 'TBI name',
     orgPlaceholder: 'e.g. ABC Technology Business Incubator',
+    orgRequired: true,
     idLabel: 'TBI registration number',
     idPlaceholder: 'e.g. TBI-00219',
     idRequired: true,
     roleHint: 'e.g. Startup Founder, Program Manager',
   },
+  /*
+   * PUBLIC IS NO LONGER THE "ASK NOTHING" CATEGORY.
+   *
+   * It used to skip the organisation block entirely, which left the desk holding a name
+   * and a phone number with no way to check that the person in front of them was the
+   * person who registered. Everyone else arrives with an institution behind them; a
+   * member of the public arrives with a wallet. So the government ID they will carry is
+   * asked for and REQUIRED, while the organisation and the role are asked for and are
+   * NOT — those are context for the organisers, not a condition of entry.
+   */
   public: {
     title: 'Public',
-    hint: 'No affiliation required',
+    hint: 'Attending on your own behalf',
     icon: '🌐',
-    showOrg: false,
-    orgLabel: '',
-    orgPlaceholder: '',
-    idLabel: '',
-    idPlaceholder: '',
-    idRequired: false,
-    roleHint: '',
+    showOrg: true,
+    orgLabel: 'Organisation / company name',
+    orgPlaceholder: 'e.g. Your company — leave blank if none',
+    orgRequired: false,
+    idLabel: 'ID number',
+    idPlaceholder: 'The number on the ID you will bring',
+    idRequired: true,
+    idType: true,
+    interest: true,
+    roleHint: 'e.g. Manager, Consultant, Student',
   },
 }
 
@@ -229,13 +264,20 @@ export const tickets: Ticket[] = [
     // here rather than only in the confirmation email so nobody registers, travels to
     // Erode and finds out at the door.
     note: 'A valid ID card is mandatory for entry for Free Pass holders and must be shown at the entrance.',
-    form: {
-      // NOT the full set, and deliberately so: the free pass is allocated through
-      // incubation centres, so there is no 'public' or unaffiliated 'founder' route to
-      // one. Every free-pass holder is verifiable against an incubator ID at the desk,
-      // which is what makes a limited batch defensible when it runs out.
-      categories: ['college', 'private', 'tbi'],
-    },
+    /*
+     * ALL FIVE, including 'public' — which was the one category the free pass withheld.
+     *
+     * The reasoning for withholding it was that a limited batch has to be defensible when
+     * it runs out, so every holder should trace back to a body that could confirm them.
+     * That reasoning stopped applying the moment 'public' started demanding a government
+     * ID type and number: a member of the public is now MORE identifiable at the desk than
+     * a founder, whose DPIIT number is optional. The gate did not need closing any more.
+     *
+     * Every pass now offers every category, so `categories` currently reads the same on
+     * all four. Keep the field: it is what the server validates a submission against, and
+     * the next restricted pass should be one line here rather than a new mechanism.
+     */
+    form: { categories: ALL_CATEGORIES },
   },
   {
     id: 'delegate',
@@ -311,6 +353,41 @@ export const tickets: Ticket[] = [
   },
 ]
 
+/**
+ * Which government ID a public attendee will bring. Asked only where `idType` is set on
+ * the category — see CategoryConfig.
+ *
+ * Stored as a slug rather than the visible words so the label can be reworded without
+ * orphaning every row already written. sheetRow() and the emails resolve it back.
+ */
+export const idTypeOptions = [
+  { value: 'aadhaar', label: 'Aadhaar Card' },
+  { value: 'pan', label: 'PAN Card' },
+  { value: 'dl', label: 'Driving Licence' },
+  { value: 'passport', label: 'Passport' },
+  { value: 'voter', label: 'Voter ID' },
+  { value: 'other', label: 'Other' },
+] as const
+
+/**
+ * Why a member of the public is coming. Public only — every other category has already
+ * said what it is by picking itself.
+ *
+ * This is the one question here that exists for the organisers rather than the desk: it
+ * is what turns "300 public tickets" into a room you can plan zones and sessions around.
+ */
+export const interestOptions = [
+  { value: 'founder', label: 'Entrepreneur / Startup Founder' },
+  { value: 'investor', label: 'Investor' },
+  { value: 'business-owner', label: 'Business Owner' },
+  { value: 'professional', label: 'Working Professional' },
+  { value: 'student', label: 'Student' },
+  { value: 'mentor', label: 'Mentor / Consultant' },
+  { value: 'ecosystem', label: 'Startup Ecosystem' },
+  { value: 'msme', label: 'MSME / Manufacturer' },
+  { value: 'other', label: 'Other' },
+] as const
+
 /** Workshop choices. Titles are placeholders until the programme is finalised. */
 export const workshopOptions = [
   { value: 'workshop-1', label: 'Workshop A — Details to be announced' },
@@ -380,6 +457,23 @@ export function ticketAccess(id: string | undefined | null): string | null {
 /** Look a pass up by id. Returns undefined for anything not in the table. */
 export function ticketById(id: string | undefined | null): Ticket | undefined {
   return tickets.find((t) => t.id === id)
+}
+
+/**
+ * Does this pass ask the startup / pitch block, for someone attending as `category`?
+ *
+ * The Investor Pitch Pass asks it — except of the public, who from August 2026 answer the
+ * public block instead. The pitch questionnaire is written for somebody bringing a
+ * company to be looked at: stage, sector, traction, the problem and the solution. A
+ * member of the public buying the pass is there to watch that happen, and every one of
+ * those questions is either unanswerable or a lie for them.
+ *
+ * A pass x category rule rather than a per-pass flag, because that is what it actually
+ * is. Anything deciding whether to show, validate, price or print the startup fields must
+ * go through here — `ticket.form.startup` alone is now only half the question.
+ */
+export function asksStartup(t: Ticket, category: CategoryId | '' | undefined): boolean {
+  return !!t.form.startup && category !== 'public'
 }
 
 /** No money, no Razorpay, no order. The free pass is a registration and nothing else. */

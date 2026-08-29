@@ -2,7 +2,7 @@
 
 The `Registrations` tab is the RECORD: one row per submission, every column the four
 forms can produce, written by one code path. Most cells are blank on most rows and that
-is correct — a Free Pass has no startup and a public attendee has no organisation. A
+is correct — a Free Pass has no startup, and only a public attendee has an ID Type. A
 blank means the question was never asked, not that an answer was lost.
 
 Do not work in it. Add the tabs below and work in those.
@@ -30,34 +30,34 @@ signed up".
 ### Tab: `Free passes`
 
 ```
-=QUERY(Registrations!A:AD, "select A,B,D,E,F,G,O,P,Q,H where I = 'Free Pass' order by A desc label A 'Submitted'", 1)
+=QUERY(Registrations!A:AF, "select A,B,D,E,F,G,O,P,Q,AE,AF,H where I = 'Free Pass' order by A desc label A 'Submitted'", 1)
 ```
 
-Columns: Timestamp · Name · Email · Phone · City · Register As · Organisation · ID / Reg No · Designation · Payment Status
+Columns: Timestamp · Name · Email · Phone · City · Register As · Organisation · ID / Reg No · Designation · ID Type · Interest · Payment Status
 
 ### Tab: `Delegate`
 
 ```
-=QUERY(Registrations!A:AD, "select A,B,D,E,F,G,O,P,Q,H,K,N where I = 'Delegate Pass' order by A desc label A 'Submitted'", 1)
+=QUERY(Registrations!A:AF, "select A,B,D,E,F,G,O,P,Q,AE,AF,H,K,N where I = 'Delegate Pass' order by A desc label A 'Submitted'", 1)
 ```
 
-Columns: Timestamp · Name · Email · Phone · City · Register As · Organisation · ID / Reg No · Designation · Payment Status · Amount · Paid At (IST)
+Columns: Timestamp · Name · Email · Phone · City · Register As · Organisation · ID / Reg No · Designation · ID Type · Interest · Payment Status · Amount · Paid At (IST)
 
 ### Tab: `Workshop`
 
 ```
-=QUERY(Registrations!A:AD, "select A,B,D,E,F,G,O,P,Q,R,S,T,U,H,K,N where I = 'Workshop Pass' order by A desc label A 'Submitted'", 1)
+=QUERY(Registrations!A:AF, "select A,B,D,E,F,G,O,P,Q,AE,AF,R,S,T,U,H,K,N where I = 'Workshop Pass' order by A desc label A 'Submitted'", 1)
 ```
 
-Columns: Timestamp · Name · Email · Phone · City · Register As · Organisation · ID / Reg No · Designation · Workshop · Networking · Meeting Type · Meeting Agenda · Payment Status · Amount · Paid At (IST)
+Columns: Timestamp · Name · Email · Phone · City · Register As · Organisation · ID / Reg No · Designation · ID Type · Interest · Workshop · Networking · Meeting Type · Meeting Agenda · Payment Status · Amount · Paid At (IST)
 
 ### Tab: `Investor pitch`
 
 ```
-=QUERY(Registrations!A:AD, "select A,B,D,E,F,G,O,P,Q,V,W,C,X,Y,Z,AA,AB,H,K,N where I = 'Investor Pitch Pass' order by A desc label A 'Submitted'", 1)
+=QUERY(Registrations!A:AF, "select A,B,D,E,F,G,O,P,Q,AE,AF,V,W,C,X,Y,Z,AA,AB,H,K,N where I = 'Investor Pitch Pass' order by A desc label A 'Submitted'", 1)
 ```
 
-Columns: Timestamp · Name · Email · Phone · City · Register As · Organisation · ID / Reg No · Designation · Startup · Stage · Sector · One-line Pitch · Problem & Solution · Traction · Extra Members · Team Members · Payment Status · Amount · Paid At (IST)
+Columns: Timestamp · Name · Email · Phone · City · Register As · Organisation · ID / Reg No · Designation · ID Type · Interest · Startup · Stage · Sector · One-line Pitch · Problem & Solution · Traction · Extra Members · Team Members · Payment Status · Amount · Paid At (IST)
 
 ### Tab: `Paid` — money only
 
@@ -65,7 +65,7 @@ Every row where a payment was actually captured, with the ids you would quote to
 or a bank in a dispute. Waitlist rows are excluded by definition.
 
 ```
-=QUERY(Registrations!A:AD, "select N,B,D,E,I,K,L,M where H = 'Paid' order by N desc", 1)
+=QUERY(Registrations!A:AF, "select N,B,D,E,I,K,L,M where H = 'Paid' order by N desc", 1)
 ```
 
 ### Tab: `Door list` — everyone entitled to walk in
@@ -74,7 +74,7 @@ Name, phone, pass and what it opens, for the registration desk. Sorted by name r
 than by time, because at the desk you are looking somebody up, not reading a feed.
 
 ```
-=QUERY(Registrations!A:AD, "select B,E,I,J,O,P,H,AA where H = 'Paid' or I = 'Free Pass' order by B", 1)
+=QUERY(Registrations!A:AF, "select B,E,I,J,O,P,H,AA where H = 'Paid' or I = 'Free Pass' order by B", 1)
 ```
 
 **The `where` clause is the whole point of this tab and was not always there.** It had
@@ -112,7 +112,7 @@ payment journal on the server references orders by id rather than row number, so
 master is not corrupt — but it does make `findDuplicateRow_` scan a moving target, and it
 makes any row number you quoted to somebody else wrong. Sort a view.
 
-**`A:AD` is the whole width.** If a column is ever appended to the master (append only —
+**`A:AF` is the whole width.** If a column is ever appended to the master (append only —
 see the rule at the top of `registration/Code.gs`), widen the range in these formulas to
 match, or the new column is invisible to every view.
 

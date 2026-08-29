@@ -80,10 +80,17 @@ export type Registration = {
   /** Industry. Asked only on the investor pitch pass now. */
   sector: string
 
-  /** Organisation block. Absent entirely for the 'public' category. */
+  /**
+   * Organisation block. Every category has one since August 2026 — 'public' included,
+   * where the organisation is optional and the ID is not.
+   */
   orgName?: string
   idNumber?: string
   designation?: string
+  /** Which government ID the ID number belongs to. Public only — see idTypeOptions. */
+  idType?: string
+  /** Why a member of the public is coming. Public only — see interestOptions. */
+  interest?: string
 
   /** Workshop pass. */
   workshop?: string

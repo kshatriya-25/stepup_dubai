@@ -166,7 +166,20 @@ export const PARTNER_CONFIRMATION_HTML = `<!DOCTYPE html><html lang="en"><head><
  * "Incubation cell / company name" row label, which is wrong for two of the three
  * categories a free pass accepts (a TBI's organisation is a TBI, not a company).
  *
- * Source files: Desktop/registrant-confirmation-free-pass (1).html,
+ * TWO LABELS ARE TOKENS THAT THE ARTWORK HARD-CODED, both added when the free pass
+ * opened to the public in August 2026:
+ *
+ *   {{ID_LABEL}}      was the fixed words "ID / registration". A public registrant tells
+ *                     us which document they will bring, and the row then reads "Aadhaar
+ *                     Card" or "PAN Card" — which is the half the desk actually needs.
+ *                     Everyone else still gets "ID / registration".
+ *   {{INTEREST_ROW}}  a whole row, present only when there is an interest to show, so a
+ *                     college or TBI registration does not carry an empty label. Internal
+ *                     alert only — it is planning data, not something a registrant needs
+ *                     read back to them. Substituted BEFORE fillTokens, like EXTRA_ROWS
+ *                     in ./paid, because it is markup and fillTokens escapes.
+ *
+ * Source files: Desktop/registrant-confirmation-free-pass (4).html,
  *               Desktop/internal-alert-new-registration (2).html
  * ------------------------------------------------------------------ */
 
@@ -297,7 +310,7 @@ export const FREE_PASS_CONFIRMATION_HTML = `<!DOCTYPE html>
             <td style="padding:7px 0;font-size:12px;line-height:18px;color:#12305C;">{{ORG_NAME}}</td>
           </tr>
           <tr>
-            <td width="150" style="padding:7px 12px 7px 0;font-size:12px;line-height:18px;color:#7C8CA6;vertical-align:top;">ID / registration</td>
+            <td width="150" style="padding:7px 12px 7px 0;font-size:12px;line-height:18px;color:#7C8CA6;vertical-align:top;">{{ID_LABEL}}</td>
             <td style="padding:7px 0;font-size:12px;line-height:18px;color:#12305C;">{{ID_NUMBER}}</td>
           </tr>
         </table>
@@ -417,13 +430,14 @@ export const FREE_PASS_ALERT_HTML = `<!DOCTYPE html>
             <td style="padding:12px 0;border-top:1px solid #E4E8EE;font-size:13px;line-height:19px;color:#12305C;">{{ORG_NAME}}</td>
           </tr>
           <tr>
-            <td width="140" style="padding:12px 12px 12px 0;border-top:1px solid #E4E8EE;font-size:10px;line-height:15px;font-weight:bold;color:#8B93A3;letter-spacing:1px;text-transform:uppercase;vertical-align:top;">ID / Registration</td>
+            <td width="140" style="padding:12px 12px 12px 0;border-top:1px solid #E4E8EE;font-size:10px;line-height:15px;font-weight:bold;color:#8B93A3;letter-spacing:1px;text-transform:uppercase;vertical-align:top;">{{ID_LABEL}}</td>
             <td style="padding:12px 0;border-top:1px solid #E4E8EE;font-size:13px;line-height:19px;color:#12305C;">{{ID_NUMBER}}</td>
           </tr>
           <tr>
             <td width="140" style="padding:12px 12px 12px 0;border-top:1px solid #E4E8EE;font-size:10px;line-height:15px;font-weight:bold;color:#8B93A3;letter-spacing:1px;text-transform:uppercase;vertical-align:top;">Designation</td>
             <td style="padding:12px 0;border-top:1px solid #E4E8EE;font-size:13px;line-height:19px;color:#12305C;">{{DESIGNATION}}</td>
           </tr>
+{{INTEREST_ROW}}
           <tr>
             <td colspan="2" style="border-top:1px solid #E4E8EE;font-size:0;line-height:0;">&nbsp;</td>
           </tr>

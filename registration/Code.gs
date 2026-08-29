@@ -74,6 +74,17 @@ var FORMS = {
       ['Team Members',   'extraMemberList'],
       ['Consent',        'consent'],
       ['Updates Opt-in', 'updates'],
+      // ── August 2026 (later): the public registration block ──────────────────────
+      // Appended at the very end even though they belong beside Organisation / ID Reg
+      // No. — see the append-only rule at the top of this file. Moving them next to
+      // their siblings would shift every column after that point and silently file 30
+      // columns of existing data under the wrong headers.
+      //
+      // Both are blank on every row except a 'public' one, which is correct: nobody else
+      // is asked. ID Type names which document the ID / Reg No column holds for a member
+      // of the public, and Interest is what they came for.
+      ['ID Type',        'idType'],
+      ['Interest',       'interest'],
     ],
   },
   partner: {

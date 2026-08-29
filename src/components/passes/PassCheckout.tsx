@@ -24,6 +24,9 @@ import {
   formatInrRupees,
   isFreePass,
   categories,
+  asksStartup,
+  idTypeOptions,
+  interestOptions,
   workshopOptions,
   meetingTypeOptions,
   stageOptions,
@@ -103,16 +106,20 @@ const STEP_TITLE: Record<StepId, string> = {
 }
 
 /**
- * Which steps this pass needs.
+ * Which steps this form has — a function of the pass AND the chosen category.
  *
- * 'details' is skipped entirely for the Free and Delegate passes — they have no extra
+ * 'details' is skipped entirely for the Free and Delegate passes: they have no extra
  * questions, so showing an empty third step would be three clicks to confirm what the
- * first two already said. The Investor Pitch Pass is the only one that fills it heavily,
- * and that is exactly the pass worth asking more of.
+ * first two already said.
+ *
+ * The category is picked on 'about', which is step 2, so by the time this decides whether
+ * step 3 exists the answer is known. That ordering is load-bearing: a member of the public
+ * on the Investor Pitch Pass has no startup to describe, so 'details' disappears and their
+ * form is three steps rather than four. See asksStartup() in @/content/tickets.
  */
-function stepsFor(ticket: Ticket): StepId[] {
+function stepsFor(ticket: Ticket, category: CategoryId | ''): StepId[] {
   const s: StepId[] = ['you', 'about']
-  if (ticket.form.workshop || ticket.form.startup) s.push('details')
+  if (ticket.form.workshop || asksStartup(ticket, category)) s.push('details')
   s.push('review')
   return s
 }
@@ -246,9 +253,7 @@ export function PassCheckout({
   /** Reports the extra-member count up to PassFlow so the summary can price it. */
   onExtrasChange?: (n: number) => void
 }) {
-  const steps = useMemo(() => stepsFor(ticket), [ticket])
   const [stepIndex, setStepIndex] = useState(0)
-  const step = steps[stepIndex]
 
   const [status, setStatus] = useState<Status>('idle')
   const [errorMsg, setErrorMsg] = useState('')
@@ -265,7 +270,9 @@ export function PassCheckout({
     category: '' as CategoryId | '',
     orgName: '',
     idNumber: '',
+    idType: '',
     designation: '',
+    interest: '',
     workshop: '',
     wantNetworking: false,
     meetingType: '',
@@ -281,6 +288,22 @@ export function PassCheckout({
   })
   const [extras, setExtras] = useState<ExtraMember[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  /*
+   * The step list can SHRINK under the reader.
+   *
+   * Picking 'public' on the Investor Pitch Pass removes the 'details' step, so a form that
+   * was four steps becomes three. stepIndex is a number, and left alone it would point one
+   * past the end — `steps[stepIndex]` undefined, and a blank panel with a dead Continue
+   * button. Clamping here rather than in the click handlers covers every route to it,
+   * including a restored draft written before the category changed.
+   */
+  const steps = useMemo(() => stepsFor(ticket, v.category), [ticket, v.category])
+  const safeIndex = Math.min(stepIndex, steps.length - 1)
+  const step = steps[safeIndex]
+  useEffect(() => {
+    if (stepIndex > steps.length - 1) setStepIndex(steps.length - 1)
+  }, [stepIndex, steps.length])
   const busy = useRef(false)
   const scroller = useRef<HTMLDivElement>(null)
 
@@ -323,15 +346,22 @@ export function PassCheckout({
     }
     if (which === 'about') {
       if (!v.category) e.category = 'Please pick one.'
-      else if (categories[v.category].showOrg) {
+      else {
+        // Same rules as parseSubmission in @/lib/registration-input, and they have to
+        // stay the same: this copy exists only to answer faster and more kindly. Note
+        // orgRequired rather than showOrg — 'public' shows the field without demanding it.
         const c = categories[v.category]
-        if (!v.orgName.trim()) e.orgName = `${c.orgLabel} is needed.`
-        if (c.idRequired && !v.idNumber.trim()) e.idNumber = `${c.idLabel} is needed.`
+        if (c.showOrg) {
+          if (c.orgRequired && !v.orgName.trim()) e.orgName = `${c.orgLabel} is needed.`
+          if (c.idRequired && !v.idNumber.trim()) e.idNumber = `${c.idLabel} is needed.`
+        }
+        if (c.idType && !v.idType) e.idType = 'Please choose an ID type.'
+        if (c.interest && !v.interest) e.interest = 'Please pick one.'
       }
     }
     if (which === 'details') {
       if (ticket.form.workshop && !v.workshop) e.workshop = 'Please choose a session.'
-      if (ticket.form.startup) {
+      if (asksStartup(ticket, v.category)) {
         if (!v.startupName.trim()) e.startupName = 'Startup name is needed.'
         if (!v.stage) e.stage = 'Please pick a stage.'
         if (!v.sector.trim()) e.sector = 'Sector is needed.'
@@ -349,13 +379,13 @@ export function PassCheckout({
     const e = validateStep(step)
     setErrors(e)
     if (Object.keys(e).length) return
-    setStepIndex((i) => Math.min(i + 1, steps.length - 1))
+    setStepIndex(Math.min(safeIndex + 1, steps.length - 1))
     scroller.current?.scrollTo({ top: 0 })
   }
 
   function back() {
     setErrors({})
-    setStepIndex((i) => Math.max(i - 1, 0))
+    setStepIndex(Math.max(safeIndex - 1, 0))
     scroller.current?.scrollTo({ top: 0 })
   }
 
@@ -364,7 +394,9 @@ export function PassCheckout({
     const named = extras.filter((m) => m.name.trim() || m.role.trim())
     const org = cfg?.showOrg
     const ws = !!ticket.form.workshop
-    const su = !!ticket.form.startup
+    // Pass AND category — a public attendee on the Investor Pitch Pass sends no startup
+    // fields and no extra members, whatever is left in state from an earlier choice.
+    const su = asksStartup(ticket, v.category)
     return {
       ticketId: ticket.id,
       name: v.name.trim(),
@@ -377,6 +409,11 @@ export function PassCheckout({
       orgName: org ? v.orgName.trim() : '',
       idNumber: org ? v.idNumber.trim() : '',
       designation: org ? v.designation.trim() : '',
+      // Sent only where the category asks. Switching from 'public' to 'founder' after
+      // answering these must not smuggle the old answers through — same reasoning as the
+      // organisation block above.
+      idType: cfg?.idType ? v.idType : '',
+      interest: cfg?.interest ? v.interest : '',
       workshop: ws ? v.workshop : '',
       wantNetworking: ws && v.wantNetworking ? 'yes' : '',
       meetingType: ws && v.wantNetworking ? v.meetingType : '',
@@ -622,7 +659,7 @@ export function PassCheckout({
               <span
                 className={cn(
                   'h-1 flex-1 rounded-full transition-colors',
-                  i < stepIndex ? 'bg-accent' : i === stepIndex ? 'bg-accent/60' : 'bg-ink/10',
+                  i < safeIndex ? 'bg-accent' : i === safeIndex ? 'bg-accent/60' : 'bg-ink/10',
                 )}
               />
             </div>
@@ -631,14 +668,14 @@ export function PassCheckout({
         <div className="mt-2 flex items-baseline justify-between">
           <span className="font-sans text-sm font-semibold text-ink">{STEP_TITLE[step]}</span>
           <span className="font-sans text-xs tabular-nums text-muted">
-            Step {stepIndex + 1} of {steps.length}
+            Step {safeIndex + 1} of {steps.length}
           </span>
         </div>
       </div>
 
       {/* ---- the step ---- */}
       <div ref={scroller} className="px-5 py-6 text-ink sm:px-7 sm:py-7">
-        {!paying && stepIndex === 0 && (
+        {!paying && safeIndex === 0 && (
           <p className="mb-5 border-l-2 border-accent bg-foam px-4 py-3 text-sm leading-relaxed text-muted">
             {isFreePass(ticket)
               ? 'Free passes are released in limited batches. Leave your details and we’ll confirm your place as soon as the next batch opens.'
@@ -746,18 +783,26 @@ export function PassCheckout({
               </div>
             </Field>
 
-            {/* Labels, placeholders and required-ness all come from the category. */}
+            {/*
+              Labels, placeholders and required-ness ALL come from the category — nothing
+              in this block is written per pass. That is what lets 'public' ask for an
+              optional organisation and a mandatory ID while a TBI member does the
+              opposite, with no branch here at all.
+            */}
             {cfg?.showOrg && (
               <div className="grid gap-4 border-t border-ink/10 pt-5 sm:grid-cols-2">
-                <Field label={cfg.orgLabel} required error={errors.orgName}>
-                  <input
-                    type="text"
-                    placeholder={cfg.orgPlaceholder}
-                    value={v.orgName}
-                    onChange={(e) => set('orgName', e.target.value)}
-                    className={cn(input, errors.orgName && inputBad)}
-                  />
-                </Field>
+                {/* ID type first: it names what the number underneath it will be. */}
+                {cfg.idType && (
+                  <Field label="ID you’ll bring" required error={errors.idType}>
+                    <Combobox
+                      options={idTypeOptions}
+                      value={v.idType}
+                      onChange={(x) => set('idType', x)}
+                      placeholder="Select ID type"
+                      invalid={!!errors.idType}
+                    />
+                  </Field>
+                )}
                 <Field label={cfg.idLabel} required={cfg.idRequired} error={errors.idNumber}>
                   <input
                     type="text"
@@ -767,24 +812,67 @@ export function PassCheckout({
                     className={cn(input, errors.idNumber && inputBad)}
                   />
                 </Field>
-                <div className="sm:col-span-2">
-                  <Field label="Designation" hint="Optional">
-                    <input
-                      type="text"
-                      placeholder={cfg.roleHint}
-                      value={v.designation}
-                      onChange={(e) => set('designation', e.target.value)}
-                      className={input}
-                    />
-                  </Field>
-                </div>
+                <Field
+                  label={cfg.orgLabel}
+                  required={cfg.orgRequired}
+                  hint={cfg.orgRequired ? undefined : 'Optional'}
+                  error={errors.orgName}
+                >
+                  <input
+                    type="text"
+                    placeholder={cfg.orgPlaceholder}
+                    value={v.orgName}
+                    onChange={(e) => set('orgName', e.target.value)}
+                    className={cn(input, errors.orgName && inputBad)}
+                  />
+                </Field>
+                <Field label="Designation" hint="Optional">
+                  <input
+                    type="text"
+                    placeholder={cfg.roleHint}
+                    value={v.designation}
+                    onChange={(e) => set('designation', e.target.value)}
+                    className={input}
+                  />
+                </Field>
               </div>
             )}
 
-            {cfg && !cfg.showOrg && (
-              <p className="border-l-2 border-cyan bg-foam px-4 py-3 text-sm leading-relaxed text-muted">
-                Nothing else needed here — no organisation or ID for a public pass.
-              </p>
+            {/*
+              Nine options, so radio CARDS rather than a dropdown: they are all short, the
+              reader is choosing an identity rather than looking one up, and a collapsed
+              select would hide eight of the nine behind a click. Same treatment as the
+              category picker above, one column narrower, so the step reads as one idea.
+            */}
+            {cfg?.interest && (
+              <Field
+                label="Your interest in Tier-2 Rising"
+                required
+                hint="Helps us plan the zones and sessions"
+                error={errors.interest}
+              >
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {interestOptions.map((o) => {
+                    const on = v.interest === o.value
+                    return (
+                      <button
+                        key={o.value}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => set('interest', o.value)}
+                        className={cn(
+                          'border px-3 py-2.5 text-left text-sm font-medium leading-snug transition-colors',
+                          on
+                            ? 'border-accent bg-accent/[0.06] text-ink'
+                            : 'border-ink/15 bg-foam text-muted hover:border-ink/30 hover:bg-surface hover:text-ink',
+                        )}
+                      >
+                        {o.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </Field>
             )}
           </div>
         )}
@@ -1010,8 +1098,21 @@ export function PassCheckout({
               <Summary label="Email" value={v.email} />
               <Summary label="City" value={v.city} />
               <Summary label="Attending as" value={cfg?.title || '—'} />
-              {cfg?.showOrg && <Summary label={cfg.orgLabel} value={v.orgName} />}
+              {cfg?.idType && v.idType && (
+                <Summary
+                  label="ID you’ll bring"
+                  value={idTypeOptions.find((o) => o.value === v.idType)?.label || v.idType}
+                />
+              )}
               {cfg?.showOrg && v.idNumber && <Summary label={cfg.idLabel} value={v.idNumber} />}
+              {cfg?.showOrg && v.orgName && <Summary label={cfg.orgLabel} value={v.orgName} />}
+              {cfg?.showOrg && v.designation && <Summary label="Designation" value={v.designation} />}
+              {cfg?.interest && v.interest && (
+                <Summary
+                  label="Interest"
+                  value={interestOptions.find((o) => o.value === v.interest)?.label || v.interest}
+                />
+              )}
               {ticket.form.workshop && v.workshop && (
                 <Summary
                   label="Workshop"
@@ -1024,8 +1125,10 @@ export function PassCheckout({
                   value={meetingTypeOptions.find((m) => m.value === v.meetingType)?.label || 'Yes'}
                 />
               )}
-              {ticket.form.startup && v.startupName && <Summary label="Startup" value={v.startupName} />}
-              {ticket.form.startup && v.stage && (
+              {asksStartup(ticket, v.category) && v.startupName && (
+                <Summary label="Startup" value={v.startupName} />
+              )}
+              {asksStartup(ticket, v.category) && v.stage && (
                 <Summary label="Stage" value={stageOptions.find((s) => s.value === v.stage)?.label || v.stage} />
               )}
               {extras.length > 0 && <Summary label="Team" value={`${extras.length + 1} people`} />}
@@ -1098,7 +1201,7 @@ export function PassCheckout({
 
       {/* ---- actions ---- */}
       <div className="flex items-center justify-between gap-3 border-t border-ink/10 px-5 py-4 sm:px-7">
-        {stepIndex === 0 ? (
+        {safeIndex === 0 ? (
           <Link
             href="/#tickets"
             className="flex items-center gap-1.5 font-sans text-sm font-semibold text-muted transition-colors hover:text-ink"

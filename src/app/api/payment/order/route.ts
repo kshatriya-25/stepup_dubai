@@ -173,6 +173,19 @@ export async function POST(req: Request) {
      * everything the form collected: enough to contact the payer, know what they bought,
      * and rebuild a sheet row. The pitch narrative lives in the journal and the sheet,
      * and losing it would cost a follow-up email, not a seat.
+     *
+     * THIS LIST IS FULL — 15 of 15. Adding a key without removing one makes Razorpay
+     * reject the order, which means it fails at the moment somebody tries to pay.
+     *
+     * `source` used to occupy a slot and was dropped for `idType`. It was a constant —
+     * every order carried the same string, so it recovered nothing that was not already
+     * known from the fact that a Tier-2 Rising order existed. `idType` names the document
+     * a public attendee will present at the desk, and without it a recovered registration
+     * has an ID number and no idea what kind of ID it is.
+     *
+     * `interest` is deliberately NOT here. It is planning data — what the room is made of
+     * — and it lives in the journal and the sheet. Losing it costs a segment breakdown,
+     * never a seat, which is the test for whether something earns one of these 15.
      */
     notes: {
       name: reg.name,
@@ -189,7 +202,7 @@ export async function POST(req: Request) {
       updates: reg.updates,
       ticketId: reg.ticketId,
       ticketName: reg.ticketName,
-      source: 'tier2rising.com/#tickets',
+      idType: reg.idType || '',
     },
     idempotencyKey,
   })

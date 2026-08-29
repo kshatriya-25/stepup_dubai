@@ -36,6 +36,8 @@ import {
   ticketAccess,
   ticketById,
   isFreePass,
+  idTypeOptions,
+  interestOptions,
   FREE_PASS_STATUS,
   categories,
   workshopOptions,
@@ -69,7 +71,7 @@ const FONT = "'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,'Helvetica Neue
  * the single place to look when a field reaches the sheet but not the receipt.
  *
  * Everything below `city` is optional because it depends on the pass and the category —
- * a Delegate Pass has no startup, a 'public' attendee has no organisation. passDetailRows
+ * a Delegate Pass has no startup, and only a public attendee has an idType. passDetailRows
  * renders only what is present rather than printing empty labels.
  */
 export type Registration = {
@@ -87,6 +89,10 @@ export type Registration = {
   orgName?: string
   idNumber?: string
   designation?: string
+  /** Which government ID the number above belongs to. Public only. */
+  idType?: string
+  /** Why a member of the public is coming. Public only. */
+  interest?: string
 
   workshop?: string
   wantNetworking?: string
@@ -290,8 +296,12 @@ function passDetailRows(r: Registration, ticket?: Ticket | null): string {
 
   if (ticket) rows.push(['Pass', ticket.name])
   if (r.orgName) rows.push([orgLabelFor(r), r.orgName])
-  if (r.idNumber) rows.push(['ID / registration', r.idNumber])
+  // The type sits ON the ID row rather than above it — "ID / registration: Aadhaar Card
+  // ending 4471" reads as one fact, which is what it is. A separate row would push the
+  // number away from the word that says what it is.
+  if (r.idNumber) rows.push([idRowLabel(r), r.idNumber])
   if (r.designation) rows.push(['Designation', r.designation])
+  if (r.interest) rows.push(['Interest', labelOf(r.interest, interestOptions)])
   if (r.startupName) rows.push(['Startup', r.startupName])
   if (r.stage) rows.push(['Stage', labelOf(r.stage, stageOptions)])
   if (r.sector) rows.push(['Sector', r.sector])
@@ -350,6 +360,15 @@ function labelOf(value: string, options: readonly { value: string; label: string
  * "Organisation" label for both loses the distinction the form went to the trouble of
  * making. Falls back to the generic word when the category is missing — old rows.
  */
+/**
+ * What to call the ID row: "ID / registration" normally, "Aadhaar Card" and so on for a
+ * member of the public who told us which document they will carry. The desk is matching a
+ * person to a card, and the card's name is the useful half of that.
+ */
+function idRowLabel(r: Registration): string {
+  return r.idType ? labelOf(r.idType, idTypeOptions) : 'ID / registration'
+}
+
 function orgLabelFor(r: Registration): string {
   const cfg = r.category && r.category in categories ? categories[r.category as CategoryId] : null
   return cfg?.orgLabel || 'Organisation'
@@ -377,6 +396,8 @@ function freePassTokens(r: Registration, ticket?: Ticket | null): Record<string,
     REGISTERED_AS: r.registerAs,
     CITY: r.city,
     ORG_LABEL: orgLabelFor(r),
+    // Names the document rather than saying "ID / registration" — see approved.ts.
+    ID_LABEL: idRowLabel(r),
     ORG_NAME: orDash(r.orgName),
     ID_NUMBER: orDash(r.idNumber),
     DESIGNATION: orDash(r.designation),
@@ -483,8 +504,9 @@ export function participantEmail(
 function organiserExtraRows(r: Registration): string {
   const rows: [string, string][] = []
   if (r.orgName) rows.push([orgLabelFor(r), r.orgName])
-  if (r.idNumber) rows.push(['ID / registration', r.idNumber])
+  if (r.idNumber) rows.push([idRowLabel(r), r.idNumber])
   if (r.designation) rows.push(['Designation', r.designation])
+  if (r.interest) rows.push(['Interest', labelOf(r.interest, interestOptions)])
   if (r.workshop) rows.push(['Workshop', labelOf(r.workshop, workshopOptions)])
   if (r.wantNetworking) {
     rows.push(['Power networking', r.meetingType ? labelOf(r.meetingType, meetingTypeOptions) : 'Yes'])
@@ -636,9 +658,17 @@ ${button('Reply to ' + firstName(r.name), `mailto:${r.email}?subject=${encodeURI
  * field list therefore cannot vary, so there is nothing to assemble.
  * ------------------------------------------------------------------ */
 
-/** Label column for the plain-text detail blocks. 17 fits the longest label we print. */
-function textRow(label: string, value: string): string {
-  return `${label.padEnd(17)} ${value}`
+/**
+ * A plain-text detail block, aligned to its own longest label.
+ *
+ * Not a fixed column width. The labels are category-dependent — "City" and "Organisation
+ * / company name" can appear in the same block — so any constant is either too wide for
+ * the short ones or too narrow for the long ones, and too narrow is the visible failure:
+ * the value collides with the label and the column stops existing.
+ */
+function textRows(pairs: [string, string][]): string[] {
+  const width = Math.max(...pairs.map(([l]) => l.length))
+  return pairs.map(([l, v]) => `${l.padEnd(width)}  ${v}`)
 }
 
 function freePassParticipantEmail(
@@ -672,14 +702,19 @@ function freePassParticipantEmail(
     'Explore the summit: https://tier2rising.com/',
     '',
     'YOUR DETAILS',
-    textRow('Name', r.name),
-    textRow('Email', r.email),
-    textRow('Phone', r.phone),
-    textRow('Pass', tokens.PASS),
-    textRow('Registered as', r.registerAs),
-    textRow('City', r.city),
-    textRow(orgLabelFor(r), tokens.ORG_NAME),
-    textRow('ID / registration', tokens.ID_NUMBER),
+    ...textRows([
+      ['Name', r.name],
+      ['Email', r.email],
+      ['Phone', r.phone],
+      ['Pass', tokens.PASS],
+      ['Registered as', r.registerAs],
+      ['City', r.city],
+      [orgLabelFor(r), tokens.ORG_NAME],
+      [idRowLabel(r), tokens.ID_NUMBER],
+      ...(r.interest
+        ? ([['Interest', labelOf(r.interest, interestOptions)]] as [string, string][])
+        : []),
+    ]),
     '',
     'See you in Erode.',
     'Team Tier-2 Rising · NammaOffice',
@@ -710,14 +745,19 @@ function freePassOrganiserEmail(
     r.name,
     `Submitted ${when}`,
     '',
-    textRow('Name', r.name),
-    textRow('Email', r.email),
-    textRow('Phone', r.phone),
-    textRow('Attending as', r.registerAs),
-    textRow('City', r.city),
-    textRow(orgLabelFor(r), tokens.ORG_NAME),
-    textRow('ID / registration', tokens.ID_NUMBER),
-    textRow('Designation', tokens.DESIGNATION),
+    ...textRows([
+      ['Name', r.name],
+      ['Email', r.email],
+      ['Phone', r.phone],
+      ['Attending as', r.registerAs],
+      ['City', r.city],
+      [orgLabelFor(r), tokens.ORG_NAME],
+      [idRowLabel(r), tokens.ID_NUMBER],
+      ['Designation', tokens.DESIGNATION],
+      ...(r.interest
+        ? ([['Interest', labelOf(r.interest, interestOptions)]] as [string, string][])
+        : []),
+    ]),
     '',
     `A registration confirmation has already gone out to ${r.email}.`,
     `The row is in the registrations sheet with Status ${FREE_PASS_STATUS} —`,
@@ -727,12 +767,29 @@ function freePassOrganiserEmail(
     `${site.fullName}`,
   ].join('\n')
 
+  /*
+   * The Interest row exists only when there is an interest — public registrations. A
+   * fixed row would print "Interest —" on every college and TBI entry, which is a blank
+   * pretending to be an answer. It is markup, so it goes in before fillTokens escapes.
+   */
+  const interestRow = r.interest
+    ? `          <tr>
+            <td width="140" style="padding:12px 12px 12px 0;border-top:1px solid #E4E8EE;font-size:10px;line-height:15px;font-weight:bold;color:#8B93A3;letter-spacing:1px;text-transform:uppercase;vertical-align:top;">Interest</td>
+            <td style="padding:12px 0;border-top:1px solid #E4E8EE;font-size:13px;line-height:19px;color:#12305C;">${esc(
+              labelOf(r.interest, interestOptions),
+            )}</td>
+          </tr>`
+    : ''
+
   return {
     // escape:false — a mail header is not HTML, and esc() would print &#39; for the
     // apostrophe in an organisation name.
     subject: fillTokens(FREE_PASS_ALERT_SUBJECT, { ...tokens, SUBMITTED_AT: when }, { escape: false }),
     text,
-    html: fillTokens(FREE_PASS_ALERT_HTML, { ...tokens, SUBMITTED_AT: when }),
+    html: fillTokens(FREE_PASS_ALERT_HTML.replace('{{INTEREST_ROW}}', interestRow), {
+      ...tokens,
+      SUBMITTED_AT: when,
+    }),
   }
 }
 
