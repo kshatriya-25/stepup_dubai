@@ -184,11 +184,19 @@ export function SiteNav() {
             {/* A three-line lockup, centred on the wordmark:
                   1  PRESENTED BY                 white @ 45%
                   2  [Namma Office wordmark]
-                  3  YOUR CO-WORKING DESTINATION  white @ 60%
+                  3  YOUR CO-WORKING DESTINATION  white @ 60%   (xl only — see below)
                 The strapline is the brighter of the two labels on purpose — it is
                 Namma Office's own line, while "Presented by" is only connective tissue.
                 Its tracking is tuned per breakpoint so its width lands flush with the
-                logo rather than overhanging it. */}
+                logo rather than overhanging it.
+
+                THE STRAPLINE IS xl-ONLY SINCE STARTUP SINGAM JOINED THE BAR. It is the
+                widest thing in this group (26 characters against a 140px logo) and the
+                least load-bearing: it is Namma Office's tagline, not the credit itself.
+                Between 1200px and 1600px that width is spent on the second partner logo
+                instead, which is the thing a reader is actually meant to see. Both are
+                back at 1600px. If the bar ever looks tight at 1200px, this line and the
+                venue-area line under "Fortune City" are the two to drop first. */}
             <span className="flex flex-col items-center gap-[3px]">
               <span
                 data-presented
@@ -206,9 +214,40 @@ export function SiteNav() {
               />
               <span
                 data-tagline
-                className="whitespace-nowrap text-[7px] font-semibold uppercase leading-none tracking-[0.085em] text-surface/60 xl:text-[8px] xl:tracking-[0.1em]"
+                className="hidden whitespace-nowrap text-[7px] font-semibold uppercase leading-none tracking-[0.085em] text-surface/60 xl:block xl:text-[8px] xl:tracking-[0.1em]"
               >
                 {site.presenterTagline}
+              </span>
+            </span>
+
+            {/*
+              STARTUP SINGAM — the second credit, sharing the divider rather than adding
+              another, so the header reads as one credit block instead of three.
+
+              WHY IT SITS ON A WHITE CHIP AND NAMMA OFFICE DOES NOT.
+              The Namma asset is RGBA with a real alpha channel, so it drops straight onto
+              the navy. This one is RGB with no alpha at all — the white is baked into the
+              pixels, and a "transparent" version would not help anyway, because the mark
+              is dark blue and red type that would be unreadable on #072B5F. A light ground
+              is the only way it can be legible here, so the chip is deliberate rather than
+              a workaround: it is sized so the logo's own white edge and the chip's white
+              are the same colour and the seam does not show.
+
+              Sharp corners, not rounded — see Button.tsx; nothing on this site is rounded.
+            */}
+            <span className="ml-3 flex flex-col items-center gap-[3px]">
+              <span className="whitespace-nowrap text-[7px] font-semibold uppercase leading-none tracking-[0.12em] text-surface/45 xl:text-[8px] xl:tracking-[0.16em]">
+                In Association With
+              </span>
+              <span className="flex items-center bg-surface px-1.5 py-1">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/logos/startupsingam.png"
+                  alt="Startup Singam"
+                  width={300}
+                  height={170}
+                  className="h-5 w-auto object-contain xl:h-6"
+                />
               </span>
             </span>
           </span>
