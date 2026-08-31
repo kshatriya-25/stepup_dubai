@@ -103,37 +103,56 @@ export function Hero() {
             equal heights would have made the Tamil line look like the junior partner by a
             wide margin — h-6/h-7 against h-10/h-11 is what lands their letterforms at the
             same optical size.
+
+            WHICH IS ALSO WHY THE LOGOS SIT IN A FIXED-HEIGHT ROW rather than following
+            their own heights. Two columns of different total height cannot be aligned at
+            both ends: `items-end` on the row lined up the bottoms and threw the two labels
+            onto different lines, and `items-start` would do the reverse. Giving the logo
+            row the height of the TALLER mark and centring each logo inside it makes both
+            columns the same height, so the labels share a line and the logos share a band
+            no matter what either asset's proportions are.
+
+            `items-start` on each column is load-bearing, not tidiness. A flex column
+            stretches its children across the cross axis by default, and an <img> with
+            `w-auto` stretches with it — then `object-contain` letterboxes the artwork and
+            CENTRES it in a box as wide as the column. Namma Office is the widest thing in
+            its column so nothing showed; Startup Singam is narrower than its own label, so
+            its logo sat indented from the label above it. That was the misalignment.
           */}
           <motion.div
             variants={item}
-            className="mt-8 flex flex-wrap items-end gap-x-8 gap-y-6 border-t border-surface/20 pt-6 sm:mt-9 sm:gap-x-12 sm:pt-7"
+            className="mt-8 flex flex-wrap items-start gap-x-10 gap-y-6 border-t border-surface/20 pt-6 sm:mt-9 sm:gap-x-14 sm:pt-7"
           >
-            <span className="flex flex-col gap-2.5">
+            <span className="flex flex-col items-start gap-3">
               <span className="whitespace-nowrap text-[9px] font-semibold uppercase leading-none tracking-[0.2em] text-surface/50">
                 Presented by
               </span>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/logos/nammaoffice-v3.png"
-                alt="Namma Office"
-                width={900}
-                height={154}
-                className="h-6 w-auto object-contain sm:h-7"
-              />
+              <span className="flex h-10 items-center sm:h-11">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/logos/nammaoffice-v3.png"
+                  alt="Namma Office"
+                  width={900}
+                  height={154}
+                  className="h-6 w-auto object-contain sm:h-7"
+                />
+              </span>
             </span>
 
-            <span className="flex flex-col gap-2.5">
-              <span className="whitespace-nowrap text-[9px] font-semibold uppercase leading-none tracking-[0.16em] text-surface/50">
+            <span className="flex flex-col items-start gap-3">
+              <span className="whitespace-nowrap text-[9px] font-semibold uppercase leading-none tracking-[0.2em] text-surface/50">
                 In association with
               </span>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/logos/startupsingam-reverse-v1.png"
-                alt="Startup Singam"
-                width={300}
-                height={170}
-                className="h-10 w-auto object-contain sm:h-11"
-              />
+              <span className="flex h-10 items-center sm:h-11">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/logos/startupsingam-reverse-v1.png"
+                  alt="Startup Singam"
+                  width={300}
+                  height={170}
+                  className="h-10 w-auto object-contain sm:h-11"
+                />
+              </span>
             </span>
           </motion.div>
         </motion.div>
