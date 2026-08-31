@@ -224,31 +224,32 @@ export function SiteNav() {
               STARTUP SINGAM — the second credit, sharing the divider rather than adding
               another, so the header reads as one credit block instead of three.
 
-              WHY IT SITS ON A WHITE CHIP AND NAMMA OFFICE DOES NOT.
-              The Namma asset is RGBA with a real alpha channel, so it drops straight onto
-              the navy. This one is RGB with no alpha at all — the white is baked into the
-              pixels, and a "transparent" version would not help anyway, because the mark
-              is dark blue and red type that would be unreadable on #072B5F. A light ground
-              is the only way it can be legible here, so the chip is deliberate rather than
-              a workaround: it is sized so the logo's own white edge and the chip's white
-              are the same colour and the seam does not show.
+              THE WHITE CHIP IS GONE. It used to sit on one because the supplied file is
+              RGB with no alpha and the mark is dark blue type, which is unreadable on
+              #072B5F. Both halves of that are handled by the asset itself now:
+              -reverse-v1 has the white keyed out AND the blue wordmark knocked out to
+              white, so it drops onto the navy the same way the Namma mark does. The Tamil
+              red is untouched — it reads on navy as it is. See
+              scripts/startupsingam-reverse.py; the light sections, which sit on white
+              cards, still use the original file.
 
-              Sharp corners, not rounded — see Button.tsx; nothing on this site is rounded.
+              It is TALLER than the Namma logo on purpose. Namma is a 5.8:1 single-line
+              wordmark and this is a 1.76:1 stacked mark, so matching their box heights
+              would leave the Tamil line looking half the size. h-9/h-10 against h-6/h-7 is
+              what puts their letterforms at the same optical height.
             */}
             <span className="ml-3 flex flex-col items-center gap-[3px]">
               <span className="whitespace-nowrap text-[7px] font-semibold uppercase leading-none tracking-[0.12em] text-surface/45 xl:text-[8px] xl:tracking-[0.16em]">
                 In Association With
               </span>
-              <span className="flex items-center bg-surface px-1.5 py-1">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/logos/startupsingam.png"
-                  alt="Startup Singam"
-                  width={300}
-                  height={170}
-                  className="h-5 w-auto object-contain xl:h-6"
-                />
-              </span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/logos/startupsingam-reverse-v1.png"
+                alt="Startup Singam"
+                width={300}
+                height={170}
+                className="h-9 w-auto object-contain xl:h-10"
+              />
             </span>
           </span>
         </div>
