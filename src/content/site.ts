@@ -7,7 +7,15 @@ export const site = {
   season: 'In association with Startup Singam',
   initiativeBy: 'NammaOffice Presents',
   // Namma Office's own strapline, shown under their wordmark in the header.
-  presenterTagline: 'Your Co-Working Destination',
+  /*
+   * presenterTagline is GONE.
+   *
+   * It was the third line of the Namma Office lockup in the header, and that whole lockup
+   * has moved into the hero panel — where a co-working strapline under the presenter's
+   * wordmark is one line of detail too many next to a 64px logo. Deleted rather than left
+   * exported and unused, for the same reason given below about participateRoutes: a
+   * content constant nothing renders gets found by the next person and used.
+   */
   theme: 'When investors, government grants and bank funding come to Tier-2 — not the other way around',
   tagline: 'Where Tier-2 startups become funding-ready',
   taglineLong:

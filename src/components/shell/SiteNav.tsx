@@ -166,92 +166,20 @@ export function SiteNav() {
             </span>
           </a>
           {/*
-            Was `xl:flex`, which in this project means 1600px (tailwind.config.ts
-            overrides the default breakpoints) — so the credit was invisible on every
-            normal laptop and only appeared on very wide monitors. Now matches the
-            venue chip's `lg` (1200px).
+            THE PARTNER CREDITS ARE NOT IN THIS BAR, and putting them back needs a reason
+            better than "there is space".
 
-            The asset is the official transparent wordmark supplied by Namma Office, so
-            it sits straight on the navy with no white box behind it.
+            A "Presented by Namma Office / In association with Startup Singam" lockup lived
+            here between the wordmark and the nav. It cost ~265px, which the bar did not
+            have: from 1200px to ~1354px the three groups had nothing left for the gaps,
+            flex let them sit flush, and "Partners" ran straight into the "Partner with us"
+            button with no space between them.
 
-            The `-v3` in the filename is a cache-bust, not decoration. Apache served
-            /logos/ with `Cache-Control: immutable`, so browsers that already fetched an
-            older version would never re-request the same URL. Replacing an image under
-            this path means giving it a NEW name. (The header has since been relaxed to
-            a day + stale-while-revalidate; see deploy/.)
+            The credits now open the hero panel instead, at a size where the marks are
+            actually legible rather than 24px tall — see src/components/home/Hero.tsx. They
+            are one screen-height from the header and they are the first thing in the panel,
+            so nothing was lost by moving them, and the bar went back to being a bar.
           */}
-          <span className="hidden items-center border-l border-surface/25 pl-3 lg:flex">
-            {/* A three-line lockup, centred on the wordmark:
-                  1  PRESENTED BY                 white @ 45%
-                  2  [Namma Office wordmark]
-                  3  YOUR CO-WORKING DESTINATION  white @ 60%   (xl only — see below)
-                The strapline is the brighter of the two labels on purpose — it is
-                Namma Office's own line, while "Presented by" is only connective tissue.
-                Its tracking is tuned per breakpoint so its width lands flush with the
-                logo rather than overhanging it.
-
-                THE STRAPLINE IS xl-ONLY SINCE STARTUP SINGAM JOINED THE BAR. It is the
-                widest thing in this group (26 characters against a 140px logo) and the
-                least load-bearing: it is Namma Office's tagline, not the credit itself.
-                Between 1200px and 1600px that width is spent on the second partner logo
-                instead, which is the thing a reader is actually meant to see. Both are
-                back at 1600px. If the bar ever looks tight at 1200px, this line and the
-                venue-area line under "Fortune City" are the two to drop first. */}
-            <span className="flex flex-col items-center gap-[3px]">
-              <span
-                data-presented
-                className="whitespace-nowrap text-[7px] font-semibold uppercase leading-none tracking-[0.2em] text-surface/45 xl:text-[8px]"
-              >
-                Presented By
-              </span>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/logos/nammaoffice-v3.png"
-                alt="Namma Office"
-                width={900}
-                height={154}
-                className="h-6 w-auto object-contain xl:h-7"
-              />
-              <span
-                data-tagline
-                className="hidden whitespace-nowrap text-[7px] font-semibold uppercase leading-none tracking-[0.085em] text-surface/60 xl:block xl:text-[8px] xl:tracking-[0.1em]"
-              >
-                {site.presenterTagline}
-              </span>
-            </span>
-
-            {/*
-              STARTUP SINGAM — the second credit, sharing the divider rather than adding
-              another, so the header reads as one credit block instead of three.
-
-              THE WHITE CHIP IS GONE. It used to sit on one because the supplied file is
-              RGB with no alpha and the mark is dark blue type, which is unreadable on
-              #072B5F. Both halves of that are handled by the asset itself now:
-              -reverse-v1 has the white keyed out AND the blue wordmark knocked out to
-              white, so it drops onto the navy the same way the Namma mark does. The Tamil
-              red is untouched — it reads on navy as it is. See
-              scripts/startupsingam-reverse.py; the light sections, which sit on white
-              cards, still use the original file.
-
-              It is TALLER than the Namma logo on purpose. Namma is a 5.8:1 single-line
-              wordmark and this is a 1.76:1 stacked mark, so matching their box heights
-              would leave the Tamil line looking half the size. h-9/h-10 against h-6/h-7 is
-              what puts their letterforms at the same optical height.
-            */}
-            <span className="ml-3 flex flex-col items-center gap-[3px]">
-              <span className="whitespace-nowrap text-[7px] font-semibold uppercase leading-none tracking-[0.12em] text-surface/45 xl:text-[8px] xl:tracking-[0.16em]">
-                In Association With
-              </span>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/logos/startupsingam-reverse-v1.png"
-                alt="Startup Singam"
-                width={300}
-                height={170}
-                className="h-9 w-auto object-contain xl:h-10"
-              />
-            </span>
-          </span>
         </div>
 
         {/* Desktop menu */}
