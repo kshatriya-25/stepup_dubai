@@ -487,6 +487,31 @@ export function isFreePass(t: Ticket): boolean {
 }
 
 /**
+ * THE ONE PLACE THE LADDER SPLITS IN TWO.
+ *
+ * Three of the four passes admit somebody to the event; the fourth puts their company in
+ * front of investors. That is a difference of INTENT, not of price, and it is what the
+ * Register dialog asks about before showing anyone a pass list — see
+ * src/components/shell/RegisterModal.tsx.
+ *
+ * It lives here rather than in that dialog so a fifth pass cannot be added to the
+ * catalogue and silently fail to appear in the chooser. Anything that needs "visitor
+ * passes" derives them by excluding this id; nothing hard-codes a list of three.
+ */
+export const PITCH_TICKET_ID: TicketId = 'investor-pitch'
+
+/** The founder track. Everything else is a visitor pass. */
+export function isPitchPass(t: Ticket): boolean {
+  return t.id === PITCH_TICKET_ID
+}
+
+/** Visitor passes, in catalogue order — the free-to-workshop rungs of the ladder. */
+export function visitorTickets(all: Ticket[]): Ticket[] {
+  return all.filter((t) => !isPitchPass(t))
+}
+
+
+/**
  * Price in integer paise — the only form money should ever be handled in.
  * `0.1 + 0.2 !== 0.3`, and Razorpay's API is paise-denominated anyway.
  *

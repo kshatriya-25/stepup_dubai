@@ -7,11 +7,13 @@ import { cn } from '@/lib/cn'
 import { useScrollDirection } from '@/lib/hooks'
 import { nav, site } from '@/content/site'
 import { usePartner } from './PartnerModal'
+import { useRegister } from './RegisterModal'
 
 export function SiteNav() {
   const { hidden } = useScrollDirection()
   const [open, setOpen] = useState(false)
   const { open: openPartner } = usePartner()
+  const { open: openRegister } = useRegister()
 
   /*
    * The About dropdown is STATE, not a CSS :hover trick.
@@ -312,8 +314,20 @@ export function SiteNav() {
           >
             Partner with us
           </button>
+          {/*
+            STILL AN ANCHOR, not a button, even though the click opens a dialog.
+
+            The href is the no-JS destination and the one middle-click or "open in new tab"
+            follows — #tickets, the full pass section, which is a perfectly good answer to
+            "register". Turning this into a <button> would take that away to gain nothing.
+            preventDefault is what upgrades it to the chooser when JS is running.
+          */}
           <a
             href={site.register}
+            onClick={(e) => {
+              e.preventDefault()
+              openRegister()
+            }}
             className="bg-accent px-6 py-3 text-btn font-bold uppercase text-accent-ink hover:bg-surface"
           >
             Register
@@ -374,7 +388,13 @@ export function SiteNav() {
                 </button>
                 <a
                   href={site.register}
-                  onClick={() => setOpen(false)}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    // Drawer first, then the dialog — two overlays on screen at once on a
+                    // phone leaves the reader looking at a panel behind a panel.
+                    setOpen(false)
+                    openRegister()
+                  }}
                   className="flex-1 bg-accent py-3 text-center text-btn font-bold uppercase text-accent-ink"
                 >
                   Register
