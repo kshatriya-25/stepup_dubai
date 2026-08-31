@@ -375,17 +375,22 @@ export const idTypeOptions = [
  *
  * This is the one question here that exists for the organisers rather than the desk: it
  * is what turns "300 public tickets" into a room you can plan zones and sessions around.
+ *
+ * 'student' and 'other' were removed in August 2026 at the client's request. Both are
+ * gone from the SELECTABLE list only — rows already in the sheet keep whatever label they
+ * were written with, because sheetRow() stores the human label and falls back to the raw
+ * value for anything it no longer recognises. What does change is that a direct POST
+ * carrying either value is now rejected by parseSubmission's oneOf() check, which is the
+ * intended effect: this list is the whitelist, not a suggestion.
  */
 export const interestOptions = [
   { value: 'founder', label: 'Entrepreneur / Startup Founder' },
   { value: 'investor', label: 'Investor' },
   { value: 'business-owner', label: 'Business Owner' },
   { value: 'professional', label: 'Working Professional' },
-  { value: 'student', label: 'Student' },
   { value: 'mentor', label: 'Mentor / Consultant' },
   { value: 'ecosystem', label: 'Startup Ecosystem' },
   { value: 'msme', label: 'MSME / Manufacturer' },
-  { value: 'other', label: 'Other' },
 ] as const
 
 /** Workshop choices. Titles are placeholders until the programme is finalised. */
