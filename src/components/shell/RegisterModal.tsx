@@ -21,8 +21,8 @@ import { visitorTickets, isPitchPass, formatTicketPrice, isFreePass, type Ticket
  * pitching — and then shows only the passes that answer it. Pitching is a single pass, so
  * that branch skips the list entirely and goes straight to its checkout.
  *
- *   Register ─┬─ I'm visiting ──→ Free / Delegate / Workshop ──→ /passes/<id>
- *             └─ Pitch my idea ─────────────────────────────────→ /passes/investor-pitch
+ *   Register ─┬─ Pitch my idea ─────────────────────────────────→ /passes/investor-pitch
+ *             └─ I'm visiting ──→ Free / Delegate / Workshop ──→ /passes/<id>
  *
  * WHY A DIALOG AND NOT A PAGE. Unlike the checkout — which became /passes/[pass] because
  * it holds fifteen fields, four steps and a payment across a refresh — this holds one
@@ -200,17 +200,12 @@ export function RegisterProvider({
                       passes that apply.
                     </p>
 
+                    {/* PITCH FIRST, on the client's instruction. It is also the order the
+                        rest of the site argues for: the founder track is the reason the
+                        summit exists and the only branch that is a single decision, so a
+                        founder lands on their answer immediately and everyone else reads
+                        one card before finding theirs. */}
                     <div className="mt-6 flex flex-col gap-3">
-                      <ChoiceCard
-                        icon={<TicketIcon size={20} />}
-                        eyebrow="Attending"
-                        title="I'm visiting"
-                        blurb="Walk the stall zone, sit in on the speaker sessions, add a workshop and the power networking corner."
-                        meta={`${visitors.length} passes · from ${formatTicketPrice(
-                          visitors.reduce((a, b) => (b.priceInr < a.priceInr ? b : a)),
-                        )}`}
-                        onClick={() => setView('visitor')}
-                      />
                       {pitch && (
                         <ChoiceCard
                           icon={<Rocket size={20} />}
@@ -222,6 +217,16 @@ export function RegisterProvider({
                           onClick={close}
                         />
                       )}
+                      <ChoiceCard
+                        icon={<TicketIcon size={20} />}
+                        eyebrow="Attending"
+                        title="I'm visiting"
+                        blurb="Walk the stall zone, sit in on the speaker sessions, add a workshop and the power networking corner."
+                        meta={`${visitors.length} passes · from ${formatTicketPrice(
+                          visitors.reduce((a, b) => (b.priceInr < a.priceInr ? b : a)),
+                        )}`}
+                        onClick={() => setView('visitor')}
+                      />
                     </div>
                   </>
                 )}
