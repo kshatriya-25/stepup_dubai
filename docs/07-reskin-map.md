@@ -48,7 +48,7 @@ Run every pairing through the a11y validator before locking.
 
 > **This table is history, not truth.** It records what the Poster said when the reskin
 > was planned. The live facts are `src/content/site.ts`, and they have moved since:
-> the summit is now **one day, Saturday 10 October 2026** at **Fortune City (Tex Valley,
+> the summit is now **one day, Saturday 21 November 2026** at **Fortune City (Tex Valley,
 > Erode)**, and the Day 1 / Day 2 split is gone — passes are sold by what they open, not
 > by which day they admit (see `src/content/tickets.ts`). Read site.ts, not this.
 

@@ -84,6 +84,22 @@ export const partners: Partner[] = [
   // https on both. https, not http: an http link hands the visitor a "Not secure"
   // warning on the way to our own technology partner.
   { label: 'Technology Partner', logo: '/logos/tealorca.png', name: 'TealOrca', url: 'https://tealorca.com/' },
+  /*
+   * StartupTN — the Tamil Nadu government's startup mission.
+   *
+   * The asset is derived, not the file the client supplied: that one is RGB on a #F7F7F7
+   * ground, which would have shown as a faint grey rectangle on the white card while every
+   * other logo here sits on nothing. See scripts/startuptn-transparent.py for why the
+   * white was removed by flood fill rather than by colour key — the Tamil Nadu emblem has
+   * a white disc a colour key punches straight out.
+   *
+   * NOTE: StartupTN is also listed by name, without a logo, under "Government Enablement"
+   * in govPartners below. Both are true — it is a government body and an ecosystem partner
+   * — but if the client wants it in one place only, this card is the one to keep.
+   *
+   * https://startuptn.in/ verified 200 over https.
+   */
+  { label: 'Ecosystem Partner', logo: '/logos/startuptn-v1.png', name: 'StartupTN', url: 'https://startuptn.in/' },
 ]
 
 export type GovPartner = { name: string; logo?: string }
@@ -117,7 +133,7 @@ export const govPartners: GovGroup[] = [
 export const statements = [
   { text: 'Great businesses should not be limited by geography.', author: 'The Tier-2 Rising belief' },
   { text: 'The talent was never the problem. The access was.', author: 'Why we built the room' },
-  { text: 'One day. Every door open.', author: '10 October · Erode' },
+  { text: 'One day. Every door open.', author: '21 November · Erode' },
   { text: 'Tier-2 is rising.', author: 'Coimbatore · Erode · Salem · Tiruppur · Madurai · Trichy' },
 ]
 

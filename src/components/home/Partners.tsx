@@ -18,10 +18,32 @@ export function Partners() {
           </p>
         </Reveal>
 
-        {/* Principal partners — clean white logo cards with a caption below.
-            A partner with a `url` renders as a link to their site; one without stays
-            an inert card, so nothing looks clickable that isn't. */}
-        <div className="mt-10 grid grid-cols-2 gap-x-6 gap-y-9 sm:grid-cols-3 lg:grid-cols-4 md:mt-14">
+        {/*
+          Principal partners — clean white logo cards with a caption below. A partner with
+          a `url` renders as a link to their site; one without stays an inert card, so
+          nothing looks clickable that isn't.
+
+          A CENTRED WRAPPING ROW, NOT A GRID, and the widths below are doing the grid's old
+          job by hand. This was `grid-cols-2 sm:grid-cols-3 lg:grid-cols-4`, which is fine
+          for four partners and falls apart at five: a grid packs to the start, so the
+          fifth card sat alone against the left edge of a second row with three columns of
+          empty foam beside it. It read as a mistake at every breakpoint — 4+1 on desktop,
+          3+2 on tablet, 2+2+1 on a phone.
+
+          `justify-center` on a wrapped flex row centres whatever the last row happens to
+          hold, so a partial row looks composed rather than truncated. That matters more
+          than the specific count: the next partner to sign makes it six, and the one after
+          that seven, and neither should need this layout revisited.
+
+          Five across at lg rather than four, so the current roster lands as one clean row
+          on a desktop instead of relying on the centring at all. The cards are ~240px
+          instead of ~307px, which every logo here still clears — the binding constraint is
+          max-w-[80%], not max-h-14.
+
+          The calc widths are the gap arithmetic spelled out: n columns leave (n-1) gaps of
+          gap-x-6 (1.5rem) to subtract before dividing.
+        */}
+        <div className="mt-10 flex flex-wrap justify-center gap-x-6 gap-y-9 md:mt-14">
           {partners.map((p, i) => {
             const card = (
               <>
@@ -56,7 +78,15 @@ export function Partners() {
               </>
             )
             return (
-              <Reveal key={p.name} delay={(i % 4) * 0.08}>
+              // The stagger resets every fifth card so a second row starts animating with
+              // its own first item rather than continuing to count from the row above.
+              // Keyed to the widest breakpoint's column count, since CSS decides the real
+              // wrap point and this cannot know it.
+              <Reveal
+                key={p.name}
+                delay={(i % 5) * 0.08}
+                className="w-[calc((100%-1.5rem)/2)] sm:w-[calc((100%-3rem)/3)] lg:w-[calc((100%-6rem)/5)]"
+              >
                 {p.url ? (
                   <a
                     href={p.url}

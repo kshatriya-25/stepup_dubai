@@ -1,5 +1,5 @@
 // Tier-2 Rising content — human-story copy from the v1 build. Navy/Orange brand.
-// Canonical facts: one day (Sat 10 Oct 2026), Fortune City Erode, ticketed.
+// Canonical facts: one day (Sat 21 Nov 2026), Fortune City Erode, ticketed.
 
 export const site = {
   name: 'Tier-2 Rising',
@@ -22,12 +22,31 @@ export const site = {
     'The day investors, government grants and bank funding come to Tier-2 — instead of Tier-2 going looking for them. A flagship event under the Tier-2 Rising campaign by NammaOffice.',
   headline: 'TIER-2 RISING',
   subhead: 'Startup Summit',
-  // ONE DAY, Saturday 10 October 2026. It was a two-day event until August 2026 and
-  // the copy said so in a dozen places; every one of them now reads from here.
-  // `dates` is the only string the site prints, so shortening it is a one-line change.
-  dates: '10 October 2026',
+  /*
+   * ONE DAY, Saturday 21 November 2026 — moved from 10 October in September 2026.
+   *
+   * It was a two-day event until August 2026 and the copy said so in a dozen places;
+   * every one of them now reads from here, which is why a date change is these four
+   * lines plus the two places that quote a month out loud (the statement in home.ts and
+   * the ticket eyebrow).
+   *
+   * KEEP ALL FOUR IN STEP. `datesShort` is the weekday and `startISO` drives the
+   * countdown, so a date change that touches only `dates` leaves the page counting down
+   * to the wrong day while printing the right one. 21 Nov 2026 is a Saturday, same as
+   * 10 Oct was — check before assuming the weekday carries over.
+   */
+  dates: '21 November 2026',
   datesShort: 'Saturday',
-  startISO: '2026-10-10T09:00:00+05:30',
+  /*
+   * The compact form the emails print, spelled out rather than derived.
+   *
+   * It used to be `site.dates.replace('October', 'Oct')` in two places. That is a trap:
+   * it does not fail when the month changes, it silently does NOTHING — the header of
+   * every transactional email would have gone out reading "21 NOVEMBER 2026" where the
+   * design has room for eleven characters.
+   */
+  datesCompact: '21 Nov 2026',
+  startISO: '2026-11-21T09:00:00+05:30',
   venue: 'Fortune City',
   // Shown as a second line under the venue chip in the header. Fortune City alone is
   // ambiguous to anyone outside Erode; this is the locality that makes it findable.

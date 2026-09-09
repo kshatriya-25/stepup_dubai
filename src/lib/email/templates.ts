@@ -198,7 +198,7 @@ function shell(opts: { preheader: string; body: string; footerNote: string }): s
                     <div style="font-size:11px;font-weight:700;letter-spacing:0.18em;color:${C.orange};text-transform:uppercase;padding-top:6px;">Startup Summit</div>
                   </td>
                   <td align="right" style="font-family:${FONT};font-size:11px;font-weight:600;letter-spacing:0.1em;color:#9DB2D4;text-transform:uppercase;white-space:nowrap;">
-                    ${esc(site.dates.replace('October', 'Oct'))}
+                    ${esc(site.datesCompact)}
                   </td>
                 </tr>
               </table>
@@ -403,7 +403,7 @@ function freePassTokens(r: Registration, ticket?: Ticket | null): Record<string,
     DESIGNATION: orDash(r.designation),
     STATUS: FREE_PASS_STATUS,
     EVENT_DATES: site.dates,
-    EVENT_DATES_SHORT: site.dates.replace('October', 'Oct').toUpperCase(),
+    EVENT_DATES_SHORT: site.datesCompact.toUpperCase(),
     EVENT_LOCATION: `${site.venue}, ${site.city}`,
   }
 }

@@ -16,9 +16,10 @@
  * {{EVENT_LOCATION}}, fed from site.ts. The approved artwork said "Sunday, 11 October
  * 2026" while the website said "10 & 11 October 2026" — a registrant would have been
  * told two different things. Driving both from one source means that cannot recur, and
- * it is why the August 2026 cut to a single day (Sat 10 Oct) reached this email for
- * free. The body prose is hard-coded and did NOT: "Two days in Erode" had to be edited
- * by hand. If the format changes again, re-read that paragraph.
+ * it is why the August 2026 cut to a single day (Sat 10 Oct) and the September move to
+ * Sat 21 Nov both reached this email for free. The body prose is hard-coded and did NOT:
+ * "Two days in Erode" had to be edited by hand. If the FORMAT changes again — not just
+ * the day — re-read that paragraph.
  *
  * Tokens are {{UPPER_SNAKE}} and are filled by fillTokens() in templates.ts, which
  * HTML-escapes every value. Add a token here and you must supply it there.
