@@ -374,9 +374,35 @@ function orgLabelFor(r: Registration): string {
   return cfg?.orgLabel || 'Organisation'
 }
 
-/** Blank cells look like a rendering fault in a fixed table. An em dash looks answered. */
-function orDash(value: string | undefined): string {
-  return (value || '').trim() || '—'
+/*
+ * The free-pass templates' detail rows, reproducing the approved artwork's markup exactly —
+ * one builder per template, because the confirmation uses a compact row and the alert a
+ * bordered, uppercase-label one. They return '' when there is nothing to show, so a
+ * question the form never asked does not print as an empty label. See approved.ts.
+ */
+function confirmRow(label: string, value: string | undefined): string {
+  if (!(value || '').trim()) return ''
+  return `          <tr>
+            <td width="150" style="padding:7px 12px 7px 0;font-size:12px;line-height:18px;color:#7C8CA6;vertical-align:top;">${esc(label)}</td>
+            <td style="padding:7px 0;font-size:12px;line-height:18px;color:#12305C;">${esc(value!.trim())}</td>
+          </tr>`
+}
+
+function alertRow(label: string, value: string | undefined): string {
+  if (!(value || '').trim()) return ''
+  return `          <tr>
+            <td width="140" style="padding:12px 12px 12px 0;border-top:1px solid #E4E8EE;font-size:10px;line-height:15px;font-weight:bold;color:#8B93A3;letter-spacing:1px;text-transform:uppercase;vertical-align:top;">${esc(label)}</td>
+            <td style="padding:12px 0;border-top:1px solid #E4E8EE;font-size:13px;line-height:19px;color:#12305C;">${esc(value!.trim())}</td>
+          </tr>`
+}
+
+/** Plain-text rows for the same fields, dropped when empty for the same reason. */
+function optionalTextRows(r: Registration, withDesignation: boolean): [string, string][] {
+  const rows: [string, string][] = []
+  if (r.orgName?.trim()) rows.push([orgLabelFor(r), r.orgName.trim()])
+  if (r.idNumber?.trim()) rows.push([idRowLabel(r), r.idNumber.trim()])
+  if (withDesignation && r.designation?.trim()) rows.push(['Designation', r.designation.trim()])
+  return rows
 }
 
 /**
@@ -395,12 +421,9 @@ function freePassTokens(r: Registration, ticket?: Ticket | null): Record<string,
     PASS: ticket?.name || 'Free Pass',
     REGISTERED_AS: r.registerAs,
     CITY: r.city,
-    ORG_LABEL: orgLabelFor(r),
-    // Names the document rather than saying "ID / registration" — see approved.ts.
-    ID_LABEL: idRowLabel(r),
-    ORG_NAME: orDash(r.orgName),
-    ID_NUMBER: orDash(r.idNumber),
-    DESIGNATION: orDash(r.designation),
+    // The organisation, ID and designation are ROWS now, not tokens — see confirmRow /
+    // alertRow. Only the alert's subject line still names the organisation inline.
+    ORG_SUFFIX: r.orgName?.trim() ? ` · ${r.orgName.trim()}` : '',
     STATUS: FREE_PASS_STATUS,
     EVENT_DATES: site.dates,
     EVENT_DATES_SHORT: site.datesCompact.toUpperCase(),
@@ -709,8 +732,7 @@ function freePassParticipantEmail(
       ['Pass', tokens.PASS],
       ['Registered as', r.registerAs],
       ['City', r.city],
-      [orgLabelFor(r), tokens.ORG_NAME],
-      [idRowLabel(r), tokens.ID_NUMBER],
+      ...optionalTextRows(r, false),
       ...(r.interest
         ? ([['Interest', labelOf(r.interest, interestOptions)]] as [string, string][])
         : []),
@@ -728,7 +750,14 @@ function freePassParticipantEmail(
   return {
     subject: fillTokens(FREE_PASS_SUBJECT, tokens, { escape: false }),
     text,
-    html: fillTokens(FREE_PASS_CONFIRMATION_HTML, tokens),
+    // Rows are markup, so they go in before fillTokens escapes.
+    html: fillTokens(
+      FREE_PASS_CONFIRMATION_HTML.replace('{{ORG_ROW}}', confirmRow(orgLabelFor(r), r.orgName)).replace(
+        '{{ID_ROW}}',
+        confirmRow(idRowLabel(r), r.idNumber),
+      ),
+      tokens,
+    ),
   }
 }
 
@@ -751,9 +780,7 @@ function freePassOrganiserEmail(
       ['Phone', r.phone],
       ['Attending as', r.registerAs],
       ['City', r.city],
-      [orgLabelFor(r), tokens.ORG_NAME],
-      [idRowLabel(r), tokens.ID_NUMBER],
-      ['Designation', tokens.DESIGNATION],
+      ...optionalTextRows(r, true),
       ...(r.interest
         ? ([['Interest', labelOf(r.interest, interestOptions)]] as [string, string][])
         : []),
@@ -772,24 +799,20 @@ function freePassOrganiserEmail(
    * fixed row would print "Interest —" on every college and TBI entry, which is a blank
    * pretending to be an answer. It is markup, so it goes in before fillTokens escapes.
    */
-  const interestRow = r.interest
-    ? `          <tr>
-            <td width="140" style="padding:12px 12px 12px 0;border-top:1px solid #E4E8EE;font-size:10px;line-height:15px;font-weight:bold;color:#8B93A3;letter-spacing:1px;text-transform:uppercase;vertical-align:top;">Interest</td>
-            <td style="padding:12px 0;border-top:1px solid #E4E8EE;font-size:13px;line-height:19px;color:#12305C;">${esc(
-              labelOf(r.interest, interestOptions),
-            )}</td>
-          </tr>`
-    : ''
+  const interestRow = alertRow('Interest', r.interest ? labelOf(r.interest, interestOptions) : '')
 
   return {
     // escape:false — a mail header is not HTML, and esc() would print &#39; for the
     // apostrophe in an organisation name.
     subject: fillTokens(FREE_PASS_ALERT_SUBJECT, { ...tokens, SUBMITTED_AT: when }, { escape: false }),
     text,
-    html: fillTokens(FREE_PASS_ALERT_HTML.replace('{{INTEREST_ROW}}', interestRow), {
-      ...tokens,
-      SUBMITTED_AT: when,
-    }),
+    html: fillTokens(
+      FREE_PASS_ALERT_HTML.replace('{{ORG_ROW}}', alertRow(orgLabelFor(r), r.orgName))
+        .replace('{{ID_ROW}}', alertRow(idRowLabel(r), r.idNumber))
+        .replace('{{DESIGNATION_ROW}}', alertRow('Designation', r.designation))
+        .replace('{{INTEREST_ROW}}', interestRow),
+      { ...tokens, SUBMITTED_AT: when },
+    ),
   }
 }
 

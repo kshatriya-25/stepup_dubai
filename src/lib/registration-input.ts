@@ -20,6 +20,7 @@ import {
   ticketAccess,
   categories,
   asksStartup,
+  startupNameFromOrg,
   idTypeOptions,
   interestOptions,
   workshopOptions,
@@ -83,13 +84,15 @@ export function parseSubmission(raw: Record<string, unknown>): ParseResult {
   const cfg = categories[category]
 
   /*
-   * The organisation block exists only for categories that have one, and every rule in it
-   * comes from the CATEGORY rather than the pass.
+   * Every rule in this block comes from the CATEGORY rather than the pass, and "is it
+   * asked" (showOrg / showId / showDesignation) is kept separate from "is it required"
+   * (orgRequired / idRequired) — a category can ask for something without insisting on it.
    *
-   * Note orgRequired is checked, not showOrg. 'public' shows the organisation field and
-   * does not insist on it — see the comment on that category. Reading showOrg here, as
-   * this did before public gained the block, would have rejected every student and every
-   * unaffiliated attendee with "Organisation / company name is required."
+   * Each field is read ONLY if the category asks it, and anything else in the body is
+   * dropped. Since September 2026 that means an organisation name and nothing more: a
+   * submission from a stale tab, or a crafted one, that still carries an ID number or a
+   * designation has them discarded rather than written into the sheet — the same rule the
+   * form applies before it sends. See the note above `categories` in @/content/tickets.
    */
   let orgName = ''
   let idNumber = ''
@@ -97,15 +100,20 @@ export function parseSubmission(raw: Record<string, unknown>): ParseResult {
   let idType = ''
   if (cfg.showOrg) {
     orgName = clean(raw.orgName, 160)
-    idNumber = clean(raw.idNumber, 80)
-    designation = clean(raw.designation, 120)
     if (cfg.orgRequired && !orgName) return { ok: false, error: `${cfg.orgLabel} is required.` }
+  }
+  if (cfg.showId) {
+    idNumber = clean(raw.idNumber, 80)
     if (cfg.idRequired && !idNumber) return { ok: false, error: `${cfg.idLabel} is required.` }
+  }
+  if (cfg.showDesignation) {
+    designation = clean(raw.designation, 120)
   }
 
   // Which government ID they will bring. Required wherever it is asked at all — an ID
   // number with no idea what it is a number OF is useless to the desk.
-  if (cfg.idType) {
+  // Only with showId — the type names the document that number is on.
+  if (cfg.showId && cfg.idType) {
     idType = clean(raw.idType, 20)
     if (!oneOf(idType, idTypeOptions)) return { ok: false, error: 'Please choose an ID type.' }
   }
@@ -153,7 +161,10 @@ export function parseSubmission(raw: Record<string, unknown>): ParseResult {
    * and, worse, would price extra team members for a person attending alone.
    */
   if (asksStartup(ticket, category)) {
-    startupName = clean(raw.startupName, 160)
+    // A founder's step-2 organisation IS the startup, so it is taken from there rather
+    // than asked twice — see startupNameFromOrg. orgName is mandatory for a founder, so
+    // this can never come out empty for them.
+    startupName = startupNameFromOrg(category) ? orgName : clean(raw.startupName, 160)
     stage = clean(raw.stage, 20)
     sector = clean(raw.sector, 120)
     pitchOneLine = clean(raw.pitchOneLine, 300)

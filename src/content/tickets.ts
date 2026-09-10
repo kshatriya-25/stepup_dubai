@@ -69,7 +69,10 @@ export type CategoryConfig = {
   hint: string
   /** Emoji marker, as supplied in the client's forms. */
   icon: string
-  /** Whether to show the organisation block at all. */
+  /**
+   * Whether to ask the organisation NAME. Since September 2026 this is the ONLY question
+   * step 2 asks of any category — see the note above `categories`.
+   */
   showOrg: boolean
   /** Label + placeholder for the organisation name field. */
   orgLabel: string
@@ -81,7 +84,15 @@ export type CategoryConfig = {
    * turn optional context into a wall.
    */
   orgRequired: boolean
-  /** Label + placeholder for the ID field, and whether it is mandatory. */
+  /**
+   * Ask the ID / registration NUMBER. Off for every category since September 2026.
+   *
+   * `idLabel`, `idPlaceholder` and `idRequired` below are kept filled in on each category
+   * so that switching this back on is one line, with the wording the client last approved
+   * — this client has reversed form decisions before. They do nothing while it is off.
+   */
+  showId?: boolean
+  /** Label + placeholder for the ID field, and whether it is mandatory — see showId. */
   idLabel: string
   idPlaceholder: string
   idRequired: boolean
@@ -93,7 +104,7 @@ export type CategoryConfig = {
    * of the public has no such record, so the card in their wallet is the only thing that
    * ties the person at the door to the row in the sheet.
    */
-  idType?: boolean
+  idType?: boolean   // only meaningful with showId: it names the document the number is on
   /**
    * Ask "your interest in Tier-2 Rising", from interestOptions.
    *
@@ -102,10 +113,32 @@ export type CategoryConfig = {
    * it, so it is a one-line switch in either direction. See the note on `public` below.
    */
   interest?: boolean
-  /** Hint under the designation field. */
+  /** Ask a (always optional) designation. Off for every category since September 2026. */
+  showDesignation?: boolean
+  /** Placeholder for the designation field — see showDesignation. */
   roleHint: string
 }
 
+/*
+ * STEP 2 ASKS ONE THING PER CATEGORY: THE ORGANISATION'S NAME. (September 2026, on the
+ * client's instruction, for every pass.)
+ *
+ *   Startup Founder            Startup name
+ *   College Incubation Center  College Incubation Center name
+ *   Private Incubation         Incubation cell / company name
+ *   TBI Member                 TBI name
+ *   Public                     nothing
+ *
+ * The ID number, the ID type and the designation are no longer asked of anyone, and a
+ * member of the public no longer gives an organisation either. None of it is torn out:
+ * each is behind a flag (showOrg / showId / idType / showDesignation) that every consumer
+ * checks — the form, the review step, the server validator, and the emails — so switching
+ * one back on restores it end to end. The sheet keeps all of these columns, because
+ * columns are append-only (see registration/Code.gs); new rows simply leave them blank.
+ *
+ * A Free Pass still needs a valid ID card AT THE DOOR (see the pass's `note`). That is a
+ * physical check at the entrance and does not need the number in advance.
+ */
 export const categories: Record<CategoryId, CategoryConfig> = {
   founder: {
     title: 'Startup Founder',
@@ -176,14 +209,15 @@ export const categories: Record<CategoryId, CategoryConfig> = {
     title: 'Public',
     hint: 'Attending on your own behalf',
     icon: '🌐',
-    showOrg: true,
+    // Asks nothing in step 2 since September 2026. The organisation and ID wording below
+    // is kept for a one-line restore: showOrg, showId, idType and showDesignation.
+    showOrg: false,
     orgLabel: 'Organisation / company name',
     orgPlaceholder: 'e.g. Your company — leave blank if none',
     orgRequired: false,
     idLabel: 'ID number',
     idPlaceholder: 'The number on the ID you will bring',
     idRequired: true,
-    idType: true,
     /*
      * NO `interest` — the "Your interest in Tier-2 Rising" question was removed from
      * the Public tab on the client's instruction (September 2026).
@@ -498,6 +532,22 @@ export function ticketById(id: string | undefined | null): Ticket | undefined {
  */
 export function asksStartup(t: Ticket, category: CategoryId | '' | undefined): boolean {
   return !!t.form.startup && category !== 'public'
+}
+
+/**
+ * Is the startup's NAME already known from step 2, so the pitch questions skip it?
+ *
+ * A founder's step-2 answer IS their startup's name ("Startup name"), so on the Investor
+ * Pitch Pass asking "Startup / idea name" again in step 3 is the same question twice — and
+ * once step 2 shrank to that single field in September 2026 the repeat was glaring. For a
+ * founder the startup name is taken from step 2. Every other category still gets asked,
+ * because their step-2 answer is the INCUBATOR'S name and the startup is a different thing.
+ *
+ * Both the form and the server validator read this, so they cannot disagree about whether
+ * a founder's submission has a startup name.
+ */
+export function startupNameFromOrg(category: CategoryId | '' | undefined): boolean {
+  return category === 'founder'
 }
 
 /** No money, no Razorpay, no order. The free pass is a registration and nothing else. */

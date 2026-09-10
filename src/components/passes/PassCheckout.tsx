@@ -25,6 +25,7 @@ import {
   isFreePass,
   categories,
   asksStartup,
+  startupNameFromOrg,
   idTypeOptions,
   interestOptions,
   workshopOptions,
@@ -348,21 +349,19 @@ export function PassCheckout({
       if (!v.category) e.category = 'Please pick one.'
       else {
         // Same rules as parseSubmission in @/lib/registration-input, and they have to
-        // stay the same: this copy exists only to answer faster and more kindly. Note
-        // orgRequired rather than showOrg — 'public' shows the field without demanding it.
+        // stay the same: this copy exists only to answer faster and more kindly. "Is it
+        // asked" and "is it required" are separate flags, so both are checked.
         const c = categories[v.category]
-        if (c.showOrg) {
-          if (c.orgRequired && !v.orgName.trim()) e.orgName = `${c.orgLabel} is needed.`
-          if (c.idRequired && !v.idNumber.trim()) e.idNumber = `${c.idLabel} is needed.`
-        }
-        if (c.idType && !v.idType) e.idType = 'Please choose an ID type.'
+        if (c.showOrg && c.orgRequired && !v.orgName.trim()) e.orgName = `${c.orgLabel} is needed.`
+        if (c.showId && c.idRequired && !v.idNumber.trim()) e.idNumber = `${c.idLabel} is needed.`
+        if (c.showId && c.idType && !v.idType) e.idType = 'Please choose an ID type.'
         if (c.interest && !v.interest) e.interest = 'Please pick one.'
       }
     }
     if (which === 'details') {
       if (ticket.form.workshop && !v.workshop) e.workshop = 'Please choose a session.'
       if (asksStartup(ticket, v.category)) {
-        if (!v.startupName.trim()) e.startupName = 'Startup name is needed.'
+        if (!startupNameFromOrg(v.category) && !v.startupName.trim()) e.startupName = 'Startup name is needed.'
         if (!v.stage) e.stage = 'Please pick a stage.'
         if (!v.sector.trim()) e.sector = 'Sector is needed.'
         if (!v.pitchOneLine.trim()) e.pitchOneLine = 'A one-line pitch is needed.'
@@ -392,7 +391,6 @@ export function PassCheckout({
   /** The flat payload both endpoints take. Nothing here is trusted server-side. */
   function payload(): Record<string, string> {
     const named = extras.filter((m) => m.name.trim() || m.role.trim())
-    const org = cfg?.showOrg
     const ws = !!ticket.form.workshop
     // Pass AND category — a public attendee on the Investor Pitch Pass sends no startup
     // fields and no extra members, whatever is left in state from an earlier choice.
@@ -404,21 +402,23 @@ export function PassCheckout({
       phone: v.phone ? `+91 ${v.phone.slice(0, 5)} ${v.phone.slice(5)}` : '',
       city: v.city,
       category: v.category,
-      // Only sent when the category actually has an organisation — otherwise a visitor
-      // who typed into the org box and then switched to 'public' would still submit it.
-      orgName: org ? v.orgName.trim() : '',
-      idNumber: org ? v.idNumber.trim() : '',
-      designation: org ? v.designation.trim() : '',
+      // Each sent only when the category asks it — otherwise a visitor who typed into a
+      // field and then switched category would still submit what they typed.
+      orgName: cfg?.showOrg ? v.orgName.trim() : '',
+      idNumber: cfg?.showId ? v.idNumber.trim() : '',
+      designation: cfg?.showDesignation ? v.designation.trim() : '',
       // Sent only where the category asks. Switching from 'public' to 'founder' after
       // answering these must not smuggle the old answers through — same reasoning as the
       // organisation block above.
-      idType: cfg?.idType ? v.idType : '',
+      idType: cfg?.showId && cfg.idType ? v.idType : '',
       interest: cfg?.interest ? v.interest : '',
       workshop: ws ? v.workshop : '',
       wantNetworking: ws && v.wantNetworking ? 'yes' : '',
       meetingType: ws && v.wantNetworking ? v.meetingType : '',
       meetingNote: ws && v.wantNetworking ? v.meetingNote.trim() : '',
-      startupName: su ? v.startupName.trim() : '',
+      // A founder was not asked twice: their step-2 "Startup name" is the startup. The
+      // server does the same substitution and does not trust this value for a founder.
+      startupName: su ? (startupNameFromOrg(v.category) ? v.orgName.trim() : v.startupName.trim()) : '',
       stage: su ? v.stage : '',
       sector: su ? v.sector.trim() : '',
       pitchOneLine: su ? v.pitchOneLine.trim() : '',
@@ -784,15 +784,21 @@ export function PassCheckout({
             </Field>
 
             {/*
-              Labels, placeholders and required-ness ALL come from the category — nothing
-              in this block is written per pass. That is what lets 'public' ask for an
-              optional organisation and a mandatory ID while a TBI member does the
-              opposite, with no branch here at all.
+              Which fields appear, their labels, placeholders and required-ness ALL come
+              from the category — nothing in this block is written per pass, and there is
+              no branch on a category id. Changing what step 2 asks is a change to
+              `categories` in @/content/tickets, never to this markup.
             */}
-            {cfg?.showOrg && (
+            {/*
+              Since September 2026 this is normally ONE field — the organisation's name —
+              and for 'public' it is nothing at all, in which case the block (and its
+              divider) is not drawn. A lone field spans both columns rather than sitting in
+              the left one with an empty cell beside it.
+            */}
+            {cfg && (cfg.showOrg || cfg.showId || cfg.showDesignation) && (
               <div className="grid gap-4 border-t border-ink/10 pt-5 sm:grid-cols-2">
                 {/* ID type first: it names what the number underneath it will be. */}
-                {cfg.idType && (
+                {cfg.showId && cfg.idType && (
                   <Field label="ID you’ll bring" required error={errors.idType}>
                     <Combobox
                       options={idTypeOptions}
@@ -803,38 +809,46 @@ export function PassCheckout({
                     />
                   </Field>
                 )}
-                <Field label={cfg.idLabel} required={cfg.idRequired} error={errors.idNumber}>
-                  <input
-                    type="text"
-                    placeholder={cfg.idPlaceholder}
-                    value={v.idNumber}
-                    onChange={(e) => set('idNumber', e.target.value)}
-                    className={cn(input, errors.idNumber && inputBad)}
-                  />
-                </Field>
-                <Field
-                  label={cfg.orgLabel}
-                  required={cfg.orgRequired}
-                  hint={cfg.orgRequired ? undefined : 'Optional'}
-                  error={errors.orgName}
-                >
-                  <input
-                    type="text"
-                    placeholder={cfg.orgPlaceholder}
-                    value={v.orgName}
-                    onChange={(e) => set('orgName', e.target.value)}
-                    className={cn(input, errors.orgName && inputBad)}
-                  />
-                </Field>
-                <Field label="Designation" hint="Optional">
-                  <input
-                    type="text"
-                    placeholder={cfg.roleHint}
-                    value={v.designation}
-                    onChange={(e) => set('designation', e.target.value)}
-                    className={input}
-                  />
-                </Field>
+                {cfg.showId && (
+                  <Field label={cfg.idLabel} required={cfg.idRequired} error={errors.idNumber}>
+                    <input
+                      type="text"
+                      placeholder={cfg.idPlaceholder}
+                      value={v.idNumber}
+                      onChange={(e) => set('idNumber', e.target.value)}
+                      className={cn(input, errors.idNumber && inputBad)}
+                    />
+                  </Field>
+                )}
+                {cfg.showOrg && (
+                  <div className={cn(!cfg.showId && !cfg.showDesignation && 'sm:col-span-2')}>
+                    <Field
+                      label={cfg.orgLabel}
+                      required={cfg.orgRequired}
+                      hint={cfg.orgRequired ? undefined : 'Optional'}
+                      error={errors.orgName}
+                    >
+                      <input
+                        type="text"
+                        placeholder={cfg.orgPlaceholder}
+                        value={v.orgName}
+                        onChange={(e) => set('orgName', e.target.value)}
+                        className={cn(input, errors.orgName && inputBad)}
+                      />
+                    </Field>
+                  </div>
+                )}
+                {cfg.showDesignation && (
+                  <Field label="Designation" hint="Optional">
+                    <input
+                      type="text"
+                      placeholder={cfg.roleHint}
+                      value={v.designation}
+                      onChange={(e) => set('designation', e.target.value)}
+                      className={input}
+                    />
+                  </Field>
+                )}
               </div>
             )}
 
@@ -936,16 +950,22 @@ export function PassCheckout({
 
             {ticket.form.startup && (
               <>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Startup / idea name" required error={errors.startupName}>
-                    <input
-                      type="text"
-                      placeholder="GreenCart"
-                      value={v.startupName}
-                      onChange={(e) => set('startupName', e.target.value)}
-                      className={cn(input, errors.startupName && inputBad)}
-                    />
-                  </Field>
+                {/* Two columns only when both fields are here: for a founder the name field is
+                    gone, and Stage alone in the left column would leave a blank cell beside it
+                    above the full-width fields that follow. */}
+                <div className={cn('grid gap-4', !startupNameFromOrg(v.category) && 'sm:grid-cols-2')}>
+                  {/* A founder gave this in step 2 as "Startup name" — see startupNameFromOrg. */}
+                  {!startupNameFromOrg(v.category) && (
+                    <Field label="Startup / idea name" required error={errors.startupName}>
+                      <input
+                        type="text"
+                        placeholder="GreenCart"
+                        value={v.startupName}
+                        onChange={(e) => set('startupName', e.target.value)}
+                        className={cn(input, errors.startupName && inputBad)}
+                      />
+                    </Field>
+                  )}
                   <Field label="Stage" required error={errors.stage}>
                     <Combobox
                       label="Stage"
@@ -1098,15 +1118,15 @@ export function PassCheckout({
               <Summary label="Email" value={v.email} />
               <Summary label="City" value={v.city} />
               <Summary label="Attending as" value={cfg?.title || '—'} />
-              {cfg?.idType && v.idType && (
+              {cfg?.showId && cfg.idType && v.idType && (
                 <Summary
                   label="ID you’ll bring"
                   value={idTypeOptions.find((o) => o.value === v.idType)?.label || v.idType}
                 />
               )}
-              {cfg?.showOrg && v.idNumber && <Summary label={cfg.idLabel} value={v.idNumber} />}
+              {cfg?.showId && v.idNumber && <Summary label={cfg.idLabel} value={v.idNumber} />}
               {cfg?.showOrg && v.orgName && <Summary label={cfg.orgLabel} value={v.orgName} />}
-              {cfg?.showOrg && v.designation && <Summary label="Designation" value={v.designation} />}
+              {cfg?.showDesignation && v.designation && <Summary label="Designation" value={v.designation} />}
               {cfg?.interest && v.interest && (
                 <Summary
                   label="Interest"
@@ -1125,7 +1145,8 @@ export function PassCheckout({
                   value={meetingTypeOptions.find((m) => m.value === v.meetingType)?.label || 'Yes'}
                 />
               )}
-              {asksStartup(ticket, v.category) && v.startupName && (
+              {/* A founder's startup is already listed above under "Startup name". */}
+              {asksStartup(ticket, v.category) && !startupNameFromOrg(v.category) && v.startupName && (
                 <Summary label="Startup" value={v.startupName} />
               )}
               {asksStartup(ticket, v.category) && v.stage && (
