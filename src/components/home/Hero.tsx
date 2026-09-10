@@ -111,15 +111,15 @@ export function Hero() {
           variants={container}
           initial="hidden"
           animate="show"
-          className="max-w-3xl bg-base/75 p-8 min-[400px]:p-[60px]"
+          className="w-fit max-w-5xl bg-base/75 p-8 min-[400px]:p-[60px]"
         >
           {/*
             PRESENTER CREDITS, as marks rather than as words, and they OPEN the panel.
 
             They were at the foot of it, under the tagline, which is the conventional place
-            for a credit and the wrong one here: these two are why the summit exists, and a
-            reader who has to get past the whole panel to find out who is behind it has
-            already decided whether to trust the page. They also used to be in the header —
+            for a credit and the wrong one here: the presenter and its partners are why a
+            reader should trust the summit, and a reader who has to get past the whole panel
+            to find out who is behind it has already decided whether to. They also used to be in the header —
             see the note in SiteNav.tsx — where they were 24px tall and squeezing the nav.
             One placement, at a size where the marks are recognisable, replaces both.
 
@@ -133,52 +133,85 @@ export function Hero() {
             this navy it is unreadable, which is why the header used to give it a white
             chip. See scripts/startupsingam-reverse.py.
 
-            SIZED TO A MATCHING CAP HEIGHT, NOT A MATCHING BOX. Namma Office is a 5.8:1
-            wordmark and Startup Singam is a 1.76:1 stacked mark, so equal heights would
-            have made the Tamil line look like the junior partner by a wide margin —
-            h-9/h-14 against h-14/h-20 is what lands their letterforms at the same optical
-            size.
+            NAMMA OFFICE AND STARTUP SINGAM ARE BALANCED BY PRESENCE, NOT BY CAP HEIGHT.
+            Matching letter size was the first attempt and the client's review caught it: a
+            5.8:1 wordmark at the same letter height as a 1.76:1 stacked mark takes more than
+            twice the footprint, so Namma Office read as the headline act and Startup Singam
+            as a footnote. The brief was "50% and 45%" — near-equal presence, Singam just
+            behind. That is why Startup Singam is by far the TALLEST mark here, and why that
+            is correct rather than something to tidy up.
 
-            THE PANEL IS THE CEILING. At sm the content box is 552px, and this row measures
-            327px of Namma Office plus a 48px gap plus a 141px Startup Singam column — 516,
-            with 36px to spare. That is why the labels step DOWN to 9px as the marks grow:
-            at 10px "IN ASSOCIATION WITH" is 153px, wider than the logo beneath it, and the
-            column would be sized by its caption instead of by the thing it captions. Going
-            larger than this needs the arithmetic redone, not a bigger number — though the
-            row does wrap rather than overflow if it is ever wrong.
+            THREE CREDITS, ONE ROW, AND THE PANEL HUGS THE ROW. This is where the arithmetic
+            lives; change a number here and re-run it.
 
-            The logos sit in a FIXED-HEIGHT row rather than following their own heights.
-            Two columns of different total height cannot be aligned at both ends: aligning
-            the bottoms throws the two labels onto different lines, and aligning the tops
-            does the reverse. Giving the row the height of the taller mark makes the columns
-            equal, so the labels share a line whatever either asset's proportions are.
+              Namma Office     286px  (49px tall, 5.84:1)
+              gap               40
+              Startup Singam   191px  (108px tall, 1.76:1)
+              gap               40
+              StartupTN        194px  (43px tall, 4.50:1)
+                               ─────
+                               750px   + 120px padding = an 870px panel
 
-            `items-start` INSIDE that row, with the Namma mark nudged down by an explicit
-            margin. Neither flex value alone lands it where it belongs:
+            THE PANEL IS `w-fit`, NOT A FIXED WIDTH. It was max-w-5xl, which made it 1024px
+            regardless of what was in it: once StartupTN joined, the logos only filled 824px
+            of that and the rest of the panel — everything to the right of the Tier-2 lockup
+            and the tagline — was a slab of empty navy over the footage. Fit-content sizes it
+            to its widest child, which is this row, so the panel is exactly as wide as the
+            partner strip and no wider. Resize a logo and the panel follows; nobody has to
+            remember to retune a max-width. max-w-5xl is kept as a ceiling only.
 
-              items-center  drops it 33px, centring the BOX. Too low — it opened a gap
-                            under "Presented by" while Startup Singam sat tight under its
-                            own label.
-              items-start   hangs it at 0. Too high — it floats above the mark beside it.
+            The sizes are 90% of what the client first approved (54 / 120 / 48), cut
+            uniformly so the relationships they signed off on — Namma / Singam at "50 and
+            45", StartupTN's letters a touch larger than Namma's — are unchanged. Do not trim
+            one mark on its own to win back width; that is how a partner strip turns, ten
+            rounds later, into three logos too small to recognise.
 
-            18px is where the two logos' INK centres agree, and that is the alignment the
-            eye actually judges. It is not the midpoint of either box: the Namma file spikes
-            a trident above the wordmark, so its letterforms centre at 70.8% of its height
-            rather than 50%, and the Startup Singam file carries slack at the bottom, so its
-            artwork centres at 47.1%. Aligning the boxes would have been wrong by 15px.
+            Two alternatives were rendered at true size and rejected:
+              the old panel width   StartupTN gets 180px and reads as the junior partner.
+              two tiers             Namma Office alone on a thin top row under Startup
+                                    Singam: the PRESENTER reads smallest, and the panel
+                                    grows 103px taller.
 
-              mt = 120 x 0.471 - 54 x 0.708 = 18.2   (sm)
-              mt =  72 x 0.471 - 32 x 0.708 = 11.2   (mobile)
+            SIZED BY LETTER HEIGHT, NOT BY BOX. "Looks small" means the letters look small.
+            Namma Office's caps render 27px tall at 49px (its trident eats the top of the
+            box). StartupTN at 43px renders 31px caps — a touch larger, on purpose, because
+            StartupTN is a much shorter word and would otherwise read as the lesser mark at
+            equal letter height.
 
-            Re-derive these if either logo's height changes; they are not round numbers and
-            they are not padding.
+            Below ~920px of viewport the row does not fit, and the panel narrows to the
+            space available while StartupTN wraps to a second line. That is the intended
+            failure mode: flex-wrap, not overflow, and not smaller marks.
 
-            `items-start` on each column is load-bearing, not tidiness. A flex column
-            stretches its children across the cross axis by default, and an <img> with
-            `w-auto` stretches with it — then `object-contain` letterboxes the artwork and
-            CENTRES it in a box as wide as the column. Namma Office is the widest thing in
-            its column so nothing showed; Startup Singam is narrower than its own label, so
-            its logo sat indented from the label above it.
+            THE LOGOS SIT IN A FIXED-HEIGHT ROW — the height of the tallest mark, Startup
+            Singam — so every column is the same height and the three labels share a line.
+
+            Inside that row each mark is `items-start` plus an explicit margin that lines up
+            its LETTERS with the centre of Startup Singam's artwork. Neither flex value does
+            it alone — `items-center` centres the box and `items-start` hangs it at the top,
+            and the eye judges neither. It judges the ink:
+
+              Namma Office  letters centre at 70.8% of its box (a trident spikes above them)
+              StartupTN     letters centre at 41.2% of its box (the rocket flames hang below)
+              Startup Singam artwork centres at 47.1% of its box (slack at the bottom)
+
+                          sm and up                             mobile
+              Namma     mt = 108 x 0.471 - 49 x 0.708 = 16.2    72 x 0.471 - 32 x 0.708 = 11.2
+              StartupTN mt = 108 x 0.471 - 43 x 0.412 = 33.2    72 x 0.471 - 32 x 0.412 = 20.7
+
+            They are not round numbers and they are not padding. Re-derive them if any of
+            the three heights changes.
+
+            `items-center` on each COLUMN is load-bearing too. A flex column stretches its
+            children across the cross axis by default, an <img> with `w-auto` stretches with
+            it, and `object-contain` then letterboxes the artwork and centres it in a box as
+            wide as the column — which indented Startup Singam from its own label. Any value
+            other than `stretch` stops that; `center` is the one that also centres each label
+            over its mark, as the client asked.
+
+            StartupTN uses the -reverse asset. It is navy type on a pale ground as supplied,
+            and on this panel it needs white letters and a white medallion behind the Tamil
+            Nadu seal — see scripts/startuptn-reverse.py for why the seal gets a medallion
+            rather than a knockout.
           */}
           <motion.div
             variants={item}
@@ -188,15 +221,15 @@ export function Hero() {
               <span className="whitespace-nowrap text-[8px] font-semibold uppercase leading-none tracking-[0.14em] text-surface sm:text-[9px] sm:tracking-[0.2em]">
                 Presented by
               </span>
-              <span className="flex h-[72px] items-start sm:h-[120px]">
-                <CreditLink name="NammaOffice" className="mt-[11px] sm:mt-[18px]">
+              <span className="flex h-[72px] items-start sm:h-[108px]">
+                <CreditLink name="NammaOffice" className="mt-[11px] sm:mt-[16px]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src="/logos/nammaoffice-v3.png"
                     alt="Namma Office"
                     width={900}
                     height={154}
-                    className="h-8 w-auto object-contain sm:h-[54px]"
+                    className="h-8 w-auto object-contain sm:h-[49px]"
                   />
                 </CreditLink>
               </span>
@@ -206,7 +239,7 @@ export function Hero() {
               <span className="whitespace-nowrap text-[8px] font-semibold uppercase leading-none tracking-[0.14em] text-surface sm:text-[9px] sm:tracking-[0.2em]">
                 In association with
               </span>
-              <span className="flex h-[72px] items-start sm:h-[120px]">
+              <span className="flex h-[72px] items-start sm:h-[108px]">
                 <CreditLink name="Startup Singam">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -214,7 +247,25 @@ export function Hero() {
                     alt="Startup Singam"
                     width={300}
                     height={170}
-                    className="h-[72px] w-auto object-contain sm:h-[120px]"
+                    className="h-[72px] w-auto object-contain sm:h-[108px]"
+                  />
+                </CreditLink>
+              </span>
+            </span>
+
+            <span className="flex flex-col items-center gap-3">
+              <span className="whitespace-nowrap text-[8px] font-semibold uppercase leading-none tracking-[0.14em] text-surface sm:text-[9px] sm:tracking-[0.2em]">
+                Ecosystem partner
+              </span>
+              <span className="flex h-[72px] items-start sm:h-[108px]">
+                <CreditLink name="StartupTN" className="mt-[21px] sm:mt-[33px]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/logos/startuptn-reverse-v1.png"
+                    alt="StartupTN"
+                    width={900}
+                    height={200}
+                    className="h-8 w-auto object-contain sm:h-[43px]"
                   />
                 </CreditLink>
               </span>
@@ -231,10 +282,10 @@ export function Hero() {
 
             Sized by WIDTH, not height. The asset is 600x386, and a height rule on a mark
             this irregular makes the wordmark grow and shrink unpredictably across
-            breakpoints; the width is what has to stay inside the panel's 552px of content
-            box at p-[60px]. 300px is a little over half of that — the reduction the client
-            asked for, and it leaves the partner marks above it room to be large enough to
-            recognise, which was the point of moving them here.
+            breakpoints. 300px was the reduction the client asked for, and it is held there
+            deliberately as the panel has grown around it: the panel widened to fit the
+            partner marks above, not to make room for a bigger event logo, and they declined
+            the option of shrinking this one to make the partners fit.
           */}
           <motion.h1 variants={item}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
