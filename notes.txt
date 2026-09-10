@@ -1,3 +1,5 @@
 git grep -i clarity $(git rev-list --all); echo "exit=$?"
 
 git log --follow --oneline -- src/components/shell/Analytics.tsx
+
+pm2 stop tier2rising && git pull && npm ci && npm run build && pm2 restart tier2rising --update-env

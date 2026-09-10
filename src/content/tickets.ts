@@ -94,7 +94,13 @@ export type CategoryConfig = {
    * ties the person at the door to the row in the sheet.
    */
   idType?: boolean
-  /** Ask "your interest in Tier-2 Rising", from interestOptions. 'public' only. */
+  /**
+   * Ask "your interest in Tier-2 Rising", from interestOptions.
+   *
+   * NO CATEGORY SETS THIS right now — it was switched off for 'public', its only user, in
+   * September 2026. Kept as a flag rather than deleted because every consumer is gated on
+   * it, so it is a one-line switch in either direction. See the note on `public` below.
+   */
   interest?: boolean
   /** Hint under the designation field. */
   roleHint: string
@@ -178,7 +184,20 @@ export const categories: Record<CategoryId, CategoryConfig> = {
     idPlaceholder: 'The number on the ID you will bring',
     idRequired: true,
     idType: true,
-    interest: true,
+    /*
+     * NO `interest` — the "Your interest in Tier-2 Rising" question was removed from
+     * the Public tab on the client's instruction (September 2026).
+     *
+     * Turned OFF rather than torn out, because every consumer is already gated on this
+     * one flag: the form, the review step, the server validator, the sheet row and all
+     * four email templates each check `cfg.interest` or a non-empty value, so leaving it
+     * unset removes the question end to end. Putting `interest: true` back restores it
+     * end to end too — this client has reversed form decisions before.
+     *
+     * The sheet keeps its "Interest" column (AF). Columns are append-only — see
+     * registration/Code.gs — so new rows simply leave it blank, and rows already written
+     * keep their answers.
+     */
     roleHint: 'e.g. Manager, Consultant, Student',
   },
 }

@@ -1,12 +1,70 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { site } from '@/content/site'
+import { partners } from '@/content/home'
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.1, delayChildren: 0.2 } } }
 const item = {
   hidden: { opacity: 0, y: 22 },
   show: { opacity: 1, y: 0, transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] } },
+}
+
+/*
+ * The partner's site, read from the Partners section's own list rather than written out
+ * again here. Two copies of a URL drift the first time one of them changes — and a credit
+ * that links somewhere different from the partner card further down the same page is the
+ * kind of thing a partner notices.
+ *
+ * No URL, no link: an unknown name renders the logo inert instead of guessing. Same rule
+ * as the Partners section — a dead or invented link is worse than none.
+ */
+function partnerUrl(name: string): string | undefined {
+  return partners.find((p) => p.name === name)?.url
+}
+
+/**
+ * A credit logo that goes to the partner's site when there is one, and is a plain image
+ * when there is not.
+ *
+ * The link wraps the MARK ONLY, not the "Presented by" caption above it: the caption is a
+ * label, not a destination, and a 120px-tall hit area around a 54px logo would make the
+ * blank band beneath Namma Office clickable too. `className` carries the optical-centring
+ * offset, so it moves onto whichever element is outermost.
+ */
+function CreditLink({
+  name,
+  className,
+  children,
+}: {
+  name: string
+  className?: string
+  children: ReactNode
+}) {
+  const href = partnerUrl(name)
+  if (!href) return <span className={className ? `block ${className}` : 'block'}>{children}</span>
+  return (
+    <a
+      href={href}
+      target="_blank"
+      // noopener stops the opened tab from reaching back through window.opener and
+      // navigating this one somewhere else.
+      rel="noreferrer noopener"
+      aria-label={`${name} (opens in a new tab)`}
+      className={[
+        'block transition-opacity duration-200 hover:opacity-80',
+        // ring-offset in the panel's own navy, so the focus ring floats off the mark
+        // instead of sitting in a hard band of the page's colour.
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 focus-visible:ring-offset-base',
+        className,
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
+      {children}
+    </a>
+  )
 }
 
 export function Hero() {
@@ -131,14 +189,16 @@ export function Hero() {
                 Presented by
               </span>
               <span className="flex h-[72px] items-start sm:h-[120px]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/logos/nammaoffice-v3.png"
-                  alt="Namma Office"
-                  width={900}
-                  height={154}
-                  className="mt-[11px] h-8 w-auto object-contain sm:mt-[18px] sm:h-[54px]"
-                />
+                <CreditLink name="NammaOffice" className="mt-[11px] sm:mt-[18px]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/logos/nammaoffice-v3.png"
+                    alt="Namma Office"
+                    width={900}
+                    height={154}
+                    className="h-8 w-auto object-contain sm:h-[54px]"
+                  />
+                </CreditLink>
               </span>
             </span>
 
@@ -147,14 +207,16 @@ export function Hero() {
                 In association with
               </span>
               <span className="flex h-[72px] items-start sm:h-[120px]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/logos/startupsingam-reverse-v1.png"
-                  alt="Startup Singam"
-                  width={300}
-                  height={170}
-                  className="h-[72px] w-auto object-contain sm:h-[120px]"
-                />
+                <CreditLink name="Startup Singam">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/logos/startupsingam-reverse-v1.png"
+                    alt="Startup Singam"
+                    width={300}
+                    height={170}
+                    className="h-[72px] w-auto object-contain sm:h-[120px]"
+                  />
+                </CreditLink>
               </span>
             </span>
           </motion.div>
