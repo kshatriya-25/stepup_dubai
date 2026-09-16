@@ -74,6 +74,68 @@ export const speakers: Speaker[] = [
 // `url` is optional: a partner with one becomes a link to their site, a partner
 // without one stays a plain card. Don't invent a URL to fill the gap — a dead or
 // guessed link is worse than no link.
+/*
+ * THE LAUNCH PHOTO, shown beside the hero panel.
+ *
+ * The summit was unveiled on stage at Aakam – Startup Connect, and the photograph is the
+ * proof: a government minister and the chairman of StartupTN holding the poster, with two
+ * district collectors present. That is a credential no amount of copy buys, which is why
+ * it sits in the hero rather than in a gallery further down.
+ *
+ * EVERY NAME AND TITLE HERE IS A REAL PERSON'S, several of them public officials. They are
+ * transcribed from the client's artwork and must be changed only against something the
+ * client has signed off — not corrected from memory, and not guessed at. Honorifics
+ * ("Thiru.", "I.A.S.", "Hon'ble") are part of the name as supplied and are kept verbatim.
+ */
+export type LaunchPerson = { name: string; role: string }
+export type LaunchGroup = { label: string; people: LaunchPerson[] }
+
+export const launch = {
+  /*
+   * Two widths, srcset'd. next.config.mjs turns the image optimizer OFF (we serve plain
+   * <img> from a small Node box), so nothing generates responsive sources for us — the
+   * alternative is shipping a 1600px file to a phone showing it 340px wide.
+   * scripts/assets/launch-aakam-source.jpg is the original; see scripts/launch-photo.py.
+   */
+  photo: {
+    src: '/happens/launch-aakam-1600.jpg',
+    srcSet: '/happens/launch-aakam-900.jpg 900w, /happens/launch-aakam-1600.jpg 1600w',
+    width: 1600,
+    height: 1067,
+    /*
+     * Describes the EVENT, not the pixels. This image is evidence that the launch happened
+     * and who was at it, so a reader who cannot see it needs the same fact the sighted
+     * reader takes from it — the caption below then adds the names.
+     */
+    alt: 'The Tier-2 Rising Startup Summit poster being unveiled on stage at Aakam – Startup Connect.',
+  },
+  caption: 'Officially launched at Aakam – Startup Connect',
+  date: '11 September 2026',
+  /*
+   * The same date for the badge burned into the corner of the photo on mobile, where the
+   * caption line has no room to carry it. Spelled out rather than sliced off `date`, for
+   * the reason site.datesCompact exists: deriving it with a string replace does not fail
+   * when the month changes, it silently does nothing.
+   */
+  dateShort: '11 Sep 2026',
+  groups: [
+    {
+      label: 'Unveiled by',
+      people: [
+        { name: 'Dr. K.G. Arunraj', role: 'Hon’ble Minister for Health and Family Welfare' },
+        { name: 'Mr. Singai G. Ramachandran', role: 'Chairman, StartupTN' },
+      ],
+    },
+    {
+      label: 'Along with',
+      people: [
+        { name: 'Thiru. K. Elambahavath, I.A.S.', role: 'District Collector, Salem' },
+        { name: 'Thiru. L. Madhubalan, I.A.S.', role: 'District Collector, Namakkal' },
+      ],
+    },
+  ] as LaunchGroup[],
+}
+
 export type Partner = { label: string; logo: string; name: string; url?: string }
 export const partners: Partner[] = [
   { label: 'Event Founder & Principal Organiser', logo: '/logos/nammaoffice-v3.png', name: 'NammaOffice', url: 'https://nammaoffice.com/' },
