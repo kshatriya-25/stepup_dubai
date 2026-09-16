@@ -95,7 +95,7 @@ export const launch = {
    * Two widths, srcset'd. next.config.mjs turns the image optimizer OFF (we serve plain
    * <img> from a small Node box), so nothing generates responsive sources for us — the
    * alternative is shipping a 1600px file to a phone showing it 340px wide.
-   * scripts/assets/launch-aakam-source.jpg is the original; see scripts/launch-photo.py.
+   * Both are decoded straight from the camera raw (2X1A7561.CR3) by scripts/launch-photo.py.
    */
   photo: {
     src: '/happens/launch-aakam-1600.jpg',
