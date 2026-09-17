@@ -16,12 +16,28 @@ is what retina tabs actually use, and at the 180px home-screen size, it holds up
 version of this script used a "T2 + arrow" mark cut from the logo for legibility at 16px;
 it was replaced because the client wants the logo itself.
 
-Files written straight into src/app/, where the App Router picks them up by NAME and emits
-the <link> tags itself — no metadata code needed:
+WHERE EACH FILE GOES, AND WHY THE .ICO IS NOT IN src/app/:
 
-    src/app/favicon.ico     16, 32, 48      browser tab (also what /favicon.ico requests hit)
-    src/app/icon.png        512             modern browsers, and the PWA/Android size
-    src/app/apple-icon.png  180             iOS home screen
+    src/app/icon0.png       32    the tab icon      linked as /icon0.png?<contenthash>
+    src/app/icon1.png       192   Android / PWA     linked as /icon1.png?<contenthash>
+    src/app/apple-icon.png  180   iOS home screen   linked as /apple-icon.png?<contenthash>
+    public/favicon.ico      16/32/48  fallback only — NOT linked from any page
+
+The App Router emits the <link> tags for src/app/ icons itself, and puts a content hash in
+the URL of every one of them EXCEPT favicon.ico — Next 14's metadata image loader says so in
+as many words ("No hash query for favicon.ico"). A favicon.ico in src/app/ is therefore
+linked as plain /favicon.ico forever, browsers keep favicons in a cache of their own that a
+normal refresh does not clear, and they prefer the .ico for tabs — so when the icon changed,
+the old one kept showing. That happened, which is why this is written down.
+
+Two PNG sizes rather than one 512: a single large icon worked, but it was a 119KB download
+for a 16-32px tab. The numbered-file convention gives each its own hashed <link> with its
+size, and the browser picks the one it needs.
+
+With the .ico moved to public/, the page links only the hashed PNGs: change the artwork, the
+hash changes, the URL changes, and every browser fetches the new icon on its next visit.
+public/favicon.ico still answers the browsers and crawlers that request /favicon.ico on
+their own without reading the page.
 
 Square, no rounded corners: iOS and Android apply their own mask, and a pre-rounded icon
 gets rounded twice. Nothing on this site is rounded anyway.
@@ -51,11 +67,12 @@ def main() -> None:
     logo = Image.open(LOGO).convert('RGBA')
     marks = logo.crop(logo.getchannel('A').getbbox())       # trim transparent margin
     ico = [tile(s, marks) for s in (16, 32, 48)]
-    ico[-1].save('src/app/favicon.ico', format='ICO', sizes=[(16, 16), (32, 32), (48, 48)],
+    ico[-1].save('public/favicon.ico', format='ICO', sizes=[(16, 16), (32, 32), (48, 48)],
                  append_images=ico[:-1])
-    tile(512, marks).convert('RGB').save('src/app/icon.png', optimize=True)
+    tile(32, marks).convert('RGB').save('src/app/icon0.png', optimize=True)
+    tile(192, marks).convert('RGB').save('src/app/icon1.png', optimize=True)
     tile(180, marks).convert('RGB').save('src/app/apple-icon.png', optimize=True)
-    print('wrote src/app/favicon.ico (16/32/48), src/app/icon.png (512), src/app/apple-icon.png (180)')
+    print('wrote src/app/icon0.png (32), icon1.png (192), apple-icon.png (180), public/favicon.ico (unlinked fallback)')
 
 
 if __name__ == '__main__':
