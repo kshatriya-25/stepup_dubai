@@ -131,8 +131,11 @@ function LaunchPhoto() {
           moves onto the photograph and the caption keeps the sentence — the same two facts,
           split where the space is. Deliberately NOT aria-hidden: on a phone this is the only
           place the date appears.
+
+          BOTTOM-RIGHT, not bottom-left: the unveiling graphic has an orange swoosh in its
+          bottom-left corner, and an orange badge on it would all but disappear.
         */}
-        <p className="absolute bottom-0 left-0 bg-accent px-2.5 py-1.5 font-sans text-[10px] font-bold uppercase leading-none tracking-[0.1em] text-accent-ink sm:hidden">
+        <p className="absolute bottom-0 right-0 bg-accent px-2.5 py-1.5 font-sans text-[10px] font-bold uppercase leading-none tracking-[0.1em] text-accent-ink sm:hidden">
           Unveiled {launch.dateShort}
         </p>
       </div>

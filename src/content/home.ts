@@ -95,19 +95,19 @@ export const launch = {
    * Two widths, srcset'd. next.config.mjs turns the image optimizer OFF (we serve plain
    * <img> from a small Node box), so nothing generates responsive sources for us — the
    * alternative is shipping a 1600px file to a phone showing it 340px wide.
-   * Both are decoded straight from the camera raw (2X1A7561.CR3) by scripts/launch-photo.py.
+   * Both are generated from the client's unveiling graphic by scripts/launch-photo.py.
    */
   photo: {
-    src: '/happens/launch-aakam-1600.jpg',
-    srcSet: '/happens/launch-aakam-900.jpg 900w, /happens/launch-aakam-1600.jpg 1600w',
+    src: '/happens/launch-unveiling-v2-1600.jpg',
+    srcSet: '/happens/launch-unveiling-v2-900.jpg 900w, /happens/launch-unveiling-v2-1600.jpg 1600w',
     width: 1600,
-    height: 1067,
+    height: 900,
     /*
      * Describes the EVENT, not the pixels. This image is evidence that the launch happened
      * and who was at it, so a reader who cannot see it needs the same fact the sighted
      * reader takes from it — the caption below then adds the names.
      */
-    alt: 'The Tier-2 Rising Startup Summit poster being unveiled on stage at Aakam – Startup Connect.',
+    alt: 'Tier2Rising – Startup Summit Unveiling: the summit poster being unveiled on stage at Aakam – Startup Connect.',
   },
   caption: 'Officially launched at Aakam – Startup Connect',
   date: '11 September 2026',
