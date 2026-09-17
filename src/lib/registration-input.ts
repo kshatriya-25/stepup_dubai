@@ -19,6 +19,8 @@ import { pricedTicketById } from '@/lib/pricing'
 import {
   ticketAccess,
   categories,
+  ASK_ATTENDING_AS,
+  NO_CATEGORY,
   asksStartup,
   startupNameFromOrg,
   idTypeOptions,
@@ -27,6 +29,8 @@ import {
   meetingTypeOptions,
   stageOptions,
   MAX_EXTRA_MEMBERS,
+  coFounderOptions,
+  coFounderSummary,
   type Ticket,
   type CategoryId,
 } from '@/content/tickets'
@@ -77,11 +81,13 @@ export function parseSubmission(raw: Record<string, unknown>): ParseResult {
    * until August 2026, and the next pass that needs restricting will rely on exactly this
    * line to stop a direct POST claiming a category the form never offered.
    */
-  const category = clean(raw.category, 20) as CategoryId
-  if (!ticket.form.categories.includes(category)) {
+  // While ASK_ATTENDING_AS is off the form never sends a category, and anything a stale tab
+  // or a crafted body sends is ignored — the registration records none.
+  const category = (ASK_ATTENDING_AS ? clean(raw.category, 20) : '') as CategoryId
+  if (ASK_ATTENDING_AS && !ticket.form.categories.includes(category)) {
     return { ok: false, error: 'Please pick how you are attending.' }
   }
-  const cfg = categories[category]
+  const cfg = ASK_ATTENDING_AS ? categories[category] : NO_CATEGORY
 
   /*
    * Every rule in this block comes from the CATEGORY rather than the pass, and "is it
@@ -154,6 +160,9 @@ export function parseSubmission(raw: Record<string, unknown>): ParseResult {
   let traction = ''
   let extraMembers = 0
   let extraMemberList = ''
+  let coFounder = ''
+  let coFounderName = ''
+  let coFounderPhone = ''
   /*
    * asksStartup, not ticket.form.startup: a member of the public on the Investor Pitch
    * Pass answers the public block instead. Checking the flag alone would reject them with
@@ -186,6 +195,30 @@ export function parseSubmission(raw: Record<string, unknown>): ParseResult {
     const claimed = Number.parseInt(clean(raw.extraMembers, 4) || '0', 10)
     extraMembers = Number.isFinite(claimed) ? Math.min(Math.max(claimed, 0), MAX_EXTRA_MEMBERS) : 0
     extraMemberList = clean(raw.extraMemberList, 600)
+
+    // The second seat — see coFounderOptions for the three answers and why each exists.
+    if (ticket.includesCoFounder) {
+      coFounder = clean(raw.coFounder, 12)
+      if (!oneOf(coFounder, coFounderOptions)) {
+        return { ok: false, error: 'Please tell us whether your co-founder is attending.' }
+      }
+      if (coFounder === 'attending') {
+        coFounderName = clean(raw.coFounderName, 120)
+        if (!coFounderName) return { ok: false, error: 'Your co-founder’s name is required.' }
+        const rawPhone = clean(raw.coFounderPhone, 40)
+        if (rawPhone) {
+          const ph = normalisePhone(rawPhone)
+          if (!ph) return { ok: false, error: 'Your co-founder’s mobile number looks wrong.' }
+          coFounderPhone = ph
+        }
+      }
+      // A solo founder cannot be charged for extra members while the second seat they
+      // paid for is empty. The form prevents it; this is the same rule for a direct POST.
+      if (coFounder === 'solo') {
+        extraMembers = 0
+        extraMemberList = ''
+      }
+    }
   }
 
   const reg: Registration = {
@@ -217,6 +250,9 @@ export function parseSubmission(raw: Record<string, unknown>): ParseResult {
     traction,
     extraMembers: String(extraMembers),
     extraMemberList,
+    coFounder,
+    coFounderName,
+    coFounderPhone,
     consent: 'yes',
   }
 
@@ -278,7 +314,18 @@ export function sheetRow(
     pitchDetail: reg.pitchDetail || '',
     traction: reg.traction || '',
     extraMembers: reg.extraMembers && reg.extraMembers !== '0' ? reg.extraMembers : '',
-    extraMemberList: reg.extraMemberList || '',
+    /*
+     * The co-founder goes at the head of the existing "Team Members" column rather than into
+     * a column of its own — the sheet already has the right place for "who is coming", and a
+     * new column would mean redeploying the Apps Script on both sheets. "Extra Members" (the
+     * column before) stays the count of PAID extras, which is what reconciliation needs.
+     */
+    extraMemberList: [
+      reg.coFounder ? `Co-founder: ${coFounderSummary(reg.coFounder, reg.coFounderName, reg.coFounderPhone)}` : '',
+      reg.extraMemberList || '',
+    ]
+      .filter(Boolean)
+      .join('; '),
     consent: reg.consent ? 'Yes' : '',
     updates: reg.updates || '',
   }

@@ -229,7 +229,7 @@ function TicketCard({ ticket, paymentEnabled }: { ticket: Ticket; paymentEnabled
           </div>
 
           {/* The second price is part of the offer, not a footnote — a three-person
-              startup is looking at ₹4,997, and finding that out at checkout is worse
+              startup is looking at ₹3,998, and finding that out at checkout is worse
               than reading it here. */}
           {ticket.extraMemberInr && (
             <div className="mt-3 w-full border-t border-dashed border-ink/15 pt-3">
@@ -237,7 +237,7 @@ function TicketCard({ ticket, paymentEnabled }: { ticket: Ticket; paymentEnabled
                 {formatInrRupees(ticket.extraMemberInr)}
               </div>
               <div className="mt-1 font-sans text-[9px] font-bold uppercase tracking-[0.14em] text-muted">
-                For each extra person
+                {ticket.includesCoFounder ? 'Each additional member' : 'For each extra person'}
               </div>
             </div>
           )}

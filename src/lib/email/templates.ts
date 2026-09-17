@@ -38,6 +38,8 @@ import {
   isFreePass,
   idTypeOptions,
   interestOptions,
+  coFounderSummary,
+  teamSize,
   FREE_PASS_STATUS,
   categories,
   workshopOptions,
@@ -106,6 +108,10 @@ export type Registration = {
   traction?: string
   extraMembers?: string
   extraMemberList?: string
+  /** The pass's second seat — see coFounderOptions in @/content/tickets. */
+  coFounder?: string
+  coFounderName?: string
+  coFounderPhone?: string
 }
 
 /** HTML-escape every interpolated value. Registrations are untrusted input. */
@@ -312,12 +318,8 @@ function passDetailRows(r: Registration, ticket?: Ticket | null): string {
       r.meetingType ? `Yes — ${labelOf(r.meetingType, meetingTypeOptions)}` : 'Yes',
     ])
   }
-  // Team size, not "extra members": the number people care about is how many are coming,
-  // and that is the extras plus the founder the pass already covers.
-  const extras = Number.parseInt(r.extraMembers || '0', 10)
-  if (Number.isFinite(extras) && extras > 0) {
-    rows.push(['Team', `${extras + 1} people${r.extraMemberList ? ` — ${r.extraMemberList}` : ''}`])
-  }
+  // Team size, not "extra members": the number people care about is how many are coming.
+  rows.push(...teamRows(r, { forRegistrant: true }))
 
   return rows
     .map(
@@ -328,8 +330,38 @@ function passDetailRows(r: Registration, ticket?: Ticket | null): string {
     .join('\n')
 }
 
+/**
+ * The Team rows for any email, as [label, value] pairs.
+ *
+ * On a pass with a co-founder seat, that seat gets its own row — the second person on the
+ * pass is who the desk and the bootcamp need to know about — and "Team" counts the two
+ * included seats plus paid extras (1 for a solo founder). For a registrant whose co-founder's
+ * name is still to come, the row says how to send it, so the reminder lives in the one
+ * email they are certain to keep.
+ *
+ * Elsewhere it is the old rule: a Team row only when there are extras, counting the
+ * registrant plus extras.
+ */
+function teamRows(r: Registration, opts: { forRegistrant: boolean }): [string, string][] {
+  const extras = Number.parseInt(r.extraMembers || '0', 10)
+  const n = Number.isFinite(extras) ? extras : 0
+  const rows: [string, string][] = []
+  if (r.coFounder) {
+    const who = coFounderSummary(r.coFounder, r.coFounderName, r.coFounderPhone)
+    rows.push([
+      'Co-founder',
+      r.coFounder === 'later' && opts.forRegistrant ? `${who} — reply to this email with their name` : who,
+    ])
+    const size = teamSize(r.coFounder, n)
+    rows.push(['Team', `${size} ${size === 1 ? 'person' : 'people'}${r.extraMemberList ? ` — also ${r.extraMemberList}` : ''}`])
+  } else if (n > 0) {
+    rows.push(['Team', `${n + 1} people${r.extraMemberList ? ` — ${r.extraMemberList}` : ''}`])
+  }
+  return rows
+}
+
 /** Same rows, as aligned plain text for the text/plain part. */
-function passDetailText(r: Registration, ticket?: Ticket | null): string[] {
+function passDetailText(r: Registration, ticket?: Ticket | null, forRegistrant = true): string[] {
   const out: string[] = []
   const add = (label: string, value: string) => out.push(`${label.padEnd(15)}${value}`)
   if (ticket) add('Pass', ticket.name)
@@ -343,8 +375,7 @@ function passDetailText(r: Registration, ticket?: Ticket | null): string[] {
   if (r.wantNetworking) {
     add('Networking', r.meetingType ? `Yes — ${labelOf(r.meetingType, meetingTypeOptions)}` : 'Yes')
   }
-  const extras = Number.parseInt(r.extraMembers || '0', 10)
-  if (Number.isFinite(extras) && extras > 0) add('Team', `${extras + 1} people`)
+  for (const [label, value] of teamRows(r, { forRegistrant })) add(label, value)
   return out
 }
 
@@ -394,6 +425,21 @@ function alertRow(label: string, value: string | undefined): string {
             <td width="140" style="padding:12px 12px 12px 0;border-top:1px solid #E4E8EE;font-size:10px;line-height:15px;font-weight:bold;color:#8B93A3;letter-spacing:1px;text-transform:uppercase;vertical-align:top;">${esc(label)}</td>
             <td style="padding:12px 0;border-top:1px solid #E4E8EE;font-size:13px;line-height:19px;color:#12305C;">${esc(value!.trim())}</td>
           </tr>`
+}
+
+/**
+ * The single-line row style the waitlist and paid confirmations share. Like confirmRow and
+ * alertRow it returns '' for an empty value — used for "Registered as", which is empty for
+ * every registration while ASK_ATTENDING_AS is off.
+ */
+function plainRow(label: string, value: string | undefined): string {
+  if (!(value || '').trim()) return ''
+  return `      <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">${esc(label)}</td><td style="padding:6px 0;font-size:14px;color:#3D4A5C;">${esc(value!.trim())}</td></tr>`
+}
+
+/** "Name · <startup or category> · City" without an empty middle when there is neither. */
+function joinDot(...parts: (string | undefined)[]): string {
+  return parts.filter((x) => (x || '').trim()).join(' · ')
 }
 
 /** Plain-text rows for the same fields, dropped when empty for the same reason. */
@@ -488,7 +534,7 @@ export function participantEmail(
     `Name           ${r.name}`,
     `Email          ${r.email}`,
     `Phone          ${r.phone}`,
-    `Attending as   ${r.registerAs}`,
+    ...(r.registerAs ? [`Attending as   ${r.registerAs}`] : []),
     `City           ${r.city}`,
     ...passDetailText(r, ticket),
     '',
@@ -504,7 +550,10 @@ export function participantEmail(
   // EXTRA_ROWS is markup we built, not user input, so it goes in before fillTokens —
   // which escapes, and would print the <tr> tags as visible text. Every value inside it
   // was passed through esc() by passDetailRows.
-  const html = REGISTRANT_CONFIRMATION_HTML.replace('{{EXTRA_ROWS}}', rows)
+  const html = REGISTRANT_CONFIRMATION_HTML.replace('{{EXTRA_ROWS}}', rows).replace(
+    '{{REGISTERED_AS_ROW}}',
+    plainRow('Registered as', r.registerAs),
+  )
   return {
     subject: fillTokens(REGISTRANT_SUBJECT, tokens, { escape: false }),
     text,
@@ -541,10 +590,7 @@ function organiserExtraRows(r: Registration): string {
   if (r.pitchOneLine) rows.push(['One-line pitch', r.pitchOneLine])
   if (r.pitchDetail) rows.push(['Problem & solution', r.pitchDetail])
   if (r.traction) rows.push(['Traction', r.traction])
-  const extras = Number.parseInt(r.extraMembers || '0', 10)
-  if (Number.isFinite(extras) && extras > 0) {
-    rows.push(['Team', `${extras + 1} people${r.extraMemberList ? ` — ${r.extraMemberList}` : ''}`])
-  }
+  rows.push(...teamRows(r, { forRegistrant: false }))
   if (!rows.length) return ''
   return rows.map(([l, v], i) => detailRow(l, v, { last: i === rows.length - 1 })).join('\n')
 }
@@ -576,7 +622,7 @@ export function organiserEmail(
    */
   if (ticket && isFreePass(ticket)) return freePassOrganiserEmail(r, ticket, at)
 
-  const subject = `Waitlist — ${ticket?.name || 'pass'} — ${r.name} · ${r.startupName || r.registerAs} · ${r.city}`
+  const subject = `Waitlist — ${ticket?.name || 'pass'} — ${joinDot(r.name, r.startupName || r.registerAs, r.city)}`
   const when = stamp(at)
 
   const body = `
@@ -602,7 +648,7 @@ export function organiserEmail(
 ${detailRow('Name', r.name)}
 ${detailRow('Email', r.email, { href: `mailto:${r.email}` })}
 ${detailRow('Phone', r.phone, { href: `tel:${r.phone.replace(/[^\d+]/g, '')}` })}
-${detailRow('Attending as', r.registerAs)}
+${r.registerAs ? detailRow('Attending as', r.registerAs) : ''}
 ${detailRow('City', r.city)}
 ${organiserExtraRows(r)}
               </table>
@@ -649,9 +695,9 @@ ${button('Reply to ' + firstName(r.name), `mailto:${r.email}?subject=${encodeURI
     `Name           ${r.name}`,
     `Email          ${r.email}`,
     `Phone          ${r.phone}`,
-    `Attending as   ${r.registerAs}`,
+    ...(r.registerAs ? [`Attending as   ${r.registerAs}`] : []),
     `City           ${r.city}`,
-    ...passDetailText(r, ticket),
+    ...passDetailText(r, ticket, false),
     '',
     `A confirmation has already gone out to ${r.email}.`,
     'This entry is also appended to the registrations sheet.',
@@ -664,7 +710,7 @@ ${button('Reply to ' + firstName(r.name), `mailto:${r.email}?subject=${encodeURI
     subject,
     text,
     html: shell({
-      preheader: `${r.name} · ${r.startupName || r.registerAs} · ${r.city} · ${r.email}`,
+      preheader: joinDot(r.name, r.startupName || r.registerAs, r.city, r.email),
       body,
       footerNote: 'Automated notification from the pass waitlist on the summit website.',
     }),
@@ -730,7 +776,7 @@ function freePassParticipantEmail(
       ['Email', r.email],
       ['Phone', r.phone],
       ['Pass', tokens.PASS],
-      ['Registered as', r.registerAs],
+      ...(r.registerAs ? ([['Registered as', r.registerAs]] as [string, string][]) : []),
       ['City', r.city],
       ...optionalTextRows(r, false),
       ...(r.interest
@@ -752,7 +798,8 @@ function freePassParticipantEmail(
     text,
     // Rows are markup, so they go in before fillTokens escapes.
     html: fillTokens(
-      FREE_PASS_CONFIRMATION_HTML.replace('{{ORG_ROW}}', confirmRow(orgLabelFor(r), r.orgName)).replace(
+      FREE_PASS_CONFIRMATION_HTML.replace('{{REGISTERED_AS_ROW}}', confirmRow('Registered as', r.registerAs))
+        .replace('{{ORG_ROW}}', confirmRow(orgLabelFor(r), r.orgName)).replace(
         '{{ID_ROW}}',
         confirmRow(idRowLabel(r), r.idNumber),
       ),
@@ -778,7 +825,7 @@ function freePassOrganiserEmail(
       ['Name', r.name],
       ['Email', r.email],
       ['Phone', r.phone],
-      ['Attending as', r.registerAs],
+      ...(r.registerAs ? ([['Attending as', r.registerAs]] as [string, string][]) : []),
       ['City', r.city],
       ...optionalTextRows(r, true),
       ...(r.interest
@@ -807,7 +854,8 @@ function freePassOrganiserEmail(
     subject: fillTokens(FREE_PASS_ALERT_SUBJECT, { ...tokens, SUBMITTED_AT: when }, { escape: false }),
     text,
     html: fillTokens(
-      FREE_PASS_ALERT_HTML.replace('{{ORG_ROW}}', alertRow(orgLabelFor(r), r.orgName))
+      FREE_PASS_ALERT_HTML.replace('{{REGISTERED_AS_ROW}}', alertRow('Attending as', r.registerAs))
+        .replace('{{ORG_ROW}}', alertRow(orgLabelFor(r), r.orgName))
         .replace('{{ID_ROW}}', alertRow(idRowLabel(r), r.idNumber))
         .replace('{{DESIGNATION_ROW}}', alertRow('Designation', r.designation))
         .replace('{{INTEREST_ROW}}', interestRow),
@@ -1054,7 +1102,9 @@ export function paidParticipantEmail(
   const withBanner = PAID_CONFIRMATION_HTML.replace(
     '{{TEST_BANNER}}',
     caveatBanner(pay.caveat),
-  ).replace('{{EXTRA_ROWS}}', passDetailRows(r, null))
+  )
+    .replace('{{EXTRA_ROWS}}', passDetailRows(r, null))
+    .replace('{{REGISTERED_AS_ROW}}', plainRow('Attending as', r.registerAs))
 
   /*
    * Spread the test-mode line in rather than emitting '' for it.
@@ -1092,7 +1142,7 @@ export function paidParticipantEmail(
     `Name           ${r.name}`,
     `Email          ${r.email}`,
     `Phone          ${r.phone}`,
-    `Attending as   ${r.registerAs}`,
+    ...(r.registerAs ? [`Attending as   ${r.registerAs}`] : []),
     `City           ${r.city}`,
     // The pass name is already in the receipt block above, so it is not repeated here.
     ...passDetailText(r, null),
@@ -1148,7 +1198,7 @@ ${detailRow('Method', pay.method || '—')}
 ${detailRow('Name', r.name)}
 ${detailRow('Email', r.email, { href: `mailto:${r.email}` })}
 ${detailRow('Phone', r.phone, { href: `tel:${r.phone.replace(/[^\d+]/g, '')}` })}
-${detailRow('Attending as', r.registerAs)}
+${r.registerAs ? detailRow('Attending as', r.registerAs) : ''}
 ${detailRow('City', r.city)}
 ${organiserExtraRows(r)}
               </table>
@@ -1182,9 +1232,9 @@ ${button('Reply to ' + firstName(r.name), `mailto:${r.email}?subject=${encodeURI
     `Name           ${r.name}`,
     `Email          ${r.email}`,
     `Phone          ${r.phone}`,
-    `Attending as   ${r.registerAs}`,
+    ...(r.registerAs ? [`Attending as   ${r.registerAs}`] : []),
     `City           ${r.city}`,
-    ...passDetailText(r, null),
+    ...passDetailText(r, null, false),
     '',
     `The receipt has gone to ${r.email}.`,
     '',
@@ -1237,7 +1287,7 @@ export function unfulfilledAlertEmail(
     ['Name', r.name],
     ['Email', r.email],
     ['Phone', r.phone],
-    ['Attending as', r.registerAs],
+    ...(r.registerAs ? ([['Attending as', r.registerAs]] as [string, string][]) : []),
     ['City', r.city],
     // Startup name is what makes an Investor Pitch payment identifiable when someone has
     // to reconcile this by hand against the sheet.

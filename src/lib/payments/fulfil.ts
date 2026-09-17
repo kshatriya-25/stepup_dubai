@@ -104,6 +104,9 @@ function forEmail(r: Registration): EmailRegistration {
     traction: r.traction,
     extraMembers: r.extraMembers,
     extraMemberList: r.extraMemberList,
+    coFounder: r.coFounder,
+    coFounderName: r.coFounderName,
+    coFounderPhone: r.coFounderPhone,
   }
 }
 
@@ -158,6 +161,13 @@ function paymentInfo(rec: PaymentRecord, paidAt: Date): PaymentInfo {
   }
 }
 
+/** Inverse of the order route's `coFounder` note: "status|name|phone" back into fields. */
+function unpackCoFounder(packed: string | undefined): Pick<Registration, 'coFounder' | 'coFounderName' | 'coFounderPhone'> {
+  if (!packed) return {}
+  const [coFounder = '', coFounderName = '', coFounderPhone = ''] = packed.split('|')
+  return { coFounder, coFounderName, coFounderPhone }
+}
+
 /** Reconstruct a registration from a Razorpay order's notes. The disaster-recovery path. */
 function registrationFromNotes(notes: Record<string, string>): Registration | null {
   const r: Registration = {
@@ -179,6 +189,9 @@ function registrationFromNotes(notes: Record<string, string>): Registration | nu
     startupName: notes.startupName || '',
     workshop: notes.workshop || '',
     extraMembers: notes.extraMembers || '0',
+    // "status|name|phone" — packed into one note because the notes are capped at 15 keys.
+    // See the order route. Orders created before September 2026 simply have no such note.
+    ...unpackCoFounder(notes.coFounder),
     // Falls back to a readable placeholder rather than an empty cell: a receipt saying
     // "Ticket —" is confusing, but a blank column in the sheet is worse to audit.
     ticketName: notes.ticketName || notes.ticketId || 'Ticket',

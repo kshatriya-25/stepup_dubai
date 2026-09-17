@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { Menu, X, ChevronDown, MapPin } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { cn } from '@/lib/cn'
@@ -139,7 +140,14 @@ export function SiteNav() {
       <div className="flex h-[72px] items-center justify-between px-4 sm:px-6 md:h-[85px] lg:px-8 xl:px-12">
         {/* Left: wordmark + venue chip + presented-by */}
         <div className="flex items-center gap-3">
-          <a href="#top" className="flex items-center gap-3">
+          {/*
+            HOME, not "#top". Every page has a `#top` — it is the <main> in the root layout —
+            so "#top" resolved against whatever page the reader was on: on a pass checkout
+            the logo only scrolled that page up, and there was no way home from it. "/" goes
+            to the homepage from anywhere, and on the homepage itself it still lands at the
+            top, because a Next navigation scrolls there.
+          */}
+          <Link href="/" className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {/* `-v2` is a cache-bust: the previous file misspelt RISING as "RASTING",
                 and /brand/ was served `immutable`, so reusing the name would have left
@@ -166,7 +174,7 @@ export function SiteNav() {
                 {site.venueArea}
               </span>
             </span>
-          </a>
+          </Link>
           {/*
             THE PARTNER CREDITS ARE NOT IN THIS BAR, and putting them back needs a reason
             better than "there is space".

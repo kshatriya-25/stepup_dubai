@@ -202,7 +202,18 @@ export async function POST(req: Request) {
       updates: reg.updates,
       ticketId: reg.ticketId,
       ticketName: reg.ticketName,
-      idType: reg.idType || '',
+      /*
+       * The co-founder seat, packed "status|name|phone" into ONE key because the list is
+       * full. It took the slot `idType` had: the ID-type question is switched off for every
+       * category since September 2026, so that note was empty on every new order — while
+       * the second seat is part of what this order is paying for, and losing it in a
+       * recovery would mean not knowing who the second person on the pass is.
+       * Unpacked by unpackCoFounder in @/lib/payments/fulfil.
+       */
+      // "|" is the separator, so any in a typed name is swapped out rather than splitting it.
+      coFounder: reg.coFounder
+        ? [reg.coFounder, reg.coFounderName, reg.coFounderPhone].map((x) => (x || '').replace(/\|/g, '/')).join('|')
+        : '',
     },
     idempotencyKey,
   })

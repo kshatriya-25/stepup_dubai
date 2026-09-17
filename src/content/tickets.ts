@@ -119,6 +119,44 @@ export type CategoryConfig = {
   roleHint: string
 }
 
+/**
+ * THE "I'M ATTENDING AS" STEP IS OFF, for every pass (September 2026, client's instruction).
+ *
+ * With it off the checkout goes straight from the contact details to the pass's own
+ * questions (or to review): no category picker, and so no organisation-name field either,
+ * because every label and rule in that field came from the category.
+ *
+ * Switched off rather than torn out — `categories` below, the step's markup in PassCheckout
+ * and the server's handling are all intact, so setting this back to `true` restores the step
+ * end to end. What changes while it is off:
+ *
+ *   - the server accepts a submission with no category and records none (NO_CATEGORY);
+ *   - the sheet's "Register As" and organisation columns stay blank for new rows;
+ *   - every "Registered as / Attending as" row in the emails is left out rather than
+ *     printed empty;
+ *   - on the Investor Pitch Pass everyone answers the startup questions, including the
+ *     startup name (a founder used to give that in step 2).
+ */
+export const ASK_ATTENDING_AS = false
+
+/**
+ * The category a registration has when the step is not asked: asks nothing, titles nothing.
+ * Lets every consumer keep reading `cfg.showOrg` etc. without a null check.
+ */
+export const NO_CATEGORY: CategoryConfig = {
+  title: '',
+  hint: '',
+  icon: '',
+  showOrg: false,
+  orgLabel: '',
+  orgPlaceholder: '',
+  orgRequired: false,
+  idLabel: '',
+  idPlaceholder: '',
+  idRequired: false,
+  roleHint: '',
+}
+
 /*
  * STEP 2 ASKS ONE THING PER CATEGORY: THE ORGANISATION'S NAME. (September 2026, on the
  * client's instruction, for every pass.)
@@ -257,10 +295,16 @@ export type Ticket = {
   blurb: string
   /** Whole rupees. Converted to paise server-side; never a float in maths. 0 = free. */
   priceInr: number
-  /** "Per Person" / "For One Member (Founder)" — printed under the price. */
+  /** "Per Person" / "Founder + Co-founder" — printed under the price. */
   unit: string
   /** Per-head price for additional people from the same startup. Pitch pass only. */
   extraMemberInr?: number
+  /**
+   * The pass admits the founder AND a co-founder at its base price, and the form asks what
+   * the second seat is doing — see coFounderOptions. Extra members (extraMemberInr) are then
+   * charged beyond those two. Investor Pitch Pass only.
+   */
+  includesCoFounder?: boolean
   /*
    * THERE IS NO `cta` FIELD, and there must not be one.
    *
@@ -383,8 +427,9 @@ export const tickets: Ticket[] = [
     blurb:
       'The full founder track — pitch bootcamp, focused workshops and data scrutiny, then connect with investors and a closed-room one-on-one pitch for eligible startups. The best selected startup carries the Golden Pass to Startup Singam Season 3.',
     priceInr: 2999,
-    unit: 'For One Member (Founder)',
+    unit: 'Founder + Co-founder',
     extraMemberInr: 999,
+    includesCoFounder: true,
     emphasis: 'solid',
     accent: 'gold',
     badge: 'By Selection',
@@ -401,7 +446,7 @@ export const tickets: Ticket[] = [
       { label: 'Golden Pass — Startup Singam S3', detail: 'For the best selected startup' },
     ],
     excludes: '',
-    note: 'The standalone workshop session is not part of this pass — the pitch bootcamp and its focused workshops run in its place. ₹2,999 covers one member (the founder) — ₹999 for each extra person from the startup.',
+    note: 'The standalone workshop session is not part of this pass — the pitch bootcamp and its focused workshops run in its place. ₹2,999 covers two — the founder and a co-founder — and ₹999 for each additional team member.',
     form: { categories: ALL_CATEGORIES, startup: true },
   },
 ]
@@ -467,6 +512,49 @@ export const stageOptions = [
   { value: 'early', label: 'Early revenue' },
   { value: 'scaling', label: 'Scaling' },
 ] as const
+
+/*
+ * THE CO-FOUNDER SEAT — what a pass with `includesCoFounder` asks about its second seat.
+ *
+ * The pass is sold for two, but a co-founder is the likeliest person on the form to be
+ * unavailable, undecided, or not to exist. A single "co-founder name *" field would force
+ * every one of those founders to invent a name or abandon the checkout, so the form asks
+ * WHAT the seat is doing first, and only asks for a name when there is one to give:
+ *
+ *   attending  name now (required), mobile optional
+ *   later      the seat is held; they send the name by replying to the confirmation email
+ *   solo       a solo founder, or the co-founder cannot come
+ *
+ * THE PRICE DOES NOT CHANGE WITH THE ANSWER, and the form says so where the choice is made.
+ * A pass that quietly cost the same for one person as for two would read as a trap the
+ * moment someone noticed.
+ *
+ * SOLO BLOCKS PAID EXTRAS — form and server alike. Otherwise a solo founder bringing a
+ * teammate pays ₹999 while the second seat they already paid for sits empty. The form points
+ * them at "attending" instead; the server zeroes extras on a solo submission.
+ *
+ * Values are stored as slugs; coFounderSummary() is the one human rendering of them, used
+ * by the review step, the sheet's Team Members column and every email.
+ */
+export const coFounderOptions = [
+  { value: 'attending', label: 'Attending with me', hint: 'Add their name now' },
+  { value: 'later', label: 'Name to follow', hint: 'We’ll hold their seat' },
+  { value: 'solo', label: 'Just me', hint: 'Solo founder, or they can’t make it' },
+] as const
+export type CoFounderStatus = (typeof coFounderOptions)[number]['value']
+
+/** People on the pass: 1 for a solo founder, otherwise the two included seats plus extras. */
+export function teamSize(status: string | undefined, extras: number): number {
+  return status === 'solo' ? 1 : 2 + Math.max(0, extras)
+}
+
+/** "Arun Kumar · +91 98765 43210" / "Name to follow" / "Not attending". Empty if never asked. */
+export function coFounderSummary(status: string | undefined, name?: string, phone?: string): string {
+  if (status === 'attending') return [name?.trim(), phone?.trim()].filter(Boolean).join(' · ')
+  if (status === 'later') return 'Name to follow'
+  if (status === 'solo') return 'Not attending'
+  return ''
+}
 
 /** Cap on chargeable extra team members, so one form cannot invoice for a coachload. */
 export const MAX_EXTRA_MEMBERS = 5

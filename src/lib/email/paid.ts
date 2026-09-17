@@ -91,7 +91,7 @@ export const PAID_CONFIRMATION_HTML = `<!DOCTYPE html><html lang="en"><head><met
       <tr><td width="130" style="padding:6px 0;font-size:14px;color:#7A8798;">Name</td><td style="padding:6px 0;font-size:14px;color:#3D4A5C;">{{NAME}}</td></tr>
       <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Email</td><td style="padding:6px 0;font-size:14px;color:#3D4A5C;">{{EMAIL}}</td></tr>
       <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Phone</td><td style="padding:6px 0;font-size:14px;color:#3D4A5C;">{{PHONE}}</td></tr>
-      <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Attending as</td><td style="padding:6px 0;font-size:14px;color:#3D4A5C;">{{REGISTERED_AS}}</td></tr>
+{{REGISTERED_AS_ROW}}
       <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">City</td><td style="padding:6px 0;font-size:14px;color:#3D4A5C;">{{CITY}}</td></tr>
 {{EXTRA_ROWS}}
     </table>

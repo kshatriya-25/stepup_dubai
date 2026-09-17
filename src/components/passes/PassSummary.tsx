@@ -69,8 +69,11 @@ export function PassSummary({ ticket, extraCount }: { ticket: Ticket; extraCount
             <p className="mt-1 text-right font-sans text-[10px] text-surface/60">{ticket.unit}</p>
             {ticket.extraMemberInr && (
               <p className="mt-3 border-t border-surface/15 pt-3 text-xs leading-relaxed text-surface/70">
-                {formatInrRupees(ticket.extraMemberInr)} for each extra person from your startup — add them in
-                step&nbsp;3 and this total updates.
+                {/* No step number: which step holds the team section depends on which steps
+                    the pass asks, and "step 3" went stale the day one was removed. */}
+                {ticket.includesCoFounder
+                  ? `Covers you and a co-founder. ${formatInrRupees(ticket.extraMemberInr)} for each additional team member — add them with your pitch details and this total updates.`
+                  : `${formatInrRupees(ticket.extraMemberInr)} for each extra person from your startup — add them with your details and this total updates.`}
               </p>
             )}
           </>

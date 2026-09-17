@@ -57,7 +57,7 @@ export const site = {
   // pointed at #register, the free waitlist form, which no longer exists: registering
   // now means picking one of the four passes, so the CTA lands on the pass ladder and
   // the form there collects the details the waitlist used to.
-  register: '#tickets',
+  register: '/#tickets',
   // Public contact details shown on the site. Separate from the transactional sender
   // (MAIL_FROM / MAIL_REPLY_TO in .env) that the registration emails go out as.
   contactEmail: 'tier2rising@nammaoffice.com',
@@ -121,27 +121,40 @@ export type NavItem = { label: string; href: string; children?: { label: string;
  *   #vision  #story  #zones  #whatgoeson  #partners  #tickets
  */
 export const exploreLinks: { label: string; href: string }[] = [
-  { label: 'Our Vision', href: '#vision' },
-  { label: 'Growth Zones', href: '#zones' },
-  { label: 'Key Initiatives', href: '#whatgoeson' },
-  { label: 'Tickets', href: '#tickets' },
-  { label: 'Partners', href: '#partners' },
+  { label: 'Our Vision', href: '/#vision' },
+  { label: 'Growth Zones', href: '/#zones' },
+  { label: 'Key Initiatives', href: '/#whatgoeson' },
+  { label: 'Tickets', href: '/#tickets' },
+  { label: 'Partners', href: '/#partners' },
   // NOTE: there is no dedicated "Who Attends" section yet. Growth Zones is the closest
   // real destination — it is the part of the page that names who is actually in the
   // room (scheme officers, investors, bank credit heads). Repoint this the moment a
   // proper section exists.
-  { label: 'Who Attends', href: '#zones' },
+  { label: 'Who Attends', href: '/#zones' },
 ]
 
+/*
+ * SECTION LINKS ARE "/#section", NOT "#section" — here and in exploreLinks above.
+ *
+ * The header and footer render on every page, but these sections exist only on the
+ * homepage. A bare "#tickets" resolves against the CURRENT page, so from a pass checkout
+ * every one of these links found nothing and did nothing. "/#tickets" names the homepage:
+ * from another page it loads home and lands on the section; on the homepage itself the
+ * browser sees the same page with a new fragment and scrolls in place, with no reload.
+ *
+ * Plain anchors on purpose, not next/link. A cross-page hash navigation through the client
+ * router can land before the section below it has rendered and stop short; a normal page
+ * load scrolls reliably, and it only happens when leaving a checkout.
+ */
 export const nav: NavItem[] = [
   // The parent still navigates to #story ("Why We Built the Room") on click. The
   // children only appear on hover, so adding them must not — and does not — change
   // what clicking About does.
-  { label: 'About', href: '#story', children: exploreLinks },
-  { label: 'Programme', href: '#zones' },
-  { label: 'Startups', href: '#whatgoeson' },
-  { label: 'Tickets', href: '#tickets' },
-  { label: 'Partners', href: '#partners' },
+  { label: 'About', href: '/#story', children: exploreLinks },
+  { label: 'Programme', href: '/#zones' },
+  { label: 'Startups', href: '/#whatgoeson' },
+  { label: 'Tickets', href: '/#tickets' },
+  { label: 'Partners', href: '/#partners' },
 ]
 
 /*

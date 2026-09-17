@@ -14,6 +14,9 @@ import {
   Building2,
   Landmark,
   Globe,
+  Users,
+  Clock,
+  User,
   type LucideIcon,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -25,6 +28,7 @@ import {
   isFreePass,
   categories,
   asksStartup,
+  ASK_ATTENDING_AS,
   startupNameFromOrg,
   idTypeOptions,
   interestOptions,
@@ -32,6 +36,8 @@ import {
   meetingTypeOptions,
   stageOptions,
   MAX_EXTRA_MEMBERS,
+  coFounderOptions,
+  teamSize,
   type Ticket,
   type CategoryId,
 } from '@/content/tickets'
@@ -119,7 +125,8 @@ const STEP_TITLE: Record<StepId, string> = {
  * form is three steps rather than four. See asksStartup() in @/content/tickets.
  */
 function stepsFor(ticket: Ticket, category: CategoryId | ''): StepId[] {
-  const s: StepId[] = ['you', 'about']
+  // 'about' is the "I'm attending as" step — off while ASK_ATTENDING_AS is false.
+  const s: StepId[] = ASK_ATTENDING_AS ? ['you', 'about'] : ['you']
   if (ticket.form.workshop || asksStartup(ticket, category)) s.push('details')
   s.push('review')
   return s
@@ -175,7 +182,9 @@ const CATEGORY_ICON: Record<CategoryId, LucideIcon> = {
  *    where site data is blocked — not returns null, throws. An unguarded read here would
  *    take the whole form down for those visitors, which is far worse than losing a draft.
  */
-const DRAFT_KEY_PREFIX = 't2r:pass-draft:v1:'
+// v2 since the "I'm attending as" step was switched off: a v1 draft carries a category and
+// organisation that no longer have a field, so v1 drafts are ignored rather than restored.
+const DRAFT_KEY_PREFIX = 't2r:pass-draft:v2:'
 const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
 type DraftShape = {
@@ -284,11 +293,52 @@ export function PassCheckout({
     pitchOneLine: '',
     pitchDetail: '',
     traction: '',
+    // The pass's second seat — see coFounderOptions. Only asked where includesCoFounder.
+    coFounder: '',
+    coFounderName: '',
+    coFounderPhone: '',
     consent: false,
     updates: true,
   })
   const [extras, setExtras] = useState<ExtraMember[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  /*
+   * THE DRAFT: what they typed survives a refresh, a Back-then-Forward, or an accidentally
+   * closed tab. The rules live on readDraft/writeDraft above; this is only the wiring.
+   *
+   * RESTORED AFTER MOUNT, NOT IN useState's INITIALISER. The page is server-rendered, and
+   * the server has no localStorage — reading it during the first render would make the
+   * client's HTML differ from the server's and React would throw a hydration error. So the
+   * form paints empty for one frame and fills in.
+   *
+   * `restored` GATES THE SAVE. Without it the save effect runs on that first empty render
+   * and overwrites the draft with blanks before the restore has had a chance to read it —
+   * the most likely way for this feature to silently do nothing.
+   */
+  const [restored, setRestored] = useState(false)
+  useEffect(() => {
+    const d = readDraft(ticket.id)
+    if (d) {
+      setV((cur) => {
+        const next = { ...cur }
+        // Only fields this form still has, and only with the type it expects — a draft is
+        // storage the browser hands back, not something to trust shape-wise.
+        for (const [k, val] of Object.entries(d.v || {})) {
+          if (k === 'consent') continue // never restored — see rule 2 above
+          if (k in next && typeof val === typeof next[k as keyof typeof next]) {
+            ;(next as Record<string, unknown>)[k] = val
+          }
+        }
+        return next
+      })
+      if (Array.isArray(d.extras)) {
+        setExtras(d.extras.filter((m) => m && typeof m.name === 'string' && typeof m.role === 'string'))
+      }
+      if (Number.isInteger(d.stepIndex) && d.stepIndex > 0) setStepIndex(d.stepIndex)
+    }
+    setRestored(true)
+  }, [ticket.id])
 
   /*
    * The step list can SHRINK under the reader.
@@ -310,9 +360,17 @@ export function PassCheckout({
 
   // Report upward whenever the count moves. An effect rather than a call inside each
   // handler, so a restored draft and a removed row are covered by the same line.
+  /*
+   * Extras that are actually CHARGED. A solo founder cannot add paid members while the
+   * pass's second seat is empty (see coFounderOptions), so their extras count as zero —
+   * kept in state rather than discarded, so switching back to "Attending with me" does not
+   * throw away names someone already typed. The server applies the same rule.
+   */
+  const chargedExtras = ticket.includesCoFounder && v.coFounder === 'solo' ? 0 : extras.length
+
   useEffect(() => {
-    onExtrasChange?.(extras.length)
-  }, [extras.length, onExtrasChange])
+    onExtrasChange?.(chargedExtras)
+  }, [chargedExtras, onExtrasChange])
 
   const set = <K extends keyof typeof v>(key: K, value: (typeof v)[K]) => {
     setV((s) => ({ ...s, [key]: value }))
@@ -321,8 +379,23 @@ export function PassCheckout({
 
   const cfg = v.category ? categories[v.category] : null
   const paying = mode === 'pay'
-  const totalInr = ticket.priceInr + (ticket.extraMemberInr ? extras.length * ticket.extraMemberInr : 0)
+  const totalInr = ticket.priceInr + (ticket.extraMemberInr ? chargedExtras * ticket.extraMemberInr : 0)
   const amountLabel = isFreePass(ticket) ? 'Free' : formatInrRupees(totalInr)
+
+  /*
+   * Save on every change once restored; clear once the registration is done, so a finished
+   * visitor who refreshes gets a clean form rather than the one they just submitted.
+   * Consent is stripped here too, so it never reaches storage at all.
+   */
+  useEffect(() => {
+    if (!restored) return
+    if (status === 'done') {
+      clearDraft(ticket.id)
+      return
+    }
+    const { consent: _consent, ...rest } = v
+    writeDraft(ticket.id, { stepIndex: safeIndex, v: rest, extras })
+  }, [restored, status, v, extras, safeIndex, ticket.id])
 
   useEffect(() => {
     if (status !== 'confirming') return
@@ -366,6 +439,16 @@ export function PassCheckout({
         if (!v.sector.trim()) e.sector = 'Sector is needed.'
         if (!v.pitchOneLine.trim()) e.pitchOneLine = 'A one-line pitch is needed.'
         if (!v.pitchDetail.trim()) e.pitchDetail = 'Please describe the problem and solution.'
+        if (ticket.includesCoFounder) {
+          if (!v.coFounder) e.coFounder = 'Please choose one.'
+          if (v.coFounder === 'attending') {
+            if (!v.coFounderName.trim()) e.coFounderName = 'Their name is needed.'
+            // Optional — but if it is given it must be a real number, not half of one.
+            if (v.coFounderPhone && !/^[6-9]\d{9}$/.test(v.coFounderPhone)) {
+              e.coFounderPhone = 'Enter a 10-digit mobile number, or leave it blank.'
+            }
+          }
+        }
       }
     }
     if (which === 'review') {
@@ -425,8 +508,17 @@ export function PassCheckout({
       pitchDetail: su ? v.pitchDetail.trim() : '',
       traction: su ? v.traction.trim() : '',
       // The COUNT is what the server prices from; the list is for the organiser.
-      extraMembers: su ? String(named.length) : '0',
-      extraMemberList: named.map((m) => `${m.name.trim()}${m.role.trim() ? ` (${m.role.trim()})` : ''}`).join('; '),
+      extraMembers: su && chargedExtras > 0 ? String(named.length) : '0',
+      extraMemberList:
+        su && chargedExtras > 0
+          ? named.map((m) => `${m.name.trim()}${m.role.trim() ? ` (${m.role.trim()})` : ''}`).join('; ')
+          : '',
+      coFounder: su && ticket.includesCoFounder ? v.coFounder : '',
+      coFounderName: su && v.coFounder === 'attending' ? v.coFounderName.trim() : '',
+      coFounderPhone:
+        su && v.coFounder === 'attending' && v.coFounderPhone
+          ? `+91 ${v.coFounderPhone.slice(0, 5)} ${v.coFounderPhone.slice(5)}`
+          : '',
       consent: 'yes',
       updates: v.updates ? 'yes' : 'no',
     }
@@ -1024,82 +1116,210 @@ export function PassCheckout({
                   />
                 </Field>
 
-                {/* Extra members are chargeable, so the running total has to be visible as
-                    they are added — not revealed at the payment step. */}
+                {/*
+                  YOUR TEAM. On a pass with a co-founder seat it opens with what that seat is
+                  doing — asked as a choice, not as a mandatory name field, because the
+                  co-founder is the person on this form most likely to be unavailable,
+                  undecided, or not to exist. See coFounderOptions for the three answers.
+
+                  Extra members are chargeable, so the running total stays visible as they are
+                  added — not revealed at the payment step.
+                */}
                 {ticket.extraMemberInr && (
-                  <div className="border-t border-ink/10 pt-5">
-                    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                      <span className="font-sans text-sm font-semibold text-ink">Bringing anyone else?</span>
-                      <span className="text-xs text-muted">
-                        You’re covered by the pass · {formatInrRupees(ticket.extraMemberInr)} each after that
-                      </span>
-                    </div>
-
-                    {extras.map((m, i) => (
-                      <div key={i} className="mt-3 border border-ink/15 bg-foam p-3">
-                        <div className="flex items-center justify-between">
-                          <span className="font-sans text-xs font-semibold text-accent">
-                            Member {i + 2} · +{formatInrRupees(ticket.extraMemberInr!)}
+                  <div className="flex flex-col gap-4 border-t border-ink/10 pt-5">
+                    {ticket.includesCoFounder && (
+                      <>
+                        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                          <span className="font-sans text-sm font-semibold text-ink">Your team</span>
+                          <span className="text-xs text-muted">
+                            {formatInrRupees(ticket.priceInr)} covers you and a co-founder
                           </span>
-                          <button
-                            type="button"
-                            aria-label={`Remove member ${i + 2}`}
-                            onClick={() => setExtras((xs) => xs.filter((_, j) => j !== i))}
-                            className="text-muted transition-colors hover:text-accent"
-                          >
-                            <Trash2 size={15} />
-                          </button>
                         </div>
-                        <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                          <input
-                            type="text"
-                            placeholder="Their name"
-                            value={m.name}
-                            onChange={(e) =>
-                              setExtras((xs) => xs.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))
-                            }
-                            className={input}
-                          />
-                          <input
-                            type="text"
-                            placeholder="Their role"
-                            value={m.role}
-                            onChange={(e) =>
-                              setExtras((xs) => xs.map((x, j) => (j === i ? { ...x, role: e.target.value } : x)))
-                            }
-                            className={input}
-                          />
-                        </div>
-                      </div>
-                    ))}
 
-                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                      {extras.length < MAX_EXTRA_MEMBERS ? (
+                        <Field label="Is your co-founder attending?" required error={errors.coFounder}>
+                          <div className="grid gap-2 sm:grid-cols-3">
+                            {coFounderOptions.map((o) => {
+                              const on = v.coFounder === o.value
+                              const Icon = o.value === 'attending' ? Users : o.value === 'later' ? Clock : User
+                              return (
+                                <button
+                                  key={o.value}
+                                  type="button"
+                                  aria-pressed={on}
+                                  onClick={() => set('coFounder', o.value)}
+                                  className={cn(
+                                    'flex items-start gap-3 border p-3 text-left transition-colors',
+                                    on
+                                      ? 'border-accent bg-accent/[0.06]'
+                                      : 'border-ink/15 bg-foam hover:border-ink/30 hover:bg-surface',
+                                  )}
+                                >
+                                  <Icon
+                                    size={18}
+                                    strokeWidth={1.75}
+                                    className={cn('mt-0.5 shrink-0', on ? 'text-accent' : 'text-muted')}
+                                  />
+                                  <span className="min-w-0">
+                                    <span className="block text-sm font-semibold leading-tight text-ink">{o.label}</span>
+                                    <span className="mt-1 block text-xs leading-snug text-muted">{o.hint}</span>
+                                  </span>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </Field>
+
+                        {v.coFounder === 'attending' && (
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <Field label="Co-founder’s name" required error={errors.coFounderName}>
+                              <input
+                                type="text"
+                                autoComplete="off"
+                                placeholder="Their full name"
+                                value={v.coFounderName}
+                                onChange={(e) => set('coFounderName', e.target.value)}
+                                className={cn(input, errors.coFounderName && inputBad)}
+                              />
+                            </Field>
+                            {/* Same fixed +91 chrome as the main mobile field, so both numbers
+                                are stored in one format. Optional: a founder who does not have
+                                it to hand should not be stopped here. */}
+                            <Field label="Their mobile" hint="Optional" error={errors.coFounderPhone}>
+                              <div
+                                className={cn(
+                                  'flex items-center border bg-foam transition-colors focus-within:bg-surface',
+                                  errors.coFounderPhone ? 'border-accent' : 'border-ink/15 focus-within:border-accent',
+                                )}
+                              >
+                                <span className="select-none border-r border-ink/10 px-3 py-2.5 text-sm text-muted">
+                                  +91
+                                </span>
+                                <input
+                                  type="tel"
+                                  inputMode="numeric"
+                                  autoComplete="off"
+                                  maxLength={10}
+                                  aria-label="Co-founder’s mobile number, 10 digits"
+                                  placeholder="98765 43210"
+                                  value={v.coFounderPhone}
+                                  onChange={(e) => set('coFounderPhone', e.target.value.replace(/\D/g, '').slice(0, 10))}
+                                  className="w-full bg-transparent px-3 py-2.5 text-sm tabular-nums text-ink outline-none placeholder:text-muted/60"
+                                />
+                              </div>
+                            </Field>
+                          </div>
+                        )}
+
+                        {/* What happens next, said where the choice is made rather than in
+                            small print at the end. The price line is deliberate: a pass that
+                            costs the same for one as for two must say so before payment. */}
+                        {v.coFounder === 'later' && (
+                          <p className="border-l-2 border-accent bg-foam px-4 py-3 text-sm leading-relaxed text-muted">
+                            Their seat stays on your pass. Reply to your confirmation email with their name before{' '}
+                            {site.datesCompact}.
+                          </p>
+                        )}
+                        {v.coFounder === 'solo' && (
+                          <p className="border-l-2 border-accent bg-foam px-4 py-3 text-sm leading-relaxed text-muted">
+                            The pass is priced for two, so the price stays the same. If your co-founder can make it
+                            after all, reply to your confirmation email with their name.
+                          </p>
+                        )}
+                      </>
+                    )}
+
+                    {ticket.includesCoFounder && v.coFounder === 'solo' ? (
+                      /* No paid extras while the paid second seat is empty — point them at it. */
+                      <p className="text-xs leading-relaxed text-muted">
+                        Bringing a teammate instead? Choose{' '}
                         <button
                           type="button"
-                          onClick={() => setExtras((xs) => [...xs, { name: '', role: '' }])}
-                          className="flex items-center gap-2 border border-dashed border-ink/25 px-4 py-2.5 font-sans text-sm font-semibold text-muted transition-colors hover:border-accent hover:text-accent"
+                          onClick={() => set('coFounder', 'attending')}
+                          className="font-semibold text-accent underline-offset-2 hover:underline"
                         >
-                          <Plus size={15} />
-                          Add a team member
-                        </button>
-                      ) : (
-                        <span className="text-xs text-muted">
-                          That&apos;s the maximum of {MAX_EXTRA_MEMBERS + 1} people on one pass. Email us for a
-                          larger team.
-                        </span>
-                      )}
+                          Attending with me
+                        </button>{' '}
+                        and add their name — that seat is already paid for.
+                      </p>
+                    ) : (
+                      <div>
+                        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                          <span className="font-sans text-sm font-semibold text-ink">
+                            {ticket.includesCoFounder ? 'Anyone else from your startup?' : 'Bringing anyone else?'}
+                          </span>
+                          <span className="text-xs text-muted">
+                            {ticket.includesCoFounder
+                              ? `${formatInrRupees(ticket.extraMemberInr)} each`
+                              : `You’re covered by the pass · ${formatInrRupees(ticket.extraMemberInr)} each after that`}
+                          </span>
+                        </div>
 
-                      {/* The total, restated where the change is being made. The summary
-                          rail says the same thing, but on a phone it sits below the whole
-                          form — a long scroll from the button that just changed it. */}
-                      {extras.length > 0 && (
-                        <span className="font-sans text-sm text-muted">
-                          {extras.length + 1} people ·{' '}
-                          <strong className="font-bold tabular-nums text-ink">{amountLabel}</strong>
-                        </span>
-                      )}
-                    </div>
+                        {extras.map((m, i) => (
+                          <div key={i} className="mt-3 border border-ink/15 bg-foam p-3">
+                            <div className="flex items-center justify-between">
+                              <span className="font-sans text-xs font-semibold text-accent">
+                                Member {i + (ticket.includesCoFounder ? 3 : 2)} · +{formatInrRupees(ticket.extraMemberInr!)}
+                              </span>
+                              <button
+                                type="button"
+                                aria-label={`Remove member ${i + (ticket.includesCoFounder ? 3 : 2)}`}
+                                onClick={() => setExtras((xs) => xs.filter((_, j) => j !== i))}
+                                className="text-muted transition-colors hover:text-accent"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                            <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                              <input
+                                type="text"
+                                placeholder="Their name"
+                                value={m.name}
+                                onChange={(e) =>
+                                  setExtras((xs) => xs.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))
+                                }
+                                className={input}
+                              />
+                              <input
+                                type="text"
+                                placeholder="Their role"
+                                value={m.role}
+                                onChange={(e) =>
+                                  setExtras((xs) => xs.map((x, j) => (j === i ? { ...x, role: e.target.value } : x)))
+                                }
+                                className={input}
+                              />
+                            </div>
+                          </div>
+                        ))}
+
+                        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                          {extras.length < MAX_EXTRA_MEMBERS ? (
+                            <button
+                              type="button"
+                              onClick={() => setExtras((xs) => [...xs, { name: '', role: '' }])}
+                              className="flex items-center gap-2 border border-dashed border-ink/25 px-4 py-2.5 font-sans text-sm font-semibold text-muted transition-colors hover:border-accent hover:text-accent"
+                            >
+                              <Plus size={15} />
+                              Add a team member
+                            </button>
+                          ) : (
+                            <span className="text-xs text-muted">
+                              That&apos;s the maximum of {MAX_EXTRA_MEMBERS + (ticket.includesCoFounder ? 2 : 1)} people on
+                              one pass. Email us for a larger team.
+                            </span>
+                          )}
+
+                          {/* The total, restated where the change is being made — on a phone
+                              the summary rail sits below the whole form. */}
+                          {extras.length > 0 && (
+                            <span className="font-sans text-sm text-muted">
+                              {ticket.includesCoFounder ? teamSize(v.coFounder || 'attending', extras.length) : extras.length + 1}{' '}
+                              people · <strong className="font-bold tabular-nums text-ink">{amountLabel}</strong>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </>
@@ -1117,7 +1337,7 @@ export function PassCheckout({
               <Summary label="Mobile" value={v.phone ? `+91 ${v.phone.slice(0, 5)} ${v.phone.slice(5)}` : '—'} />
               <Summary label="Email" value={v.email} />
               <Summary label="City" value={v.city} />
-              <Summary label="Attending as" value={cfg?.title || '—'} />
+              {cfg && <Summary label="Attending as" value={cfg.title} />}
               {cfg?.showId && cfg.idType && v.idType && (
                 <Summary
                   label="ID you’ll bring"
@@ -1152,12 +1372,30 @@ export function PassCheckout({
               {asksStartup(ticket, v.category) && v.stage && (
                 <Summary label="Stage" value={stageOptions.find((s) => s.value === v.stage)?.label || v.stage} />
               )}
-              {extras.length > 0 && <Summary label="Team" value={`${extras.length + 1} people`} />}
+              {ticket.includesCoFounder && v.coFounder && (
+                <Summary
+                  label="Co-founder"
+                  value={
+                    v.coFounder === 'attending'
+                      ? [v.coFounderName, v.coFounderPhone && `+91 ${v.coFounderPhone.slice(0, 5)} ${v.coFounderPhone.slice(5)}`]
+                          .filter(Boolean)
+                          .join(' · ')
+                      : v.coFounder === 'later'
+                        ? 'Name to follow'
+                        : 'Not attending'
+                  }
+                />
+              )}
+              {ticket.includesCoFounder && v.coFounder ? (
+                <Summary label="Team" value={`${teamSize(v.coFounder, chargedExtras)} ${teamSize(v.coFounder, chargedExtras) === 1 ? 'person' : 'people'}`} />
+              ) : (
+                extras.length > 0 && <Summary label="Team" value={`${extras.length + 1} people`} />
+              )}
             </dl>
 
             {/* The one place the arithmetic is spelled out. A three-person startup is
                 looking at ₹4,997 and should see how that is built. */}
-            {paying && ticket.extraMemberInr && extras.length > 0 && (
+            {paying && ticket.extraMemberInr && chargedExtras > 0 && (
               <div className="bg-foam p-4 text-sm">
                 <div className="flex justify-between text-muted">
                   <span>{ticket.name}</span>
@@ -1165,10 +1403,10 @@ export function PassCheckout({
                 </div>
                 <div className="mt-2 flex justify-between text-muted">
                   <span>
-                    {extras.length} extra {extras.length === 1 ? 'member' : 'members'} ×{' '}
-                    {formatInrRupees(ticket.extraMemberInr)}
+                    {chargedExtras} {ticket.includesCoFounder ? 'additional' : 'extra'}{' '}
+                    {chargedExtras === 1 ? 'member' : 'members'} × {formatInrRupees(ticket.extraMemberInr)}
                   </span>
-                  <span className="tabular-nums">{formatInrRupees(extras.length * ticket.extraMemberInr)}</span>
+                  <span className="tabular-nums">{formatInrRupees(chargedExtras * ticket.extraMemberInr)}</span>
                 </div>
                 <div className="mt-3 flex justify-between border-t border-ink/15 pt-3 font-semibold text-ink">
                   <span>Total</span>

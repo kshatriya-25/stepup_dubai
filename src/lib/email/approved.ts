@@ -78,7 +78,7 @@ export const REGISTRANT_CONFIRMATION_HTML = `<!DOCTYPE html><html lang="en"><hea
       <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Email</td><td style="padding:6px 0;font-size:14px;color:#3D4A5C;">{{EMAIL}}</td></tr>
       <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Phone</td><td style="padding:6px 0;font-size:14px;color:#3D4A5C;">{{PHONE}}</td></tr>
       <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Pass</td><td style="padding:6px 0;font-size:14px;color:#14315E;font-weight:700;">{{PASS}}</td></tr>
-      <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Registered as</td><td style="padding:6px 0;font-size:14px;color:#3D4A5C;">{{REGISTERED_AS}}</td></tr>
+{{REGISTERED_AS_ROW}}
       <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">City</td><td style="padding:6px 0;font-size:14px;color:#3D4A5C;">{{CITY}}</td></tr>
 {{EXTRA_ROWS}}
     </table>
@@ -309,10 +309,7 @@ export const FREE_PASS_CONFIRMATION_HTML = `<!DOCTYPE html>
             <td width="150" style="padding:7px 12px 7px 0;font-size:12px;line-height:18px;color:#7C8CA6;vertical-align:top;">Pass</td>
             <td style="padding:7px 0;font-size:12px;line-height:18px;color:#12305C;font-weight:bold;">{{PASS}}</td>
           </tr>
-          <tr>
-            <td width="150" style="padding:7px 12px 7px 0;font-size:12px;line-height:18px;color:#7C8CA6;vertical-align:top;">Registered as</td>
-            <td style="padding:7px 0;font-size:12px;line-height:18px;color:#12305C;">{{REGISTERED_AS}}</td>
-          </tr>
+{{REGISTERED_AS_ROW}}
           <tr>
             <td width="150" style="padding:7px 12px 7px 0;font-size:12px;line-height:18px;color:#7C8CA6;vertical-align:top;">City</td>
             <td style="padding:7px 0;font-size:12px;line-height:18px;color:#12305C;">{{CITY}}</td>
@@ -423,10 +420,7 @@ export const FREE_PASS_ALERT_HTML = `<!DOCTYPE html>
             <td width="140" style="padding:12px 12px 12px 0;border-top:1px solid #E4E8EE;font-size:10px;line-height:15px;font-weight:bold;color:#8B93A3;letter-spacing:1px;text-transform:uppercase;vertical-align:top;">Phone</td>
             <td style="padding:12px 0;border-top:1px solid #E4E8EE;font-size:13px;line-height:19px;color:#12305C;"><a href="tel:{{PHONE_HREF}}" style="color:#12305C;text-decoration:underline;">{{PHONE}}</a></td>
           </tr>
-          <tr>
-            <td width="140" style="padding:12px 12px 12px 0;border-top:1px solid #E4E8EE;font-size:10px;line-height:15px;font-weight:bold;color:#8B93A3;letter-spacing:1px;text-transform:uppercase;vertical-align:top;">Attending as</td>
-            <td style="padding:12px 0;border-top:1px solid #E4E8EE;font-size:13px;line-height:19px;color:#12305C;">{{REGISTERED_AS}}</td>
-          </tr>
+{{REGISTERED_AS_ROW}}
           <tr>
             <td width="140" style="padding:12px 12px 12px 0;border-top:1px solid #E4E8EE;font-size:10px;line-height:15px;font-weight:bold;color:#8B93A3;letter-spacing:1px;text-transform:uppercase;vertical-align:top;">City</td>
             <td style="padding:12px 0;border-top:1px solid #E4E8EE;font-size:13px;line-height:19px;color:#12305C;">{{CITY}}</td>

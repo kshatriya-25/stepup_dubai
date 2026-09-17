@@ -212,7 +212,7 @@ export function RegisterProvider({
                           eyebrow="Founder track"
                           title="Pitch my idea"
                           blurb="Pitch bootcamp, data scrutiny, investor connect and a closed-room one-on-one for eligible startups."
-                          meta={`${pitch.name} · ${formatTicketPrice(pitch)}`}
+                          meta={`${pitch.name} · ${formatTicketPrice(pitch)} · ${pitch.unit}`}
                           href={`/passes/${pitch.id}/`}
                           onClick={close}
                         />

@@ -108,6 +108,14 @@ export type Registration = {
   extraMembers?: string
   /** "Name (Role); Name (Role)" — for the organiser, not for pricing. */
   extraMemberList?: string
+  /**
+   * The pass's second seat, where the pass has one (includesCoFounder). 'attending' |
+   * 'later' | 'solo' — see coFounderOptions. Name is required only for 'attending'; the
+   * mobile is optional even then.
+   */
+  coFounder?: string
+  coFounderName?: string
+  coFounderPhone?: string
 
   consent?: string
 }
