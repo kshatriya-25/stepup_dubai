@@ -167,6 +167,11 @@ export function stamp(date = new Date()): string {
  * The shared chrome: preheader, orange hairline, navy masthead, body slot, footer.
  * Both emails use it so they read as one system; only the body differs.
  */
+/*
+ * NOT "reply to this email" in the footer: these go out from a send-only address, and an
+ * organiser notification's Reply-To is the registrant, so "reply" would mail the wrong
+ * person entirely. One address to write to — site.contactEmail, via organiserContact.
+ */
 function shell(opts: { preheader: string; body: string; footerNote: string }): string {
   return `<!doctype html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
@@ -226,7 +231,7 @@ ${opts.body}
               <div style="height:1px;line-height:1px;font-size:0;background-color:#1B3A66;margin:20px 0;">&nbsp;</div>
               <div style="font-size:11px;line-height:1.7;color:#6E86AB;">
                 ${opts.footerNote}<br>
-                Questions? Reply to this email or write to
+                Questions? Write to
                 <a href="mailto:${esc(organiserContact)}" style="color:${C.orange};text-decoration:none;">${esc(
                   organiserContact
                 )}</a>.
@@ -244,7 +249,15 @@ ${opts.body}
 }
 
 /** The address shown to readers as the way to reach a human. */
-const organiserContact = process.env.MAIL_REPLY_TO || process.env.MAIL_FROM || 'info@tier2rising.com'
+/*
+ * The address printed in every email footer as "write to us".
+ *
+ * site.contactEmail, NOT the SMTP env: MAIL_FROM is a sending identity that has to be
+ * verified with the mail provider and is often a noreply@ or a provider subdomain, which is
+ * the last thing to show someone who wants to reach a human. Where a reply actually goes is
+ * a separate setting — see mailReplyTo in ./mailer.
+ */
+const organiserContact = site.contactEmail
 
 /** A label/value row inside the details table. */
 function detailRow(label: string, value: string, opts: { last?: boolean; href?: string } = {}): string {
@@ -350,7 +363,9 @@ function teamRows(r: Registration, opts: { forRegistrant: boolean }): [string, s
     const who = coFounderSummary(r.coFounder, r.coFounderName, r.coFounderPhone)
     rows.push([
       'Co-founder',
-      r.coFounder === 'later' && opts.forRegistrant ? `${who} — reply to this email with their name` : who,
+      r.coFounder === 'later' && opts.forRegistrant
+        ? `${who} — email ${site.contactEmail} with their name`
+        : who,
     ])
     const size = teamSize(r.coFounder, n)
     rows.push(['Team', `${size} ${size === 1 ? 'person' : 'people'}${r.extraMemberList ? ` — also ${r.extraMemberList}` : ''}`])
@@ -474,6 +489,9 @@ function freePassTokens(r: Registration, ticket?: Ticket | null): Record<string,
     EVENT_DATES: site.dates,
     EVENT_DATES_SHORT: site.datesCompact.toUpperCase(),
     EVENT_LOCATION: `${site.venue}, ${site.city}`,
+    CONTACT_EMAIL: site.contactEmail,
+    CONTACT_PHONE: site.contactPhone,
+    CONTACT_PHONE_HREF: site.contactPhone.replace(/[^\d+]/g, ''),
   }
 }
 
@@ -513,6 +531,9 @@ export function participantEmail(
     EVENT_DATES: site.dates,
     EVENT_LOCATION: `${site.venue}, ${site.city}`,
     EXTRA_ROWS: rows,
+    CONTACT_EMAIL: site.contactEmail,
+    CONTACT_PHONE: site.contactPhone,
+    CONTACT_PHONE_HREF: site.contactPhone.replace(/[^\d+]/g, ''),
   }
 
   const text = [
@@ -544,7 +565,7 @@ export function participantEmail(
     '—',
     'TIER-2 RISING STARTUP SUMMIT',
     'NammaOffice Presents · In association with Startup Singam',
-    'info@tier2rising.com · +91 90921 09213',
+    `${site.contactEmail} · ${site.contactPhone}`,
   ].join('\n')
 
   // EXTRA_ROWS is markup we built, not user input, so it goes in before fillTokens —
@@ -790,7 +811,7 @@ function freePassParticipantEmail(
     '—',
     'TIER-2 RISING STARTUP SUMMIT',
     'NammaOffice Presents · In association with Startup Singam',
-    'info@tier2rising.com · +91 90921 09213',
+    `${site.contactEmail} · ${site.contactPhone}`,
   ].join('\n')
 
   return {
@@ -885,6 +906,11 @@ export function partnerEnquiryEmail(p: PartnerEnquiry): {
   text: string
 } {
   const tokens = {
+    // MIND THE TWO MEANINGS OF "CONTACT" in this template's token names: CONTACT_NAME and
+    // CONTACT_FIRST_NAME are the PARTNER'S contact person, while CONTACT_EMAIL and
+    // CONTACT_PHONE are OURS, in the footer. The artwork named them; they are kept as-is
+    // rather than renamed, but the footer ones were missing here, so it rendered a footer
+    // with no address at all.
     CONTACT_FIRST_NAME: firstName(p.name),
     CONTACT_NAME: p.name,
     COMPANY_NAME: p.businessName,
@@ -892,6 +918,9 @@ export function partnerEnquiryEmail(p: PartnerEnquiry): {
     PHONE: p.phone,
     EVENT_DATES: site.dates,
     EVENT_LOCATION: `${site.venue}, ${site.city}`,
+    CONTACT_EMAIL: site.contactEmail,
+    CONTACT_PHONE: site.contactPhone,
+    CONTACT_PHONE_HREF: site.contactPhone.replace(/[^\d+]/g, ''),
   }
 
   const text = [
@@ -915,7 +944,7 @@ export function partnerEnquiryEmail(p: PartnerEnquiry): {
     '—',
     'TIER-2 RISING STARTUP SUMMIT',
     'NammaOffice Presents · In association with Startup Singam',
-    'info@tier2rising.com · +91 90921 09213',
+    `${site.contactEmail} · ${site.contactPhone}`,
   ].join('\n')
 
   return {

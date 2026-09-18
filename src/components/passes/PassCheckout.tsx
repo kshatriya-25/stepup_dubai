@@ -1218,14 +1218,14 @@ export function PassCheckout({
                             costs the same for one as for two must say so before payment. */}
                         {v.coFounder === 'later' && (
                           <p className="border-l-2 border-accent bg-foam px-4 py-3 text-sm leading-relaxed text-muted">
-                            Their seat stays on your pass. Reply to your confirmation email with their name before{' '}
-                            {site.datesCompact}.
+                            Their seat stays on your pass. Email{' '}
+                            <ContactLink subject="Co-founder name" /> with their name before {site.datesCompact}.
                           </p>
                         )}
                         {v.coFounder === 'solo' && (
                           <p className="border-l-2 border-accent bg-foam px-4 py-3 text-sm leading-relaxed text-muted">
                             The pass is priced for two, so the price stays the same. If your co-founder can make it
-                            after all, reply to your confirmation email with their name.
+                            after all, email <ContactLink subject="Co-founder name" /> with their name.
                           </p>
                         )}
                       </>
@@ -1522,6 +1522,23 @@ export function PassCheckout({
 const input =
   'w-full border border-ink/15 bg-foam px-3.5 py-2.5 text-sm text-ink outline-none transition-colors placeholder:text-muted/60 focus:border-accent focus:bg-surface'
 const inputBad = 'border-accent'
+
+/**
+ * The address to write to, as a mailto with the subject filled in.
+ *
+ * Every "get in touch" on this form points at site.contactEmail rather than telling someone
+ * to reply to their confirmation: those are sent from a send-only address.
+ */
+function ContactLink({ subject }: { subject: string }) {
+  return (
+    <a
+      href={`mailto:${site.contactEmail}?subject=${encodeURIComponent(subject)}`}
+      className="font-semibold text-accent underline-offset-2 hover:underline"
+    >
+      {site.contactEmail}
+    </a>
+  )
+}
 
 function Field({
   label,

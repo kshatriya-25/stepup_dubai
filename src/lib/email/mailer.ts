@@ -11,12 +11,20 @@
 
 import 'server-only'
 import nodemailer, { type Transporter } from 'nodemailer'
+import { site } from '@/content/site'
 
 const g = globalThis as typeof globalThis & { __mailer?: Transporter }
 
 export const mailFrom = process.env.MAIL_FROM || 'info@tier2rising.com'
 export const mailFromName = process.env.MAIL_FROM_NAME || 'Tier-2 Rising Startup Summit'
-export const mailReplyTo = process.env.MAIL_REPLY_TO || mailFrom
+/*
+ * Where a reply lands. Falls back to the site's contact address, NOT to MAIL_FROM.
+ *
+ * Several of these emails ask for a reply — "reply with your co-founder's name" — and
+ * MAIL_FROM is a sending identity chosen for deliverability, which may be an inbox nobody
+ * reads. MAIL_REPLY_TO still overrides, for a deployment that wants a different desk.
+ */
+export const mailReplyTo = process.env.MAIL_REPLY_TO || site.contactEmail
 
 /** Comma-separated in env, so you can notify more than one inbox. */
 function recipientList(value: string | undefined): string[] {

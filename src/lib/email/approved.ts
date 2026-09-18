@@ -92,7 +92,7 @@ export const REGISTRANT_CONFIRMATION_HTML = `<!DOCTYPE html><html lang="en"><hea
     <div style="font-size:12px;font-weight:700;letter-spacing:1.2px;color:#FFFFFF;">TIER-2 RISING STARTUP SUMMIT</div>
     <div style="font-size:12px;line-height:1.7;color:#9FB2CE;padding-top:8px;">
       NammaOffice Presents · In association with Startup Singam<br>
-      <a href="mailto:info@tier2rising.com" style="color:#E5762A;text-decoration:none;">info@tier2rising.com</a> · <a href="tel:+919092109213" style="color:#E5762A;text-decoration:none;">+91 90921 09213</a><br>
+      <a href="mailto:{{CONTACT_EMAIL}}" style="color:#E5762A;text-decoration:none;">{{CONTACT_EMAIL}}</a> · <a href="tel:{{CONTACT_PHONE_HREF}}" style="color:#E5762A;text-decoration:none;">{{CONTACT_PHONE}}</a><br>
       <span style="color:#6E86A8;">You joined the waitlist for the Tier-2 Rising Startup Summit on tier2rising.com.</span>
     </div>
   </td></tr>
@@ -145,7 +145,7 @@ export const PARTNER_CONFIRMATION_HTML = `<!DOCTYPE html><html lang="en"><head><
     <div style="font-size:12px;font-weight:700;letter-spacing:1.2px;color:#FFFFFF;">TIER-2 RISING STARTUP SUMMIT</div>
     <div style="font-size:12px;line-height:1.7;color:#9FB2CE;padding-top:8px;">
       NammaOffice Presents · In association with Startup Singam<br>
-      <a href="mailto:info@tier2rising.com" style="color:#E5762A;text-decoration:none;">info@tier2rising.com</a> · <a href="tel:+919092109213" style="color:#E5762A;text-decoration:none;">+91 90921 09213</a>
+      <a href="mailto:{{CONTACT_EMAIL}}" style="color:#E5762A;text-decoration:none;">{{CONTACT_EMAIL}}</a> · <a href="tel:{{CONTACT_PHONE_HREF}}" style="color:#E5762A;text-decoration:none;">{{CONTACT_PHONE}}</a>
     </div>
   </td></tr>
 
@@ -336,7 +336,7 @@ export const FREE_PASS_CONFIRMATION_HTML = `<!DOCTYPE html>
             <td style="padding:24px 28px;font-family:Arial,Helvetica,sans-serif;">
               <div style="font-size:12px;line-height:18px;font-weight:bold;color:#FFFFFF;letter-spacing:0.6px;">TIER-2 RISING STARTUP SUMMIT</div>
               <div style="font-size:11px;line-height:18px;color:#8FB0DA;padding-top:10px;">NammaOffice Presents &middot; In association with Startup Singam</div>
-              <div style="font-size:11px;line-height:18px;padding-top:2px;"><a href="mailto:info@tier2rising.com" style="color:#E87722;text-decoration:none;font-weight:bold;">info@tier2rising.com</a> <span style="color:#8FB0DA;">&middot;</span> <span style="color:#E87722;font-weight:bold;">+91 90921 09213</span></div>
+              <div style="font-size:11px;line-height:18px;padding-top:2px;"><a href="mailto:{{CONTACT_EMAIL}}" style="color:#E87722;text-decoration:none;font-weight:bold;">{{CONTACT_EMAIL}}</a> <span style="color:#8FB0DA;">&middot;</span> <span style="color:#E87722;font-weight:bold;">{{CONTACT_PHONE}}</span></div>
               <div style="font-size:10px;line-height:16px;color:#5C7CA8;padding-top:14px;">You registered for a free pass to the Tier-2 Rising Startup Summit on <a href="https://tier2rising.com/" style="color:#5C7CA8;text-decoration:underline;">tier2rising.com</a>.</div>
             </td>
           </tr>
@@ -474,7 +474,7 @@ export const FREE_PASS_ALERT_HTML = `<!DOCTYPE html>
               <div style="font-size:11px;line-height:18px;color:#8FB0DA;">{{EVENT_LOCATION}} &middot; {{EVENT_DATES}}</div>
               <div style="border-top:1px solid #1D3D66;font-size:0;line-height:0;margin-top:16px;">&nbsp;</div>
               <div style="font-size:10px;line-height:16px;color:#5C7CA8;padding-top:14px;">Automated notification from free pass registrations on the summit website.</div>
-              <div style="font-size:10px;line-height:16px;color:#5C7CA8;">Questions? Reply to this email or write to <a href="mailto:info@tier2rising.com" style="color:#E87722;text-decoration:none;font-weight:bold;">info@tier2rising.com</a>.</div>
+              <div style="font-size:10px;line-height:16px;color:#5C7CA8;">Questions? Write to <a href="mailto:{{CONTACT_EMAIL}}" style="color:#E87722;text-decoration:none;font-weight:bold;">{{CONTACT_EMAIL}}</a>.</div>
             </td>
           </tr>
         </table>
