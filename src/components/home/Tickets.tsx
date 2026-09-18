@@ -11,6 +11,10 @@ import {
   TICKET_SALES_LIVE,
   passesIntro,
   formatTicketPrice,
+  formatTicketListPrice,
+  hasOffer,
+  savingInr,
+  OFFER_LABEL,
   formatInrRupees,
   isFreePass,
   type Ticket,
@@ -224,13 +228,35 @@ function TicketCard({ ticket, paymentEnabled }: { ticket: Ticket; paymentEnabled
           <div className="font-sans text-4xl font-bold uppercase leading-none tracking-[-0.02em] text-ink">
             {formatTicketPrice(ticket)}
           </div>
+          {/*
+            EARLY BIRD. The old price is struck through under the new one, with what it
+            saves — the saving stated in rupees rather than a percentage, because that is
+            the number someone weighs against the price beside it.
+
+            `<s>` with a screen-reader label, not a styled span: a line through a number is
+            a visual convention that carries no meaning to a screen reader, which would
+            otherwise read two prices in a row with nothing to separate them.
+          */}
+          {hasOffer(ticket) && (
+            <>
+              <div className="mt-1 font-sans text-base font-semibold leading-none text-muted">
+                <span className="sr-only">Regular price </span>
+                <s className="tabular-nums">{formatTicketListPrice(ticket)}</s>
+              </div>
+              <div className="mt-2 bg-accent px-2 py-1 font-sans text-[9px] font-bold uppercase tracking-[0.12em] text-accent-ink">
+                {OFFER_LABEL} · Save {formatInrRupees(savingInr(ticket))}
+              </div>
+            </>
+          )}
           <div className="mt-1.5 font-sans text-[9px] font-bold uppercase tracking-[0.14em] text-muted">
             {ticket.unit}
           </div>
 
           {/* The second price is part of the offer, not a footnote — a three-person
-              startup is looking at ₹3,998, and finding that out at checkout is worse
-              than reading it here. */}
+              startup on a pass that sells extra seats is looking at more than the
+              headline, and finding that out at checkout is worse than reading it here.
+              No pass sells them today — the Investor Pitch Pass stopped in September
+              2026 — so this renders for nothing until one does again. */}
           {ticket.extraMemberInr && (
             <div className="mt-3 w-full border-t border-dashed border-ink/15 pt-3">
               <div className="font-sans text-xl font-bold leading-none text-ink">

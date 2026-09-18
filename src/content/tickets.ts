@@ -298,6 +298,12 @@ export type Ticket = {
   /** "Per Person" / "Founder + Co-founder" — printed under the price. */
   unit: string
   /** Per-head price for additional people from the same startup. Pitch pass only. */
+  /**
+   * The price this pass USED to be, struck through beside the current one — an early-bird
+   * offer. DISPLAY ONLY: ticketPaise never reads it, so nothing here can affect what is
+   * charged. Remove the field when the offer ends; the pass then shows one price again.
+   */
+  listPriceInr?: number
   extraMemberInr?: number
   /**
    * The pass admits the founder AND a co-founder at its base price, and the form asks what
@@ -403,7 +409,8 @@ export const tickets: Ticket[] = [
     name: 'Workshop Pass',
     blurb:
       'One focused working session in the hall, plus the Power Networking Corner — pre-booked peer, partner and investor appointments. Power networking lunch included.',
-    priceInr: 999,
+    priceInr: 499,
+    listPriceInr: 999,
     unit: 'Per Person',
     emphasis: 'solid',
     accent: 'green',
@@ -426,9 +433,15 @@ export const tickets: Ticket[] = [
     name: 'Investor Pitch Pass',
     blurb:
       'The full founder track — pitch bootcamp, focused workshops and data scrutiny, then connect with investors and a closed-room one-on-one pitch for eligible startups. The best selected startup carries the Golden Pass to Startup Singam Season 3.',
-    priceInr: 2999,
+    priceInr: 999,
+    listPriceInr: 1999,
     unit: 'Founder + Co-founder',
-    extraMemberInr: 999,
+    /*
+     * NO extraMemberInr. Paid extra members were removed from this pass in September 2026:
+     * the pass admits the founder and a co-founder, and that is all it admits. The field is
+     * simply absent rather than set to 0 — every consumer already checks for it, so the
+     * whole extras UI, its pricing line and its sheet column switch off together.
+     */
     includesCoFounder: true,
     emphasis: 'solid',
     accent: 'gold',
@@ -446,7 +459,7 @@ export const tickets: Ticket[] = [
       { label: 'Golden Pass — Startup Singam S3', detail: 'For the best selected startup' },
     ],
     excludes: '',
-    note: 'The standalone workshop session is not part of this pass — the pitch bootcamp and its focused workshops run in its place. ₹2,999 covers two — the founder and a co-founder — and ₹999 for each additional team member.',
+    note: 'The standalone workshop session is not part of this pass — the pitch bootcamp and its focused workshops run in its place. ₹999 covers two — the founder and a co-founder.',
     form: { categories: ALL_CATEGORIES, startup: true },
   },
 ]
@@ -679,6 +692,30 @@ export function visitorTickets(all: Ticket[]): Ticket[] {
 export function ticketPaise(t: Ticket, extraMembers = 0): number {
   const extras = t.extraMemberInr ? Math.max(0, extraMembers) * t.extraMemberInr : 0
   return Math.round((t.priceInr + extras) * 100)
+}
+
+/**
+ * EARLY BIRD. A pass with `listPriceInr` above its price is on offer: the old price is shown
+ * struck through beside the new one, with what it saves.
+ *
+ * None of this touches money. The amount charged comes from priceInr through ticketPaise,
+ * so an offer cannot be applied twice, and taking the offer down is deleting one line from
+ * the catalogue rather than re-pricing anything.
+ */
+export const OFFER_LABEL = 'Early bird'
+
+export function hasOffer(t: Ticket): boolean {
+  return typeof t.listPriceInr === 'number' && t.listPriceInr > t.priceInr && t.priceInr > 0
+}
+
+/** What the offer saves, in rupees. 0 when there is no offer. */
+export function savingInr(t: Ticket): number {
+  return hasOffer(t) ? t.listPriceInr! - t.priceInr : 0
+}
+
+/** The struck-through price, e.g. "₹1,999". Empty when there is no offer. */
+export function formatTicketListPrice(t: Ticket): string {
+  return hasOffer(t) ? formatInrRupees(t.listPriceInr!) : ''
 }
 
 /** 2999 → "₹2,999", and 0 → "Free". Display only. */

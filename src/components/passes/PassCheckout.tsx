@@ -1125,7 +1125,10 @@ export function PassCheckout({
                   Extra members are chargeable, so the running total stays visible as they are
                   added — not revealed at the payment step.
                 */}
-                {ticket.extraMemberInr && (
+                {/* A pass qualifies for this section if it seats a co-founder, sells extra
+                    seats, or both — the Investor Pitch Pass stopped selling extras in
+                    September 2026 and still has a second seat to ask about. */}
+                {(ticket.includesCoFounder || ticket.extraMemberInr) && (
                   <div className="flex flex-col gap-4 border-t border-ink/10 pt-5">
                     {ticket.includesCoFounder && (
                       <>
@@ -1228,7 +1231,7 @@ export function PassCheckout({
                       </>
                     )}
 
-                    {ticket.includesCoFounder && v.coFounder === 'solo' ? (
+                    {!ticket.extraMemberInr ? null : ticket.includesCoFounder && v.coFounder === 'solo' ? (
                       /* No paid extras while the paid second seat is empty — point them at it. */
                       <p className="text-xs leading-relaxed text-muted">
                         Bringing a teammate instead? Choose{' '}
@@ -1394,7 +1397,8 @@ export function PassCheckout({
             </dl>
 
             {/* The one place the arithmetic is spelled out. A three-person startup is
-                looking at ₹4,997 and should see how that is built. */}
+                paying for extra seats should see how the total is built. (No pass sells
+                extra seats today, so this does not render — see the team section above.) */}
             {paying && ticket.extraMemberInr && chargedExtras > 0 && (
               <div className="bg-foam p-4 text-sm">
                 <div className="flex justify-between text-muted">

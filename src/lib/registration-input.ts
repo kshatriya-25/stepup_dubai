@@ -192,9 +192,14 @@ export function parseSubmission(raw: Record<string, unknown>): ParseResult {
      * Without the cap a single POST could invoice for an arbitrary number of people;
      * without the floor a negative count would DISCOUNT the pass below its base price.
      */
-    const claimed = Number.parseInt(clean(raw.extraMembers, 4) || '0', 10)
-    extraMembers = Number.isFinite(claimed) ? Math.min(Math.max(claimed, 0), MAX_EXTRA_MEMBERS) : 0
-    extraMemberList = clean(raw.extraMemberList, 600)
+    // Only on a pass that actually sells extra seats. Without this a crafted POST could
+    // write a team of five into the sheet for a pass that admits two — not an overcharge
+    // (ticketPaise ignores extras with no extraMemberInr) but a wrong door list.
+    if (ticket.extraMemberInr) {
+      const claimed = Number.parseInt(clean(raw.extraMembers, 4) || '0', 10)
+      extraMembers = Number.isFinite(claimed) ? Math.min(Math.max(claimed, 0), MAX_EXTRA_MEMBERS) : 0
+      extraMemberList = clean(raw.extraMemberList, 600)
+    }
 
     // The second seat — see coFounderOptions for the three answers and why each exists.
     if (ticket.includesCoFounder) {

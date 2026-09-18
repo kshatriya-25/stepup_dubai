@@ -3,7 +3,17 @@
 import { Check } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { site } from '@/content/site'
-import { formatTicketPrice, formatInrRupees, isFreePass, ticketsNote, type Ticket } from '@/content/tickets'
+import {
+  formatTicketPrice,
+  formatTicketListPrice,
+  formatInrRupees,
+  hasOffer,
+  savingInr,
+  isFreePass,
+  ticketsNote,
+  OFFER_LABEL,
+  type Ticket,
+} from '@/content/tickets'
 
 /**
  * The order summary rail.
@@ -66,14 +76,23 @@ export function PassSummary({ ticket, extraCount }: { ticket: Ticket; extraCount
                 {formatTicketPrice(ticket)}
               </span>
             </div>
+            {hasOffer(ticket) && (
+              <p className="mt-1 text-right font-sans text-[11px] leading-tight">
+                <span className="sr-only">Regular price </span>
+                <s className="tabular-nums text-surface/50">{formatTicketListPrice(ticket)}</s>{' '}
+                <span className="font-semibold text-accent">
+                  {OFFER_LABEL} · save {formatInrRupees(savingInr(ticket))}
+                </span>
+              </p>
+            )}
             <p className="mt-1 text-right font-sans text-[10px] text-surface/60">{ticket.unit}</p>
-            {ticket.extraMemberInr && (
+            {/* What the price covers. Kept for the co-founder pass now that it has no paid
+                extras — "Founder + Co-founder" above is the claim, and this is the detail. */}
+            {(ticket.includesCoFounder || ticket.extraMemberInr) && (
               <p className="mt-3 border-t border-surface/15 pt-3 text-xs leading-relaxed text-surface/70">
-                {/* No step number: which step holds the team section depends on which steps
-                    the pass asks, and "step 3" went stale the day one was removed. */}
                 {ticket.includesCoFounder
-                  ? `Covers you and a co-founder. ${formatInrRupees(ticket.extraMemberInr)} for each additional team member — add them with your pitch details and this total updates.`
-                  : `${formatInrRupees(ticket.extraMemberInr)} for each extra person from your startup — add them with your details and this total updates.`}
+                  ? 'Covers two people — you and your co-founder. Tell us who is coming with your pitch details.'
+                  : `${formatInrRupees(ticket.extraMemberInr!)} for each extra person from your startup — add them with your details and this total updates.`}
               </p>
             )}
           </>

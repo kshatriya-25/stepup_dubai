@@ -101,6 +101,14 @@ export const pricedTickets: Ticket[] =
               ...t,
               priceInr: priceOverrideInr,
               ...(t.extraMemberInr ? { extraMemberInr: priceOverrideInr } : {}),
+              /*
+               * The early-bird "was" price goes with it. Left in, staging would show ₹2 with
+               * ₹1,999 struck through beside it and a "Save ₹1,997" badge — a fake discount
+               * on a fake price, on the one deployment whose whole job is to make the test
+               * price obvious. An offer is a claim about money, so it is dropped wherever
+               * the money is not real.
+               */
+              listPriceInr: undefined,
             },
       )
 

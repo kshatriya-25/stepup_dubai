@@ -20,7 +20,7 @@ import { ticketById, isFreePass, TICKET_SALES_LIVE, type Ticket } from '@/conten
  * of mobile Safari's address bar without a `dvh` height cap and a nested scroller.
  *
  * The layout is the standard commerce one: the flow on the left, an order summary pinned
- * on the right. The summary is not decoration — someone three steps into a ₹4,997
+ * on the right. The summary is not decoration — someone three steps into a paid
  * purchase needs to see what they are buying and what it costs without losing their
  * place, and on a modal there was nowhere to put that.
  *

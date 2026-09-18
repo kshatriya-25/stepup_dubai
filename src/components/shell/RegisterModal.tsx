@@ -5,7 +5,16 @@ import Link from 'next/link'
 import { AnimatePresence, motion } from 'framer-motion'
 import { X, ArrowLeft, ArrowRight, Ticket as TicketIcon, Rocket } from 'lucide-react'
 import { cn } from '@/lib/cn'
-import { visitorTickets, isPitchPass, formatTicketPrice, isFreePass, type Ticket } from '@/content/tickets'
+import {
+  visitorTickets,
+  isPitchPass,
+  formatTicketPrice,
+  formatTicketListPrice,
+  hasOffer,
+  isFreePass,
+  OFFER_LABEL,
+  type Ticket,
+} from '@/content/tickets'
 
 /**
  * REGISTER — ask what someone is here to do before showing them a price list.
@@ -15,7 +24,7 @@ import { visitorTickets, isPitchPass, formatTicketPrice, isFreePass, type Ticket
  * the wrong question, because they are not four comparable products — three of them admit
  * you to the event and the fourth puts your company in front of investors. Somebody who
  * came to pitch does not want to read about lunch coupons, and somebody who came to walk
- * the stalls does not want to be sold a ₹2,999 founder track.
+ * the stalls does not want to be sold the founder track.
  *
  * So this asks the one question that actually splits the audience — visiting, or
  * pitching — and then shows only the passes that answer it. Pitching is a single pass, so
@@ -373,6 +382,13 @@ function PassRow({ ticket, onNavigate }: { ticket: Ticket; onNavigate: () => voi
           >
             {formatTicketPrice(ticket)}
           </span>
+          {hasOffer(ticket) && (
+            <span className="font-sans text-xs font-semibold leading-none">
+              <span className="sr-only">Regular price </span>
+              <s className="tabular-nums text-surface/45">{formatTicketListPrice(ticket)}</s>
+              <span className="ml-1.5 text-accent">{OFFER_LABEL}</span>
+            </span>
+          )}
         </span>
         <span className="mt-2 block text-sm leading-snug text-surface/70">{ticket.accessSummary}</span>
       </span>
