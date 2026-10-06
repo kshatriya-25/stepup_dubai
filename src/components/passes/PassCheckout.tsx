@@ -21,7 +21,6 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { Combobox } from '@/components/primitives/Combobox'
-import { CouponField } from './CouponField'
 import { PriceBreakdown } from './PriceBreakdown'
 import { orderTotal, formatPaise, type AppliedDiscount } from '@/lib/order-total'
 import { cn } from '@/lib/cn'
@@ -195,6 +194,13 @@ type DraftShape = {
   stepIndex: number
   v: Record<string, unknown>
   extras: ExtraMember[]
+  /**
+   * The coupon CODE, not the discount it was worth. State belonging to PassFlow, saved here
+   * because this is where the draft is — and saved as the string they typed on purpose: a
+   * stored discount would come back a week later as a saving the server no longer honours.
+   * The code is re-checked on restore. See PassFlow.
+   */
+  couponCode?: string
 }
 
 function draftKey(ticketId: string): string {
@@ -260,20 +266,39 @@ export function PassCheckout({
   ticket,
   mode,
   onExtrasChange,
+  onEmailChange,
   coupon = null,
-  onCouponChange,
+  couponCode = '',
+  couponSlot,
+  onCouponCodeRestore,
+  onCouponRejected,
 }: {
   ticket: Ticket
   mode: 'pay' | 'waitlist'
   /** Reports the extra-member count up to PassFlow so the summary can price it. */
   onExtrasChange?: (n: number) => void
   /**
+   * Reports the email up for a once-per-person coupon — '' until it is a plausible address,
+   * so the parent sees one change rather than one per keystroke. See PassFlow.
+   */
+  onEmailChange?: (email: string) => void
+  /**
    * The applied coupon, owned by PassFlow because the summary rail prices it too — see the
    * note there. Already validated by /api/payment/coupon; this component never decides what
    * a code is worth, and /api/payment/order checks it a third time before charging.
    */
   coupon?: AppliedDiscount | null
-  onCouponChange?: (next: AppliedDiscount | null) => void
+  /**
+   * The string in the coupon box, also PassFlow's — passed down only so it rides along in
+   * this form's saved draft with every other answer, and handed back by
+   * onCouponCodeRestore when one is read back.
+   */
+  couponCode?: string
+  onCouponCodeRestore?: (code: string) => void
+  /** The coupon box itself, for the phone layout — see couponSlot in PassFlow. */
+  couponSlot?: React.ReactNode
+  /** Called when the ORDER endpoint refuses the code, so the parent can drop the discount. */
+  onCouponRejected?: () => void
 }) {
   const [stepIndex, setStepIndex] = useState(0)
 
@@ -309,9 +334,6 @@ export function PassCheckout({
     coFounder: '',
     coFounderName: '',
     coFounderPhone: '',
-    // What is TYPED in the coupon box. The validated discount is PassFlow's; this is the
-    // string, and it lives in `v` so the draft saves and restores it like any other answer.
-    couponCode: '',
     consent: false,
     updates: true,
   })
@@ -351,8 +373,12 @@ export function PassCheckout({
         setExtras(d.extras.filter((m) => m && typeof m.name === 'string' && typeof m.role === 'string'))
       }
       if (Number.isInteger(d.stepIndex) && d.stepIndex > 0) setStepIndex(d.stepIndex)
+      if (typeof d.couponCode === 'string' && d.couponCode) onCouponCodeRestore?.(d.couponCode)
     }
     setRestored(true)
+    // onCouponCodeRestore is stable (a setState from PassFlow) and listing it would re-run
+    // this restore, overwriting whatever has been typed since.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticket.id])
 
   /*
@@ -387,6 +413,19 @@ export function PassCheckout({
     onExtrasChange?.(chargedExtras)
   }, [chargedExtras, onExtrasChange])
 
+  /*
+   * Report the email up, but only once it IS one.
+   *
+   * A once-per-person coupon cannot be judged without it, and the coupon box lives in the
+   * summary rail where there is no form to read. Sending '' for everything that is not yet
+   * a valid address means the parent's setState sees the same value on every keystroke and
+   * React bails out — so this fires once, when they finish typing, rather than twenty times.
+   */
+  useEffect(() => {
+    const e = v.email.trim().toLowerCase()
+    onEmailChange?.(/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e) ? e : '')
+  }, [v.email, onEmailChange])
+
   const set = <K extends keyof typeof v>(key: K, value: (typeof v)[K]) => {
     setV((s) => ({ ...s, [key]: value }))
     setErrors((e) => (e[key as string] ? { ...e, [key as string]: '' } : e))
@@ -416,8 +455,8 @@ export function PassCheckout({
       return
     }
     const { consent: _consent, ...rest } = v
-    writeDraft(ticket.id, { stepIndex: safeIndex, v: rest, extras })
-  }, [restored, status, v, extras, safeIndex, ticket.id])
+    writeDraft(ticket.id, { stepIndex: safeIndex, v: rest, extras, couponCode })
+  }, [restored, status, v, extras, safeIndex, ticket.id, couponCode])
 
   useEffect(() => {
     if (status !== 'confirming') return
@@ -610,7 +649,7 @@ export function PassCheckout({
          * then the total on screen: the breakdown, the rail and the button all re-render
          * from the cleared coupon before anyone can act on them.
          */
-        if (order?.coupon === 'rejected') onCouponChange?.(null)
+        if (order?.coupon === 'rejected') onCouponRejected?.()
         setErrorMsg(order?.error || '')
         setStatus('error')
         busy.current = false
@@ -1433,35 +1472,21 @@ export function PassCheckout({
             </dl>
 
             {/*
-              THE MONEY BLOCK — the coupon box and the arithmetic it changes, together.
+              THE MONEY BLOCK — what is about to be charged, itemised, one screen before it is.
 
-              Only while `paying`: in waitlist mode nothing is charged, so a total and a
-              discount would both be describing a sale that is not happening, and on a free
-              pass there is no price for a code to come off.
+              Only while `paying`: in waitlist mode nothing is charged and a free pass has no
+              price, so a total there would describe a sale that is not happening.
 
-              The coupon sits ABOVE the breakdown it alters, in the same panel, so applying
-              one has its effect in the reader's eye line rather than in a rail they have
-              scrolled past. The summary rail and the mobile bar re-render from the same
-              state at the same moment — see PassFlow.
+              `couponSlot` is the coupon box AND IS EMPTY ON DESKTOP — it carries `lg:hidden`
+              from PassFlow. The coupon belongs in the order summary, next to the money, and
+              that is where it renders from `lg` up; it is repeated here only for phones,
+              where the summary rail sits BELOW this form and a code applied down there would
+              be applied after the decision it was meant to change.
             */}
             {paying && (
-              <div className="border border-ink/10 bg-foam">
-                <div className="border-b border-dashed border-ink/15 p-4">
-                  <CouponField
-                    ticketId={ticket.id}
-                    extraMembers={chargedExtras}
-                    // Lets a once-per-person code be judged now rather than at the Pay
-                    // button. Empty until step 1 is filled, which is fine — checkCoupon()
-                    // treats a missing address as "cannot judge yet", never as a pass.
-                    email={v.email.trim() || undefined}
-                    code={v.couponCode}
-                    onCodeChange={(next) => set('couponCode', next)}
-                    applied={coupon}
-                    onChange={(next) => onCouponChange?.(next)}
-                    disabled={submitting}
-                  />
-                </div>
-                <PriceBreakdown total={total} tone="light" totalLabel="Total" className="p-4" />
+              <div className="border border-ink/10 bg-foam p-4">
+                <PriceBreakdown total={total} tone="light" totalLabel="Total" />
+                {couponSlot}
               </div>
             )}
 

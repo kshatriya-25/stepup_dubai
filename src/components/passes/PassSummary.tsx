@@ -28,11 +28,22 @@ export function PassSummary({
   ticket,
   extraCount,
   coupon = null,
+  couponSlot,
 }: {
   ticket: Ticket
   extraCount: number
   /** Validated server-side and lifted by PassFlow, so the rail prices what the form applied. */
   coupon?: AppliedDiscount | null
+  /**
+   * The coupon box, built by PassFlow because it owns the state — see the note there. A
+   * slot rather than a set of props: this component would otherwise carry nine of them
+   * through to a child it does not otherwise care about.
+   *
+   * It goes directly under the total, which is the number it changes. Absent on a free
+   * pass, in waitlist mode, and wherever PassFlow is not the one rendering this (the
+   * shopfront-shut page renders the rail on its own).
+   */
+  couponSlot?: React.ReactNode
 }) {
   const free = isFreePass(ticket)
   const total = orderTotal(ticket, extraCount, coupon)
@@ -57,6 +68,8 @@ export function PassSummary({
             {/* The pass name, the early bird, any extras, the coupon, the total — one
                 renderer shared with the review step. See ./PriceBreakdown. */}
             <PriceBreakdown total={total} tone="dark" className="mt-3" />
+
+            {couponSlot && <div className="mt-3">{couponSlot}</div>}
 
             {/* What the price covers. Kept for the co-founder pass now that it has no paid
                 extras — "Founder + Co-founder" on the pass line above is the claim, and this
