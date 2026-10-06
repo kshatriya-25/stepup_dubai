@@ -32,6 +32,13 @@
  * single day. Both times the receipt was promising something the pass did not admit.
  * Sourcing it from the catalogue means changing a pass's access changes what its
  * receipt claims, in one edit, and the two cannot disagree again.
+ *
+ * {{PRICE_ROWS}} IS EMPTY UNLESS A COUPON WAS USED. A receipt for a full-price pass has one
+ * figure on it and should show one figure; a discounted one has to show the arithmetic,
+ * because "Amount paid ₹849" on a pass the website advertises at ₹999 is the kind of
+ * mismatch that produces a support email a month later. When it fills, it fills with the
+ * pass price and the coupon line, taken from what was RECORDED at the time of the payment
+ * rather than from today's catalogue — see paymentInfo() in @/lib/payments/fulfil.
  */
 
 export const PAID_SUBJECT = '{{FIRST_NAME}}, your Tier-2 Rising seat is confirmed'
@@ -78,6 +85,7 @@ export const PAID_CONFIRMATION_HTML = `<!DOCTYPE html><html lang="en"><head><met
       <tr><td colspan="2" style="padding:16px 0 6px 0;font-size:10px;font-weight:700;letter-spacing:1.6px;color:#7A8798;">PAYMENT RECEIPT</td></tr>
       <tr><td width="130" style="padding:6px 0;font-size:14px;color:#7A8798;">Ticket</td><td style="padding:6px 0;font-size:14px;color:#14315E;font-weight:700;">{{TICKET}}</td></tr>
       <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Access</td><td style="padding:6px 0;font-size:14px;color:#14315E;font-weight:700;">{{ACCESS}}</td></tr>
+{{PRICE_ROWS}}
       <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Amount paid</td><td style="padding:6px 0;font-size:14px;color:#14315E;font-weight:700;">{{AMOUNT}}</td></tr>
       <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Paid on</td><td style="padding:6px 0;font-size:14px;color:#3D4A5C;">{{PAID_ON}}</td></tr>
       <tr><td style="padding:6px 0;font-size:14px;color:#7A8798;">Payment ID</td><td style="padding:6px 0;font-size:13px;color:#3D4A5C;font-family:Consolas,Monaco,monospace;">{{PAYMENT_ID}}</td></tr>

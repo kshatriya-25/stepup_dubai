@@ -3,17 +3,9 @@
 import { Check } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { site } from '@/content/site'
-import {
-  formatTicketPrice,
-  formatTicketListPrice,
-  formatInrRupees,
-  hasOffer,
-  savingInr,
-  isFreePass,
-  ticketsNote,
-  OFFER_LABEL,
-  type Ticket,
-} from '@/content/tickets'
+import { formatTicketPrice, formatInrRupees, isFreePass, ticketsNote, type Ticket } from '@/content/tickets'
+import { orderTotal, formatPaise, type AppliedDiscount } from '@/lib/order-total'
+import { PriceBreakdown } from './PriceBreakdown'
 
 /**
  * The order summary rail.
@@ -32,11 +24,18 @@ import {
  * screen at the exact moment the reader was changing it. Pinning the money and letting
  * only the feature list scroll is what makes the rail actually work.
  */
-export function PassSummary({ ticket, extraCount }: { ticket: Ticket; extraCount: number }) {
-  const extrasInr = ticket.extraMemberInr ? extraCount * ticket.extraMemberInr : 0
-  const totalInr = ticket.priceInr + extrasInr
+export function PassSummary({
+  ticket,
+  extraCount,
+  coupon = null,
+}: {
+  ticket: Ticket
+  extraCount: number
+  /** Validated server-side and lifted by PassFlow, so the rail prices what the form applied. */
+  coupon?: AppliedDiscount | null
+}) {
   const free = isFreePass(ticket)
-  const itemised = !free && !!ticket.extraMemberInr && extraCount > 0
+  const total = orderTotal(ticket, extraCount, coupon)
 
   return (
     <div className="border border-ink/10 bg-surface lg:sticky lg:top-6 lg:flex lg:max-h-[calc(100vh-3rem)] lg:flex-col">
@@ -46,48 +45,22 @@ export function PassSummary({ ticket, extraCount }: { ticket: Ticket; extraCount
           {free ? 'Your pass' : 'Order summary'}
         </p>
 
-        {itemised ? (
-          <>
-            <div className="mt-3 flex items-baseline justify-between gap-3 text-sm">
-              <span className="text-surface/80">{ticket.name}</span>
-              <span className="tabular-nums text-surface/80">{formatInrRupees(ticket.priceInr)}</span>
-            </div>
-            <div className="mt-1.5 flex items-baseline justify-between gap-3 text-sm">
-              <span className="text-surface/80">
-                {extraCount} extra {extraCount === 1 ? 'person' : 'people'} ×{' '}
-                {formatInrRupees(ticket.extraMemberInr!)}
-              </span>
-              <span className="tabular-nums text-surface/80">{formatInrRupees(extrasInr)}</span>
-            </div>
-            <div className="mt-3 flex items-baseline justify-between gap-3 border-t border-surface/20 pt-3">
-              <span className="font-sans text-sm font-semibold">
-                Total · {extraCount + 1} {extraCount + 1 === 1 ? 'person' : 'people'}
-              </span>
-              <span className="font-sans text-2xl font-bold leading-none tabular-nums">
-                {formatInrRupees(totalInr)}
-              </span>
-            </div>
-          </>
+        {free ? (
+          <div className="mt-2 flex items-baseline justify-between gap-3">
+            <span className="font-sans text-sm font-semibold">{ticket.name}</span>
+            <span className="font-sans text-2xl font-bold leading-none tabular-nums">
+              {formatTicketPrice(ticket)}
+            </span>
+          </div>
         ) : (
           <>
-            <div className="mt-2 flex items-baseline justify-between gap-3">
-              <span className="font-sans text-sm font-semibold">{ticket.name}</span>
-              <span className="font-sans text-2xl font-bold leading-none tabular-nums">
-                {formatTicketPrice(ticket)}
-              </span>
-            </div>
-            {hasOffer(ticket) && (
-              <p className="mt-1 text-right font-sans text-[11px] leading-tight">
-                <span className="sr-only">Regular price </span>
-                <s className="tabular-nums text-surface/50">{formatTicketListPrice(ticket)}</s>{' '}
-                <span className="font-semibold text-accent">
-                  {OFFER_LABEL} · save {formatInrRupees(savingInr(ticket))}
-                </span>
-              </p>
-            )}
-            <p className="mt-1 text-right font-sans text-[10px] text-surface/60">{ticket.unit}</p>
+            {/* The pass name, the early bird, any extras, the coupon, the total — one
+                renderer shared with the review step. See ./PriceBreakdown. */}
+            <PriceBreakdown total={total} tone="dark" className="mt-3" />
+
             {/* What the price covers. Kept for the co-founder pass now that it has no paid
-                extras — "Founder + Co-founder" above is the claim, and this is the detail. */}
+                extras — "Founder + Co-founder" on the pass line above is the claim, and this
+                is the detail. */}
             {(ticket.includesCoFounder || ticket.extraMemberInr) && (
               <p className="mt-3 border-t border-surface/15 pt-3 text-xs leading-relaxed text-surface/70">
                 {ticket.includesCoFounder
@@ -150,26 +123,54 @@ export function PassSummary({ ticket, extraCount }: { ticket: Ticket; extraCount
  *
  * Only rendered when there is arithmetic worth watching — a fixed-price pass has nothing
  * to report that the rail above did not already say, and a bar that never changes is just
- * something covering the page.
+ * something covering the page. A COUPON COUNTS as something worth watching: it is applied
+ * down in the review step, and on a phone the figure it changed is otherwise off screen.
  */
-export function MobileTotalBar({ ticket, extraCount }: { ticket: Ticket; extraCount: number }) {
-  if (isFreePass(ticket) || !ticket.extraMemberInr || extraCount < 1) return null
-  const totalInr = ticket.priceInr + extraCount * ticket.extraMemberInr
+export function MobileTotalBar({
+  ticket,
+  extraCount,
+  coupon = null,
+}: {
+  ticket: Ticket
+  extraCount: number
+  coupon?: AppliedDiscount | null
+}) {
+  const moving = coupon ? true : !!ticket.extraMemberInr && extraCount >= 1
+  if (isFreePass(ticket) || !moving) return null
+  const total = orderTotal(ticket, extraCount, coupon)
+  const people = extraCount + 1
 
   return (
-    <div
-      className={cn(
-        'fixed inset-x-0 bottom-0 z-50 border-t border-ink/10 bg-surface/95 backdrop-blur lg:hidden',
-        // Keeps the bar clear of the iPhone home indicator.
-        'pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3',
-      )}
-    >
-      <div className="mx-auto flex max-w-container-wide items-center justify-between px-4">
-        <span className="font-sans text-xs text-muted">
-          {extraCount + 1} people · {ticket.name}
-        </span>
-        <span className="font-sans text-lg font-bold tabular-nums text-ink">{formatInrRupees(totalInr)}</span>
+    <>
+      {/*
+        A SPACER THE HEIGHT OF THE BAR. The bar is `fixed`, so it is out of flow and sits on
+        top of whatever the last thing on the page is — which on a phone is the bottom of the
+        summary rail, the line with the contact address on it. The page's own `pb-16` nearly
+        clears it and does not once the iPhone home indicator adds its inset. Reserving the
+        space here rather than on the page keeps it tied to the bar actually being rendered:
+        this component returns null in every other case, and so does its spacer.
+      */}
+      {/* calc, not h-16 + padding: the box is border-box, so padding would sit INSIDE the
+          64px and reserve nothing extra for the home indicator. */}
+      <div aria-hidden className="h-[calc(4rem+env(safe-area-inset-bottom))] lg:hidden" />
+      <div
+        className={cn(
+          'fixed inset-x-0 bottom-0 z-50 border-t border-ink/10 bg-surface/95 backdrop-blur lg:hidden',
+          // Keeps the bar clear of the iPhone home indicator.
+          'pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3',
+        )}
+      >
+        <div className="mx-auto flex max-w-container-wide items-center justify-between gap-3 px-4">
+          <span className="min-w-0 truncate font-sans text-xs text-muted">
+            {ticket.name}
+            {people > 1 && ` · ${people} people`}
+            {coupon && <span className="font-semibold text-green"> · {coupon.code}</span>}
+          </span>
+          <span className="shrink-0 font-sans text-lg font-bold tabular-nums text-ink">
+            {formatPaise(total.totalPaise)}
+          </span>
+        </div>
       </div>
-    </div>
+    </>
   )
 }

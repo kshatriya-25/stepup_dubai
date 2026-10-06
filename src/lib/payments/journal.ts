@@ -117,6 +117,23 @@ export type Registration = {
   coFounderName?: string
   coFounderPhone?: string
 
+  /**
+   * The coupon that was spent on this order, and what it took off — both as they were at
+   * the moment the amount was set, never looked up again.
+   *
+   * A receipt is a statement about a transaction that has already happened, so it must not
+   * be rebuilt from today's catalogue: a code retired next week, or re-pointed at a
+   * different percentage, would otherwise silently restate what somebody paid. Stored only
+   * on a discounted order — absent, not '', on every other one, because these rows outlive
+   * the campaigns that wrote them.
+   *
+   * Set by /api/payment/order AFTER the code is validated server-side. Nothing the browser
+   * sends reaches these fields.
+   */
+  couponCode?: string
+  /** Whole rupees taken off the subtotal. Stored as a string like every field here. */
+  discountInr?: string
+
   consent?: string
 }
 
@@ -416,6 +433,37 @@ export function adoptRecord(args: {
 /** Paid but not yet recorded — the set that must always drain to empty. */
 export function outstanding(): PaymentRecord[] {
   return [...load().values()].filter((r) => r.status === 'paid' || r.status === 'fulfil_failed')
+}
+
+/**
+ * How many times a coupon has actually been SPENT, and by whom.
+ *
+ * COUNTS CAPTURED MONEY ONLY — 'paid', 'fulfilled' and 'fulfil_failed'. A 'pending' record
+ * is an order somebody started and may never finish, and counting those would let a
+ * handful of abandoned checkouts exhaust a limited code for everybody else. 'failed' is a
+ * payment Razorpay rejected: no money, no redemption. 'fulfil_failed' DOES count, because
+ * the money was captured — the failure there is our own bookkeeping, not their purchase.
+ *
+ * Linear over the index, which is correct at this event's scale (thousands of rows, read
+ * once per coupon check). If the journal ever moves to Postgres this becomes a SELECT
+ * count — see the scope note at the top of this file.
+ *
+ * Case-insensitive on the code, so a row written before normaliseCode existed, or by hand,
+ * still counts against its cap. Emails are returned lowercased for the same reason.
+ */
+export function couponUses(code: string): { total: number; emails: string[] } {
+  const want = code.trim().toUpperCase()
+  let total = 0
+  const emails: string[] = []
+  if (!want) return { total, emails }
+  for (const rec of load().values()) {
+    if (rec.status !== 'paid' && rec.status !== 'fulfilled' && rec.status !== 'fulfil_failed') continue
+    if ((rec.registration?.couponCode || '').trim().toUpperCase() !== want) continue
+    total++
+    const email = (rec.registration?.email || '').trim().toLowerCase()
+    if (email) emails.push(email)
+  }
+  return { total, emails }
 }
 
 export function stats(): Record<PaymentStatus | 'total', number> {

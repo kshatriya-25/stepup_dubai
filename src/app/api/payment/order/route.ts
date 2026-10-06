@@ -21,7 +21,9 @@ import { createHash } from 'node:crypto'
 import { rateLimited, clientIp } from '@/lib/submission'
 import { parseSubmission } from '@/lib/registration-input'
 import { paymentConfig, createOrder, formatInr, isLiveMode } from '@/lib/payments/razorpay'
-import { ticketPaise, formatTicketPrice, isFreePass } from '@/content/tickets'
+import { formatTicketPrice, isFreePass } from '@/content/tickets'
+import { orderTotal, type AppliedDiscount } from '@/lib/order-total'
+import { checkCoupon, normaliseCode } from '@/lib/coupons'
 import { pricedTickets, priceOverrideInr } from '@/lib/pricing'
 import {
   createRecord,
@@ -106,9 +108,40 @@ export async function POST(req: Request) {
     )
   }
 
-  // Priced from the catalogue plus the validated extras count. The browser sent a pass
-  // id and a number of people; it never sent an amount.
-  const amountPaise = ticketPaise(ticket, extraMembers)
+  /*
+   * THE COUPON IS RE-CHECKED HERE, FROM THE CODE STRING.
+   *
+   * The browser already asked /api/payment/coupon and was shown a discount, and none of
+   * that is taken on trust: the only thing read out of this request is the code someone
+   * typed. The catalogue, the expiry, the pass restriction, the redemption cap and the
+   * arithmetic are all evaluated again, at the instant the amount is set, by the same
+   * checkCoupon() the checkout used. A request claiming a discount, a different
+   * percentage, or a code that ran out while the form was open gets the catalogue's answer
+   * — not its own.
+   *
+   * A BAD CODE REFUSES THE ORDER RATHER THAN BEING DROPPED. Silently charging full price
+   * would take more money than the page the customer was reading said it would, which is
+   * the one outcome worse than making them tap again. The error names the reason so the
+   * checkout can clear the code and let them continue at the undiscounted price.
+   */
+  let discount: AppliedDiscount | null = null
+  const couponCode = normaliseCode(raw.couponCode)
+  if (couponCode) {
+    const check = checkCoupon({ code: couponCode, ticket, extraMembers, email: reg.email })
+    if (!check.ok) {
+      return NextResponse.json({ ok: false, error: check.error, coupon: 'rejected' }, { status: 400 })
+    }
+    discount = check.applied
+    // Onto the registration, so the journal row, the sheet, Postgres, the receipt and the
+    // organiser alert all describe the same transaction. Written from the VALIDATED result,
+    // never from the request.
+    reg.couponCode = check.applied.code
+    reg.discountInr = String(Math.round(check.applied.discountPaise / 100))
+  }
+
+  // Priced from the catalogue, the validated extras count and the validated coupon. The
+  // browser sent a pass id, a number of people and a code; it never sent an amount.
+  const amountPaise = orderTotal(ticket, extraMembers, discount).totalPaise
 
   if (rateLimited(clientIp(req))) {
     return NextResponse.json(
@@ -133,9 +166,12 @@ export async function POST(req: Request) {
   // The ticket id is part of the key: buying a Delegate Pass and then a Founder
   // Programme within the same five minutes are two genuine purchases, not a double
   // click, and must not collapse into one order.
+  // The coupon is in the key as well as the amount it produced. Two codes worth the same
+  // money are still two different purchases to reconcile, and applying a code should always
+  // produce a fresh order rather than reattaching to the full-price one from a minute ago.
   const bucket = Math.floor(Date.now() / (5 * 60 * 1000))
   const idempotencyKey = createHash('sha256')
-    .update(`${reg.email}|${reg.phone}|${ticket.id}|${amountPaise}|${bucket}`)
+    .update(`${reg.email}|${reg.phone}|${ticket.id}|${reg.couponCode || ''}|${amountPaise}|${bucket}`)
     .digest('hex')
     .slice(0, 32)
 
@@ -149,6 +185,8 @@ export async function POST(req: Request) {
       amountLabel: formatInr(reusable.amountPaise),
       currency: 'INR',
       ticketName: ticket.name,
+      couponCode: reg.couponCode || '',
+      discountPaise: discount ? discount.discountPaise : 0,
       reused: true,
       testMode: !isLiveMode(),
       prefill: { name: reg.name, email: reg.email, contact: reg.phone.replace(/\s/g, '') },
@@ -186,6 +224,13 @@ export async function POST(req: Request) {
      * `interest` is deliberately NOT here. It is planning data — what the room is made of
      * — and it lives in the journal and the sheet. Losing it costs a segment breakdown,
      * never a seat, which is the test for whether something earns one of these 15.
+     *
+     * NEITHER IS THE COUPON, by that same test. What a recovery needs is the amount, and
+     * Razorpay holds that itself — the order is created for the DISCOUNTED total, so a
+     * registration rebuilt from these notes is fulfilled and receipted for exactly what was
+     * charged. The code and the saving live in the journal, the sheet, Postgres and the
+     * organiser email; losing them to a dead disk costs a line in a campaign report, not a
+     * seat and not a rupee.
      */
     notes: {
       name: reg.name,
@@ -246,6 +291,10 @@ export async function POST(req: Request) {
     amountLabel: formatInr(order.data.amount),
     currency: order.data.currency,
     ticketName: ticket.name,
+    // What the server actually allowed, so the checkout can show the real figure on the
+    // Razorpay window rather than its own optimistic one.
+    couponCode: reg.couponCode || '',
+    discountPaise: discount ? discount.discountPaise : 0,
     testMode: !isLiveMode(),
     prefill: { name: reg.name, email: reg.email, contact: reg.phone.replace(/\s/g, '') },
   })

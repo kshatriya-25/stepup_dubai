@@ -180,11 +180,26 @@ CREATE TABLE IF NOT EXISTS registrations (
   consent           BOOLEAN,
   updates           BOOLEAN,
   amount_inr        INTEGER,
+  coupon_code       TEXT,
+  discount_inr      INTEGER,
   payment_id        TEXT,
   order_id          TEXT,
   paid_at           TIMESTAMPTZ,
   raw               JSONB       NOT NULL
 );
+/*
+ * MIGRATIONS GO HERE, AS ADD COLUMN IF NOT EXISTS.
+ *
+ * The CREATE above is IF NOT EXISTS, so on every server that has already written a row it
+ * does nothing at all — including nothing about a column added to it later. Without these
+ * two lines the coupon columns would exist only on a database created from scratch, and the
+ * INSERT below would fail with "column coupon_code does not exist" on the one deployment
+ * that matters. Both statements are no-ops once applied, which is what lets this run on
+ * every boot with no migration tool and no tracked SQL.
+ */
+ALTER TABLE registrations ADD COLUMN IF NOT EXISTS coupon_code  TEXT;
+ALTER TABLE registrations ADD COLUMN IF NOT EXISTS discount_inr INTEGER;
+CREATE INDEX IF NOT EXISTS registrations_coupon_idx ON registrations (coupon_code) WHERE coupon_code IS NOT NULL;
 CREATE INDEX IF NOT EXISTS registrations_email_idx      ON registrations (lower(email));
 CREATE INDEX IF NOT EXISTS registrations_ticket_idx     ON registrations (ticket_id);
 CREATE INDEX IF NOT EXISTS registrations_created_at_idx ON registrations (created_at DESC);
@@ -300,13 +315,13 @@ export async function recordRegistration(reg: Registration, meta: RegistrationMe
        workshop, want_networking, meeting_type, meeting_note,
        register_as, category, org_name, id_number, id_type, designation, interest,
        consent, updates,
-       amount_inr, payment_id, order_id, paid_at,
+       amount_inr, coupon_code, discount_inr, payment_id, order_id, paid_at,
        raw
      ) VALUES (
        $1,$2,$3, $4,$5,$6,$7, $8,$9,$10,
        $11,$12,$13,$14,$15,$16, $17,$18,$19,$20,$21,
        $22,$23,$24,$25, $26,$27,$28,$29,$30,$31,$32, $33,$34,
-       $35,$36,$37,$38, $39
+       $35,$36,$37,$38,$39,$40, $41
      )
      ON CONFLICT (id) DO UPDATE SET
        updated_at = now(),
@@ -323,7 +338,8 @@ export async function recordRegistration(reg: Registration, meta: RegistrationMe
        register_as = EXCLUDED.register_as, category = EXCLUDED.category, org_name = EXCLUDED.org_name,
        id_number = EXCLUDED.id_number, id_type = EXCLUDED.id_type, designation = EXCLUDED.designation,
        interest = EXCLUDED.interest, consent = EXCLUDED.consent, updates = EXCLUDED.updates,
-       amount_inr = EXCLUDED.amount_inr, payment_id = EXCLUDED.payment_id,
+       amount_inr = EXCLUDED.amount_inr, coupon_code = EXCLUDED.coupon_code,
+       discount_inr = EXCLUDED.discount_inr, payment_id = EXCLUDED.payment_id,
        order_id = EXCLUDED.order_id, paid_at = EXCLUDED.paid_at,
        raw = EXCLUDED.raw`,
     [
@@ -338,7 +354,12 @@ export async function recordRegistration(reg: Registration, meta: RegistrationMe
       nullable(reg.registerAs), nullable(reg.category), nullable(reg.orgName),
       nullable(reg.idNumber), nullable(reg.idType), nullable(reg.designation), nullable(reg.interest),
       bool(reg.consent), bool(reg.updates),
-      meta.amountInr ?? null, meta.paymentId ?? null, meta.orderId ?? null, meta.paidAt ?? null,
+      meta.amountInr ?? null,
+      // Absent on an undiscounted registration rather than '' / 0, so `WHERE coupon_code IS
+      // NOT NULL` is the whole answer to "which rows used a code".
+      nullable(reg.couponCode),
+      reg.couponCode ? int(reg.discountInr) : null,
+      meta.paymentId ?? null, meta.orderId ?? null, meta.paidAt ?? null,
       JSON.stringify(reg),
     ],
     `registration ${meta.id}`,

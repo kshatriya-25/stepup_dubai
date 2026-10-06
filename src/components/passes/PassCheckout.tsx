@@ -21,6 +21,9 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { Combobox } from '@/components/primitives/Combobox'
+import { CouponField } from './CouponField'
+import { PriceBreakdown } from './PriceBreakdown'
+import { orderTotal, formatPaise, type AppliedDiscount } from '@/lib/order-total'
 import { cn } from '@/lib/cn'
 import { site, tamilNaduCities } from '@/content/site'
 import {
@@ -257,11 +260,20 @@ export function PassCheckout({
   ticket,
   mode,
   onExtrasChange,
+  coupon = null,
+  onCouponChange,
 }: {
   ticket: Ticket
   mode: 'pay' | 'waitlist'
   /** Reports the extra-member count up to PassFlow so the summary can price it. */
   onExtrasChange?: (n: number) => void
+  /**
+   * The applied coupon, owned by PassFlow because the summary rail prices it too — see the
+   * note there. Already validated by /api/payment/coupon; this component never decides what
+   * a code is worth, and /api/payment/order checks it a third time before charging.
+   */
+  coupon?: AppliedDiscount | null
+  onCouponChange?: (next: AppliedDiscount | null) => void
 }) {
   const [stepIndex, setStepIndex] = useState(0)
 
@@ -297,6 +309,9 @@ export function PassCheckout({
     coFounder: '',
     coFounderName: '',
     coFounderPhone: '',
+    // What is TYPED in the coupon box. The validated discount is PassFlow's; this is the
+    // string, and it lives in `v` so the draft saves and restores it like any other answer.
+    couponCode: '',
     consent: false,
     updates: true,
   })
@@ -379,8 +394,15 @@ export function PassCheckout({
 
   const cfg = v.category ? categories[v.category] : null
   const paying = mode === 'pay'
-  const totalInr = ticket.priceInr + (ticket.extraMemberInr ? chargedExtras * ticket.extraMemberInr : 0)
-  const amountLabel = isFreePass(ticket) ? 'Free' : formatInrRupees(totalInr)
+  /*
+   * THE AMOUNT, from the same function /api/payment/order prices with — see
+   * @/lib/order-total. The pass, its early-bird credit, any paid extras, then the coupon.
+   * The coupon is only allowed to count while money is actually moving: in waitlist mode
+   * nothing is charged, so a discount on the button would be a promise about a sale that is
+   * not happening.
+   */
+  const total = orderTotal(ticket, chargedExtras, mode === 'pay' ? coupon : null)
+  const amountLabel = isFreePass(ticket) ? 'Free' : formatPaise(total.totalPaise)
 
   /*
    * Save on every change once restored; clear once the registration is done, so a finished
@@ -519,6 +541,9 @@ export function PassCheckout({
         su && v.coFounder === 'attending' && v.coFounderPhone
           ? `+91 ${v.coFounderPhone.slice(0, 5)} ${v.coFounderPhone.slice(5)}`
           : '',
+      // The CODE, never an amount or a discount. The server looks up what it is worth, and
+      // refuses the order rather than quietly charging full price if it is no longer valid.
+      couponCode: paying && coupon ? coupon.code : '',
       consent: 'yes',
       updates: v.updates ? 'yes' : 'no',
     }
@@ -570,11 +595,22 @@ export function PassCheckout({
             amount?: number
             currency?: string
             ticketName?: string
+            /** 'rejected' when the coupon was the reason this order was refused. */
+            coupon?: string
             prefill?: { name: string; email: string; contact: string }
           }
         | null
 
       if (!orderRes.ok || !order?.ok || !order.orderId || !order.keyId) {
+        /*
+         * The code died between applying it and pressing Pay — expired at midnight, or its
+         * last redemption taken by somebody faster. The server refused rather than charging
+         * full price (deliberately — see /api/payment/order), so the discount is dropped
+         * here and the reason shown. The next tap pays the undiscounted total, which is by
+         * then the total on screen: the breakdown, the rail and the button all re-render
+         * from the cleared coupon before anyone can act on them.
+         */
+        if (order?.coupon === 'rejected') onCouponChange?.(null)
         setErrorMsg(order?.error || '')
         setStatus('error')
         busy.current = false
@@ -1396,26 +1432,36 @@ export function PassCheckout({
               )}
             </dl>
 
-            {/* The one place the arithmetic is spelled out. A three-person startup is
-                paying for extra seats should see how the total is built. (No pass sells
-                extra seats today, so this does not render — see the team section above.) */}
-            {paying && ticket.extraMemberInr && chargedExtras > 0 && (
-              <div className="bg-foam p-4 text-sm">
-                <div className="flex justify-between text-muted">
-                  <span>{ticket.name}</span>
-                  <span className="tabular-nums">{formatInrRupees(ticket.priceInr)}</span>
+            {/*
+              THE MONEY BLOCK — the coupon box and the arithmetic it changes, together.
+
+              Only while `paying`: in waitlist mode nothing is charged, so a total and a
+              discount would both be describing a sale that is not happening, and on a free
+              pass there is no price for a code to come off.
+
+              The coupon sits ABOVE the breakdown it alters, in the same panel, so applying
+              one has its effect in the reader's eye line rather than in a rail they have
+              scrolled past. The summary rail and the mobile bar re-render from the same
+              state at the same moment — see PassFlow.
+            */}
+            {paying && (
+              <div className="border border-ink/10 bg-foam">
+                <div className="border-b border-dashed border-ink/15 p-4">
+                  <CouponField
+                    ticketId={ticket.id}
+                    extraMembers={chargedExtras}
+                    // Lets a once-per-person code be judged now rather than at the Pay
+                    // button. Empty until step 1 is filled, which is fine — checkCoupon()
+                    // treats a missing address as "cannot judge yet", never as a pass.
+                    email={v.email.trim() || undefined}
+                    code={v.couponCode}
+                    onCodeChange={(next) => set('couponCode', next)}
+                    applied={coupon}
+                    onChange={(next) => onCouponChange?.(next)}
+                    disabled={submitting}
+                  />
                 </div>
-                <div className="mt-2 flex justify-between text-muted">
-                  <span>
-                    {chargedExtras} {ticket.includesCoFounder ? 'additional' : 'extra'}{' '}
-                    {chargedExtras === 1 ? 'member' : 'members'} × {formatInrRupees(ticket.extraMemberInr)}
-                  </span>
-                  <span className="tabular-nums">{formatInrRupees(chargedExtras * ticket.extraMemberInr)}</span>
-                </div>
-                <div className="mt-3 flex justify-between border-t border-ink/15 pt-3 font-semibold text-ink">
-                  <span>Total</span>
-                  <span className="tabular-nums">{amountLabel}</span>
-                </div>
+                <PriceBreakdown total={total} tone="light" totalLabel="Total" className="p-4" />
               </div>
             )}
 

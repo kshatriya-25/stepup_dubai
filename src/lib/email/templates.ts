@@ -48,6 +48,7 @@ import {
   type Ticket,
   type CategoryId,
 } from '@/content/tickets'
+import { formatPaise } from '@/lib/order-total'
 
 const C = {
   navy: '#072B5F',
@@ -1076,6 +1077,14 @@ export type PaymentInfo = {
   paidAt: Date
   method?: string
   /**
+   * The coupon that was spent, and what it took off, as RECORDED with the payment — see
+   * Registration.couponCode in @/lib/payments/journal for why a receipt must not re-derive
+   * these from the catalogue. Absent / 0 on a full-price order and on one recovered from
+   * Razorpay's order notes, which carry the amount but not the code.
+   */
+  couponCode?: string
+  discountPaise?: number
+  /**
    * Why this receipt is not a real one — null when it is. Stamps a warning banner so a
    * staging booking cannot pass as a genuine pass. See ReceiptCaveat in ./paid for why
    * this is a three-state field rather than the boolean `testMode` it replaced.
@@ -1094,6 +1103,50 @@ export type PaymentInfo = {
  */
 export function accessLabel(pay: PaymentInfo): string {
   return ticketAccess(pay.ticketId) || site.dates
+}
+
+/**
+ * Was this a discounted purchase? The one test, used by every builder below, so the
+ * receipt, its plain-text twin and the organiser copy cannot disagree about whether to
+ * show the arithmetic.
+ *
+ * Needs BOTH: a code with no saving recorded would print "Coupon SINGAM20 −₹0", and a
+ * saving with no code would print a discount nobody can account for.
+ */
+function discounted(pay: PaymentInfo): boolean {
+  return !!pay.couponCode && (pay.discountPaise || 0) > 0
+}
+
+/** What the pass cost before the coupon. Derived, because the paid amount is the record. */
+function listPaise(pay: PaymentInfo): number {
+  return pay.amountPaise + (pay.discountPaise || 0)
+}
+
+/**
+ * The two receipt rows a coupon adds above "Amount paid": what the pass costs, and what
+ * the code took off. '' when there was no coupon — see {{PRICE_ROWS}} in ./paid.
+ */
+function receiptPriceRows(pay: PaymentInfo): string {
+  if (!discounted(pay)) return ''
+  return [
+    plainRow('Pass price', formatPaise(listPaise(pay))),
+    plainRow(`Coupon ${pay.couponCode}`, `− ${formatPaise(pay.discountPaise || 0)}`),
+  ]
+    .filter(Boolean)
+    .join('\n')
+}
+
+/** The same two rows as aligned plain text, for the text/plain part. */
+function receiptPriceText(pay: PaymentInfo): string[] {
+  if (!discounted(pay)) return []
+  // Padded to the usual 15-wide label column, but never to less than the label plus two
+  // spaces: "Coupon SINGAM20" is already 15 characters, and padEnd() would run it straight
+  // into the amount.
+  const label = `Coupon ${pay.couponCode}`
+  return [
+    `Pass price     ${formatPaise(listPaise(pay))}`,
+    `${label.padEnd(Math.max(15, label.length + 2))}− ${formatPaise(pay.discountPaise || 0)}`,
+  ]
 }
 
 /**
@@ -1133,6 +1186,7 @@ export function paidParticipantEmail(
     caveatBanner(pay.caveat),
   )
     .replace('{{EXTRA_ROWS}}', passDetailRows(r, null))
+    .replace('{{PRICE_ROWS}}', receiptPriceRows(pay))
     .replace('{{REGISTERED_AS_ROW}}', plainRow('Attending as', r.registerAs))
 
   /*
@@ -1162,6 +1216,7 @@ export function paidParticipantEmail(
     'PAYMENT RECEIPT',
     `Ticket         ${pay.ticketName}`,
     `Access         ${accessLabel(pay)}`,
+    ...receiptPriceText(pay),
     `Amount paid    ${pay.amountLabel}`,
     `Paid on        ${stamp(pay.paidAt)}`,
     `Payment ID     ${pay.paymentId}`,
@@ -1198,7 +1253,9 @@ export function paidOrganiserEmail(
   pay: PaymentInfo,
   at = new Date(),
 ): { subject: string; html: string; text: string } {
-  const subject = `Paid registration — ${r.name} · ${pay.ticketName} · ${pay.amountLabel}`
+  const subject = `Paid registration — ${r.name} · ${pay.ticketName} · ${pay.amountLabel}${
+    discounted(pay) ? ` · ${pay.couponCode}` : ''
+  }`
   const when = stamp(at)
 
   const body = `
@@ -1221,6 +1278,14 @@ export function paidOrganiserEmail(
               };">
 ${detailRow('Ticket', pay.ticketName)}
 ${detailRow('Amount', pay.amountLabel)}
+${
+  discounted(pay)
+    ? detailRow(
+        'Coupon',
+        `${pay.couponCode} · ${formatPaise(pay.discountPaise || 0)} off ${formatPaise(listPaise(pay))}`,
+      )
+    : ''
+}
 ${detailRow('Payment ID', pay.paymentId)}
 ${detailRow('Order ID', pay.orderId)}
 ${detailRow('Method', pay.method || '—')}
@@ -1255,6 +1320,9 @@ ${button('Reply to ' + firstName(r.name), `mailto:${r.email}?subject=${encodeURI
     '',
     `Ticket         ${pay.ticketName}`,
     `Amount         ${pay.amountLabel}`,
+    ...(discounted(pay)
+      ? [`Coupon         ${pay.couponCode} · ${formatPaise(pay.discountPaise || 0)} off ${formatPaise(listPaise(pay))}`]
+      : []),
     `Payment ID     ${pay.paymentId}`,
     `Order ID       ${pay.orderId}`,
     `Method         ${pay.method || '—'}`,

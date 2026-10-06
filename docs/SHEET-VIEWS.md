@@ -93,6 +93,29 @@ It is also the sturdier test. A free pass has no price, so no free-pass row can 
 genuine "hasn't paid yet" — the ticket alone settles entitlement, and the status string
 never has to be typed into a formula by hand.
 
+### Counting a coupon campaign
+
+**The `Amount` column carries the coupon**, because the sheet's columns are append-only and
+positional — a new one means redeploying the Apps Script on both sheets before a single row
+can be written. So a discounted row reads:
+
+```
+₹399 (SINGAM20 −₹100)
+```
+
+Nothing is lost by it: this column has always held a formatted string with a currency sign
+and has never been summable. The amount actually paid stays first, which is what
+reconciliation reads.
+
+To count a campaign, match on the code:
+
+```
+=COUNTIF(Registrations!K:K, "*SINGAM20*")
+```
+
+For the real arithmetic — what a code gave away against what it collected — query Postgres
+instead, where it is two proper columns. See the coupon section of `PAYMENTS.md`.
+
 ## Two things to know
 
 **`Payment Status` has three values and one piece of history.** `Paid` is money captured.

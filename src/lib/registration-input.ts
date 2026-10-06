@@ -275,6 +275,27 @@ export function parseSubmission(raw: Record<string, unknown>): ParseResult {
  * `paymentStatus` is the caller's to decide: 'Waitlist' from /api/register, 'Paid' from
  * the fulfilment path once money is confirmed captured.
  */
+/**
+ * The Amount column, with the coupon written into it when one was used:
+ *
+ *   ₹999                      no coupon
+ *   ₹849 (SINGAM20 −₹150)     SINGAM20 took ₹150 off
+ *
+ * APPENDED RATHER THAN GIVEN ITS OWN COLUMN, for the same reason the co-founder goes into
+ * "Team Members" (see extraMemberList below): the sheet's columns are append-only and
+ * positional — see registration/Code.gs — so a new one means redeploying the Apps Script on
+ * both sheets before a single row can be written. Nothing is lost by appending here,
+ * because this column has always held a formatted string with a currency sign in it and has
+ * never been summable; the amount actually paid stays first, which is what reconciliation
+ * reads, and the parenthesis is what a campaign count greps for.
+ */
+function amountCell(reg: Registration, amount?: string): string {
+  const paid = amount || ''
+  if (!reg.couponCode) return paid
+  const off = reg.discountInr ? ` −₹${reg.discountInr}` : ''
+  return paid ? `${paid} (${reg.couponCode}${off})` : `${reg.couponCode}${off}`
+}
+
 export function sheetRow(
   reg: Registration,
   extra: { paymentStatus: string; amount?: string; paymentId?: string; orderId?: string; paidAt?: string },
@@ -294,7 +315,7 @@ export function sheetRow(
     paymentStatus: extra.paymentStatus,
     ticket: reg.ticketName || '',
     access: ticketAccess(reg.ticketId) || '',
-    amount: extra.amount || '',
+    amount: amountCell(reg, extra.amount),
     paymentId: extra.paymentId || '',
     orderId: extra.orderId || '',
     paidAt: extra.paidAt || '',

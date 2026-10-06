@@ -154,6 +154,20 @@ function paymentInfo(rec: PaymentRecord, paidAt: Date): PaymentInfo {
     paidAt,
     method: rec.method,
     /*
+     * The coupon, from the JOURNAL ROW rather than the catalogue — a receipt describes a
+     * transaction that has already happened, and re-reading the catalogue months later
+     * would restate it with whatever that code means by then, or drop it entirely once the
+     * campaign is deleted. See the note on Registration.couponCode.
+     *
+     * Absent on an order recovered from Razorpay's notes, where only the amount survives
+     * (see the notes block in /api/payment/order). The receipt then simply shows the amount
+     * paid with no breakdown, which is accurate.
+     */
+    couponCode: rec.registration.couponCode || undefined,
+    discountPaise: rec.registration.discountInr
+      ? Math.max(0, Math.round(Number(rec.registration.discountInr) || 0)) * 100
+      : 0,
+    /*
      * Test KEYS win over a test PRICE, and the order matters. On `rzp_test_…` no money
      * existed regardless of what the catalogue said, so "no real money was charged" is
      * the true statement; a staging box running both would otherwise claim a refund is

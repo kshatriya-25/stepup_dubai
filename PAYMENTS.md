@@ -77,6 +77,8 @@ from Razorpay alone.
 | `src/lib/payments/fulfil.ts` | `settle()` — the only place a payment becomes a registration |
 | `src/app/api/payment/*` | The four routes |
 | `src/lib/email/paid.ts` | The paid-confirmation receipt template |
+| `src/lib/coupons.ts` | The coupon catalogue and the rules for spending one — **server only** |
+| `src/lib/order-total.ts` | The order arithmetic, shared by the page and the order endpoint |
 
 ---
 
@@ -116,14 +118,90 @@ advertising one number while the server charged another.
 Changing a price is therefore a code change — correct for money, since it goes through
 review and lands in git history.
 
-| Ticket | id | Price |
-|---|---|---|
-| Delegate Pass | `delegate` | ₹999 per person |
-| Investor Pitch Day | `investor-pitch` | ₹2,599 per startup |
-| Founder Programme | `founder` | ₹3,999 per startup |
+| Pass | id | Price | Was |
+|---|---|---|---|
+| Free Pass | `free` | ₹0 — never reaches Razorpay | — |
+| Delegate Pass | `delegate` | ₹299 per person | — |
+| Workshop Pass | `workshop` | ₹499 per person | ₹999 |
+| Investor Pitch Pass | `investor-pitch` | ₹999 — founder + co-founder | ₹1,999 |
 
-The browser never sends an amount — only a ticket `id`. An unknown id is rejected
-outright rather than defaulted to something cheap.
+The "Was" column is `listPriceInr`, an early-bird offer. It is **display only** —
+`ticketPaise()` never reads it — and removing the field ends the offer without re-pricing
+anything.
+
+The browser never sends an amount — only a pass `id`, a number of extra people, and a
+coupon code. An unknown id is rejected outright rather than defaulted to something cheap.
+
+### Coupons
+
+Codes live in **`src/lib/coupons.ts`**, which is `server-only`. They are not in `.env` and
+not in `src/content/` — a catalogue imported by a client component is compiled into the
+JavaScript the browser downloads, and a private partner code in the bundle is a public
+code. **Never quote a live code in client code either**, including a placeholder: the
+checkout's box says "Enter code" for exactly that reason.
+
+Current codes:
+
+| Code | Off | Applies to | Until | Cap |
+|---|---|---|---|---|
+| `SINGAM20` | 20% | every paid pass | 2026-11-20 | 150 |
+| `TBI25` | 25% | every paid pass | 2026-11-20 | 100 |
+| `PITCH200` | ₹200 | Investor Pitch Pass only | 2026-11-20 | 75 |
+
+They stack with the early bird, because the early bird **is** the pass price — `SINGAM20`
+on the Workshop Pass is 20% of ₹499, not of ₹999.
+
+**Adding or retiring one is one object in that file plus a deploy.** Deleting a line
+retires the code immediately. Give every code an expiry and a cap: a code is a password
+that gets forwarded, the cap is what keeps a leaked one from being an open sale, and a
+code with neither is a standing discount that belongs in the pass price instead.
+
+**It is validated three times and trusted none of them.** The checkout asks
+`/api/payment/coupon`, which is a read that reserves nothing; `/api/payment/order` checks
+the same code again, through the same `checkCoupon()`, at the moment the amount is set. A
+request claiming a discount, a bigger percentage, or a code that ran out while the form
+was open gets the catalogue's answer. A code that has become invalid **refuses the order**
+rather than being dropped — charging full price for a page that showed a discount is the
+one outcome worse than making somebody tap again.
+
+**Redemptions are counted from the journal, captured money only** (`couponUses()`): a
+`pending` order is a checkout somebody may never finish, and counting those would let a
+handful of abandoned forms exhaust a limited code. So a cap is a cap on sales, not on
+attempts.
+
+**A 100% code is not supported, deliberately.** A Razorpay order must be worth at least
+₹1, and a ₹0 "payment" would travel the paid path — journal row, receipt, "Amount paid ₹0"
+— for money nobody moved. A discount larger than the pass is clamped to leave ₹1 payable.
+A genuine full waiver is a free registration, which is a human decision, not something a
+discount code should reach by accident.
+
+**Where a used coupon is recorded** — all of it from what was validated, never from the
+request:
+
+| Where | What it says |
+|---|---|
+| Journal row | `registration.couponCode`, `registration.discountInr` |
+| Sheet, **Amount** column | `₹399 (SINGAM20 −₹100)` — appended, so no Apps Script redeploy |
+| Postgres | `registrations.coupon_code`, `registrations.discount_inr` |
+| Receipt email | Two extra rows: `Pass price` and `Coupon SINGAM20` |
+| Organiser email | A `Coupon` row, and the code on the subject line |
+| Razorpay order notes | **Nothing** — the notes are full at 15 keys, and Razorpay already holds the discounted amount. A registration recovered from a dead disk is receipted for exactly what was charged; only the campaign line is lost. |
+
+Counting what a campaign actually sold:
+
+```bash
+# From Postgres (the queryable copy)
+psql -c "SELECT coupon_code, count(*), sum(discount_inr) AS given_away, sum(amount_inr) AS collected
+         FROM registrations WHERE coupon_code IS NOT NULL GROUP BY 1 ORDER BY 2 DESC;"
+
+# From the journal (the record), paid rows only
+grep -c '"couponCode":"SINGAM20"' /var/www/tier2expo/stepup_dubai/data/payments.jsonl
+```
+
+`/api/payment/coupon` is the one endpoint where a code can be guessed, so it has its own
+rate limit — 20 attempts per 10 minutes per IP — kept **separate** from the form limiter
+in `src/lib/submission.ts`. Sharing that budget would mean somebody who mistyped a code
+six times could no longer register at all.
 
 ### ⚠️ Seat counts are copy, not inventory
 
@@ -231,11 +309,11 @@ curl -s https://tier2rising.com/api/payment/webhook
 # {"secret":"configured"}  — if it says NOT CONFIGURED, the webhook will reject everything
 ```
 
-### Changing a price
+### Changing a price, or a coupon
 
-Edit `src/content/tickets.ts`, then deploy as usual. Because the page and the server
-read the same constant, a rebuild updates both together — there is no window in which
-they disagree.
+Edit `src/content/tickets.ts` (prices) or `src/lib/coupons.ts` (codes), then deploy as
+usual. Because the page and the server read the same constants, a rebuild updates both
+together — there is no window in which they disagree.
 
 ```bash
 npm run build && pm2 restart tier2rising
