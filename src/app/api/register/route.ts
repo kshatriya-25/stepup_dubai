@@ -29,7 +29,8 @@ import { participantEmail, organiserEmail } from '@/lib/email/templates'
 import { parseSubmission, sheetRow } from '@/lib/registration-input'
 import { SHEET_ENDPOINT, rateLimited, clientIp, appendToSheet } from '@/lib/submission'
 import { recordLead, markSynced, markFailed, leadsHealth, leadStats } from '@/lib/leads'
-import { isFreePass, FREE_PASS_STATUS } from '@/content/tickets'
+import { recordRegistration, dbHealth } from '@/lib/db'
+import { isFreePass, FREE_PASS_STATUS, ticketAccess } from '@/content/tickets'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -105,6 +106,19 @@ export async function POST(req: Request) {
    */
   const paymentStatus = isFreePass(ticket) ? FREE_PASS_STATUS : 'Waitlist'
   const recorded = await appendToSheet('registration', sheetRow(reg, { paymentStatus }))
+  /*
+   * Postgres, beside the Sheet and on the same terms: best effort, logged, never able to
+   * fail the request. Keyed by the lead id, so a replay updates this row rather than
+   * adding a second one. No DATABASE_URL means this is a no-op.
+   */
+  const stored = await recordRegistration(reg, {
+    id: `lead:${leadId}`,
+    source: 'register',
+    paymentStatus,
+    access: ticketAccess(reg.ticketId),
+  })
+  if ('error' in stored) console.error('[register] database write failed (lead is safe):', stored.error)
+
   if (recorded.ok) {
     markSynced(leadId)
   } else {
@@ -138,6 +152,7 @@ export async function POST(req: Request) {
 export async function GET() {
   const leads = leadsHealth()
   const counts = leadStats()
+  const db = await dbHealth()
   return NextResponse.json(
     {
       // `ok` follows the LEAD LOG, not the sheet. If the disk is unwritable this endpoint
@@ -147,6 +162,9 @@ export async function GET() {
       service: 'tier2-rising-registrations',
       leadLog: { writable: leads.healthy, path: leads.path, error: leads.error, ...counts },
       sheet: SHEET_ENDPOINT ? 'configured' : 'NOT CONFIGURED',
+      // Reported, never part of `ok`: a database that is down does not stop a registration
+      // being accepted, so it must not fail a check that gates deploys.
+      database: !db.enabled ? 'not configured' : db.healthy ? 'connected' : `ERROR: ${db.error}`,
       mail: mailConfigured() ? 'configured' : 'NOT CONFIGURED',
       organiser: organiserRecipients,
     },

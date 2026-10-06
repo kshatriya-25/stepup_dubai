@@ -200,4 +200,5 @@ are.
 | `REGISTRATION_PAYMENT_ENABLED` | server `.env` | The till. `1` = charge; anything else = the same forms in waitlist mode. |
 | `RAZORPAY_KEY_ID` prefix | server `.env` | `rzp_live_` = real money. `rzp_test_` stamps *"TEST MODE — no real money was charged"* on the receipt. |
 | `TICKET_PRICE_OVERRIDE_INR` | staging `.env` only | Test pricing, 1–100 rupees. Ignored on production. See `src/lib/pricing.ts`. |
+| `PGDATABASE` (with `PGHOST`/`PGPORT`/`PGUSER`/`PGPASSWORD`) | server `.env` | Optional. Set = registrations are also written to Postgres, which the app creates on first use; blank = no database and no behaviour change. Never share one database between production and staging. See HOSTING.md Step 2b. |
 | `isFreePass()` | derived | A ₹0 pass never reaches Razorpay under any of the above. |

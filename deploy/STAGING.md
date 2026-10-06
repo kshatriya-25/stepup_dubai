@@ -113,6 +113,18 @@ PAYMENT_JOURNAL_PATH=/var/www/tier2expo/staging/tier2/data/payments.jsonl
 MAIL_ORGANISER=you@tealorca.in
 MAIL_PARTNER_ORGANISER=you@tealorca.in
 
+# --- the database MUST NOT be shared either -------------------------------
+# Same reasoning as the journal and the Sheet: staging writes real-looking rows,
+# and sharing production's database makes test registrations indistinguishable
+# from genuine ones in the one place anybody would query. Give staging its own
+# database NAME — the app creates it on first use — or leave PGDATABASE blank,
+# since staging does not need one and blank means every database call is a no-op.
+PGHOST=localhost
+PGPORT=5432
+PGUSER=tier2
+PGPASSWORD=…
+PGDATABASE=tier2rising_staging
+
 # --- the Google Sheet -----------------------------------------------------
 # Left as-is, staging test rows land in the REAL Registrations tab, mixed in
 # with genuine attendees and indistinguishable from them afterwards. Point this
@@ -254,6 +266,17 @@ curl -s https://staging.tier2rising.com/api/payment/order | python3 -m json.tool
 
 The `journal.path` values must differ. If they match, stop and fix `.env` — you
 have two processes writing one payment journal.
+
+Same check for the database, if staging has one:
+
+```bash
+curl -s https://tier2rising.com/api/register         | python3 -m json.tool | grep database
+curl -s https://staging.tier2rising.com/api/register | python3 -m json.tool | grep database
+```
+
+Both reporting `connected` is not enough — that endpoint does not print which database.
+Confirm the two `PGDATABASE` values name **different databases** by reading the two
+`.env` files. Staging reporting `not configured` is a perfectly good answer.
 
 ---
 

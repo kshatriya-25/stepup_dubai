@@ -1,8 +1,15 @@
 # Registration → Google Sheet (setup)
 
 Registrations are captured with a **Google Apps Script Web App** that appends each
-submission as a row in a Google Sheet you own. The Sheet is your read-only record;
+submission as a row in a Google Sheet you own. The Sheet is what organisers work in;
 only the script (running as you) writes to it.
+
+The Sheet is a **projection, not the record.** The record is `data/leads.jsonl` on the
+server: it is written first and is the only thing that can fail a submission, so a slow or
+broken Apps Script no longer loses a lead — the row is queued and re-sent by
+`/api/register/replay`. An optional Postgres copy sits beside the Sheet for querying and
+exporting; see HOSTING.md Step 2b. Setting it up is not required, and leaving it out
+changes nothing on this page.
 
 ```
 Form on site  ──POST──▶  /api/register  ──POST──▶  Apps Script Web App  ──append row──▶  Google Sheet

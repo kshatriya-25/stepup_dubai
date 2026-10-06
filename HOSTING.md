@@ -124,6 +124,15 @@ MAIL_FROM=info@tier2rising.com
 MAIL_FROM_NAME=Tier-2 Rising Startup Summit
 MAIL_REPLY_TO=info@tier2rising.com
 MAIL_ORGANISER=info@tier2rising.com
+
+# Optional — see Step 2b. Leave PGDATABASE blank and there is no database and no
+# change in behaviour. Fill these in and the app creates the database and its tables
+# itself on the first registration; there is nothing else to run.
+PGHOST=localhost
+PGPORT=5432
+PGUSER=postgres
+PGPASSWORD=…
+PGDATABASE=tier2rising
 ```
 
 **Never rename any `SMTP_*` or `MAIL_*` key with a `NEXT_PUBLIC_` prefix.** That prefix
@@ -131,6 +140,59 @@ is exactly what would leak the password into the browser bundle.
 
 Also confirm `next.config.mjs` has **no `output: 'export'`**. If someone re-adds it,
 `/api/register` stops existing and every registration silently fails.
+
+---
+
+## Step 2b — Postgres (optional)
+
+Registrations are written to three places, and they are not equal:
+
+| | what it is | what happens if it fails |
+|---|---|---|
+| `data/leads.jsonl` on disk | **the record** | the submission is refused — this is the only one that can do that |
+| Google Sheet | the projection organisers work in | lead is flagged, `/api/register/replay` re-sends it |
+| Postgres | a queryable copy | logged and ignored; the lead is already safe |
+
+So the database is additive. **Skip this step and nothing breaks** — with `PGDATABASE`
+blank, every database call is a no-op and the site runs as it always has. Add it when
+somebody wants to count, filter or export registrations without opening a spreadsheet.
+
+Install the server, give it a user, and fill in the five values in `.env`:
+
+```bash
+sudo apt install -y postgresql
+sudo -u postgres createuser --pwprompt --createdb tier2     # choose a password
+```
+
+That is the whole setup. **There is no schema to apply and no command to run after a
+deploy** — on the first registration the app creates the database if it is missing and
+creates its tables, and every statement it uses is `IF NOT EXISTS`, so it is safe on every
+start. A schema that only exists if someone remembers to run something is a schema that
+will be missing on the box that matters.
+
+`--createdb` is what lets it create the database for itself. Without that privilege, make
+the database by hand once (`sudo -u postgres createdb --owner=tier2 tier2rising`) and the
+app will still create its tables.
+
+**A managed database** (Supabase, Neon, RDS) hands you one connection string instead.
+Use `DATABASE_URL` and leave the `PG*` values out — it wins when both are present, because
+splitting that string by hand is a good way to get the password wrong:
+
+```
+DATABASE_URL=postgres://user:pass@host.example.com:5432/tier2rising?sslmode=require
+```
+
+Verify:
+
+```bash
+curl -s localhost:3211/api/register | jq .database
+# "connected"            working
+# "not configured"       no PGDATABASE — fine, this step is optional
+# "ERROR: …"             configured but unreachable — see Troubleshooting
+```
+
+`database` is deliberately **not** part of that endpoint's `ok` field. A database that is
+down must not fail a monitoring check, because registrations keep working without it.
 
 ---
 
@@ -290,6 +352,16 @@ and restart PM2, since env vars are read at process start.
 
 **502 Bad Gateway** — Node isn't running, or `Define PORT` doesn't match the port PM2
 started it on. `pm2 status`, `pm2 logs tier2rising`, `ss -tlnp | grep 3211`.
+
+**`[db] … failed: ECONNREFUSED` in the logs** — Postgres is down, or the `PG*` values are
+wrong. **Registrations are still being accepted**; what is missing is the queryable copy.
+Check with `curl -s localhost:3211/api/register | jq .database`, then
+`sudo systemctl status postgresql`. Rows written while it was down are recoverable: the
+lead log has every free/waitlist submission and `data/payments.jsonl` has every paid one.
+
+**`[db] … could not ensure the database exists`** — the Postgres user has no `CREATEDB`
+privilege. Either grant it (`sudo -u postgres psql -c 'ALTER ROLE tier2 CREATEDB'`) or
+create the database by hand once; the app still creates its own tables.
 
 **Everything 404s, or a blank page** — `Define REPO` points at a directory with no
 `.next/`. The build didn't run there.

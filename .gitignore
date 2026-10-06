@@ -17,10 +17,20 @@ dist
 *.tsbuildinfo
 next-env.d.ts
 
-# env
+# ---------------------------------------------------------------------------
+# SECRETS
+# ---------------------------------------------------------------------------
+# EVERY .env variant, not just .env and .env.local. These files hold SMTP_PASS,
+# RAZORPAY_KEY_SECRET and DATABASE_URL, and the deployment guides describe keeping
+# separate ones for production and staging — so .env.production and .env.staging
+# are exactly the names somebody will reach for. They used to be committable.
+#
+# Nothing is ever delivered by git: every .env is created on the box by hand.
+# See HOSTING.md Step 2 and deploy/STAGING.md Step 4.
 .env
-.env.local
-.env.*.local
+.env.*
+# An example file carries no real values and is the one worth sharing, if ever added.
+!.env.example
 
 # logs
 *.log
@@ -39,5 +49,29 @@ Thumbs.db
 # video/hero.mp4 are required at build time, so the server must receive them
 # from git.
 
-# Payment journal — contains customer registration data. Never commit.
+# ---------------------------------------------------------------------------
+# CUSTOMER DATA — none of this may ever be committed.
+# ---------------------------------------------------------------------------
+
+# The lead log and the payment journal live here: data/leads.jsonl holds every
+# free-pass and waitlist submission, data/payments.jsonl every paid one. Both are
+# the RECORD the site falls back on, and both are full of names, emails, phone
+# numbers and pitch text.
 data/
+
+# Database dumps. The registrations table is the same data again, and `pg_dump >
+# backup.sql` in the repo root is the easy way to commit all of it at once. The
+# schema in db/*.sql IS tracked on purpose — that is structure, not data — so
+# these patterns are deliberately narrow enough not to catch it.
+*.dump
+*.sql.gz
+*.sql.bz2
+*.sql.zip
+backup*.sql
+dump*.sql
+pg_dump*.sql
+*.backup
+
+# Anything exported for a spreadsheet or a mail merge.
+*.csv
+!public/**/*.csv

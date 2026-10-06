@@ -22,6 +22,8 @@
 
 import 'server-only'
 import { appendToSheet } from '@/lib/submission'
+import { recordRegistration } from '@/lib/db'
+import { ticketAccess } from '@/content/tickets'
 import { sheetRow } from '@/lib/registration-input'
 import { sendMail, organiserRecipients } from '@/lib/email/mailer'
 import {
@@ -386,6 +388,23 @@ async function fulfil(
     console.error(`[payments] sheet append attempt ${i + 1} failed (${source}):`, res.error)
     if (i < BACKOFF_MS.length) await sleep(BACKOFF_MS[i])
   }
+
+  /*
+   * The database copy of a paid registration. After the sheet loop, not before: the sheet
+   * is what decides whether fulfilment succeeded, and this must not sit in front of it.
+   * Keyed by order id, so /verify and the webhook racing each other write one row.
+   */
+  const stored = await recordRegistration(reg, {
+    id: `pay:${pay.orderId}`,
+    source: 'paid',
+    paymentStatus: 'Paid',
+    access: ticketAccess(reg.ticketId),
+    amountInr: Math.round(rec.amountPaise / 100),
+    paymentId: pay.paymentId,
+    orderId: pay.orderId,
+    paidAt,
+  })
+  if ('error' in stored) console.error(`[payments] database write failed (${source}):`, stored.error)
 
   if (lastError) {
     // Captured but unrecorded — the case this subsystem exists for. Alert a human once,

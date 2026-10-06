@@ -17,6 +17,8 @@
 import { NextResponse } from 'next/server'
 import { timingSafeEqual } from 'node:crypto'
 import { appendToSheet } from '@/lib/submission'
+import { recordRegistration } from '@/lib/db'
+import { ticketAccess } from '@/content/tickets'
 import { sheetRow } from '@/lib/registration-input'
 import { unsyncedLeads, markSynced, markFailed, leadsHealth, leadStats } from '@/lib/leads'
 
@@ -70,6 +72,20 @@ async function run(req: Request) {
   // Sequential on purpose. Apps Script serialises on a script lock anyway, so firing 25
   // at once would just queue them behind each other while burning 25 concurrent sockets.
   for (const lead of batch) {
+    /*
+     * The database gets the same lead on the way past. A lead is only in this batch because
+     * its SHEET write failed, which says nothing about whether the database got it — but
+     * the write is an upsert keyed by the same lead id, so re-sending one it already has
+     * costs an UPDATE and nothing else. Cheaper than tracking a second sync flag.
+     */
+    const stored = await recordRegistration(lead.registration, {
+      id: `lead:${lead.id}`,
+      source: 'replay',
+      paymentStatus: 'Waitlist',
+      access: ticketAccess(lead.registration.ticketId),
+    })
+    if ('error' in stored) console.error('[replay] database write failed:', stored.error)
+
     const res = await appendToSheet(
       'registration',
       sheetRow(lead.registration, { paymentStatus: 'Waitlist' }),

@@ -21,6 +21,7 @@ import {
   clientIp,
   appendToSheet,
 } from '@/lib/submission'
+import { recordPartnerEnquiry } from '@/lib/db'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -73,6 +74,20 @@ export async function POST(req: Request) {
       { status: 429 }
     )
   }
+
+  /*
+   * Database first here, unlike the registration routes — a partner enquiry has no lead log
+   * behind it, so the Sheet is its only record and this is the second. Still best effort:
+   * the Sheet below is what decides the response.
+   */
+  const stored = await recordPartnerEnquiry({
+    id: `partner:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    name: enquiry.name,
+    businessName: enquiry.businessName,
+    email: enquiry.email,
+    phone: enquiry.phone,
+  })
+  if ('error' in stored) console.error('[partner] database write failed:', stored.error)
 
   const recorded = await appendToSheet('partner', enquiry as unknown as Record<string, string>)
   if (!recorded.ok) {
