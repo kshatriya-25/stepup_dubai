@@ -24,6 +24,29 @@ import { speakers, speakersIntro } from '@/content/home'
  * why. The aspect ratio here and the one in that script are the same number written twice;
  * if either moves the other has to.
  */
+/**
+ * Keep a hyphenated word whole.
+ *
+ * "i-exceed Technology Solutions" wrapped as "…Development, i-" / "exceed Technology
+ * Solutions", because a hyphen is a line-break opportunity and the card is ~200px of text.
+ * A lone "i-" hanging off the end of a line reads as a typo in the company's name, which is
+ * the one thing a credit must not do.
+ *
+ * U+2060 WORD JOINER, placed immediately after each hyphen — that is the position the break
+ * would have been taken at, and the joiner forbids it. It is a zero-width FORMAT character,
+ * so unlike a non-breaking hyphen (U+2011) it needs no glyph and cannot turn into tofu in a
+ * font that never anticipated it; Alexandria is a Latin webfont and U+2011 is exactly the
+ * kind of codepoint it may not carry.
+ *
+ * Applied to every hyphen rather than special-casing this one company: "Co-Founder" should
+ * not split either, and the next hyphenated name to join the lineup should not need anyone
+ * to remember this. Done here rather than by hiding an invisible character in the content
+ * file, where the next person to edit the string would delete it without ever seeing it.
+ */
+function keepHyphensWhole(text: string): string {
+  return text.replace(/-/g, '-\u2060')
+}
+
 export function Speakers() {
   return (
     <section id="speakers" className="bg-night">
@@ -77,9 +100,11 @@ export function Speakers() {
                   {/* Stepped down for the two-up phone grid, where a card is ~150px wide
                       and 18px would break "Mr. Harish Venkatesh" across three lines. */}
                   <h3 className="mt-3 font-sans text-[15px] font-bold leading-tight text-surface sm:mt-3.5 sm:text-lg">
-                    {s.name}
+                    {keepHyphensWhole(s.name)}
                   </h3>
-                  <p className="mt-1.5 text-xs leading-relaxed text-surface/70 sm:text-sm">{s.role}</p>
+                  <p className="mt-1.5 text-xs leading-relaxed text-surface/70 sm:text-sm">
+                    {keepHyphensWhole(s.role)}
+                  </p>
                 </div>
 
                 {/* Always drawn, never a hover reveal: it is the card's bottom edge in the
