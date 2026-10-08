@@ -2,6 +2,7 @@ import { Hero } from '@/components/home/Hero'
 import { CountdownBar } from '@/components/home/CountdownBar'
 import { Vision } from '@/components/home/Vision'
 import { OurStory } from '@/components/home/OurVision'
+import { Speakers } from '@/components/home/Speakers'
 import { Scores } from '@/components/home/Scores'
 import { Zones } from '@/components/home/Zones'
 import { WhatGoesOn } from '@/components/home/WhatGoesOn'
@@ -50,6 +51,7 @@ export default function Home() {
       <CountdownBar />
       <Vision />
       <OurStory />
+      <Speakers />
       <Scores />
       <Zones />
       <WhatGoesOn />

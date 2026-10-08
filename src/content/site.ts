@@ -118,10 +118,11 @@ export type NavItem = { label: string; href: string; children?: { label: string;
  * one array is what stops the menu and the footer drifting apart again.
  *
  * Every href below must match a real `id` on a <section>. Current anchors:
- *   #vision  #story  #zones  #whatgoeson  #partners  #tickets
+ *   #vision  #story  #speakers  #zones  #whatgoeson  #partners  #tickets
  */
 export const exploreLinks: { label: string; href: string }[] = [
   { label: 'Our Vision', href: '/#vision' },
+  { label: 'Speakers', href: '/#speakers' },
   { label: 'Growth Zones', href: '/#zones' },
   { label: 'Key Initiatives', href: '/#whatgoeson' },
   { label: 'Tickets', href: '/#tickets' },
@@ -130,6 +131,11 @@ export const exploreLinks: { label: string; href: string }[] = [
   // real destination — it is the part of the page that names who is actually in the
   // room (scheme officers, investors, bank credit heads). Repoint this the moment a
   // proper section exists.
+  //
+  // NOT to #speakers, which arrived in October 2026 and is a different question: that
+  // section is who is ON STAGE, this link is who is in the audience worth meeting. They
+  // are close enough to be confused and far enough that sending someone asking the second
+  // question to an answer to the first is a wrong answer.
   { label: 'Who Attends', href: '/#zones' },
 ]
 
