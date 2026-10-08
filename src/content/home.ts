@@ -114,7 +114,7 @@ export const speakers: Speaker[] = [
   },
   {
     name: 'Mr. Sathishkumar P',
-    role: 'Head, Learning & Development, Lexceed Technology Solutions · Organizer, GDG Salem & AI Salem',
+    role: 'Head, Learning & Development, i-exceed Technology Solutions · Organizer, GDG Salem & AI Salem',
     photo: '/speakers/sathish-v1.jpg',
     badge: 'Guest Speaker',
   },
